@@ -8,6 +8,7 @@ on:
         required: true
 permissions:
   contents: read
+  actions: write
 concurrency:
   group: aenea-demo-deployment
   cancel-in-progress: false
@@ -36,6 +37,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/bootstrap.py
+      - name: Configure deployment environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh variable set AWS_REGION --repo "$GITHUB_REPOSITORY" --env demo --body "$(jq -r .AWS_REGION .artifacts/bootstrap-settings.json)"
+          gh variable set TF_STATE_BUCKET --repo "$GITHUB_REPOSITORY" --env demo --body "$(jq -r .TF_STATE_BUCKET .artifacts/bootstrap-settings.json)"
+          gh variable set AWS_ROLE_ARN --repo "$GITHUB_REPOSITORY" --env demo --body "$(jq -r .AWS_ROLE_ARN .artifacts/bootstrap-settings.json)"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: bootstrap-public-settings

@@ -6,7 +6,7 @@ Use credentials belonging to the intended AWS account with authority to create t
 
 Run Bootstrap AWS access on main. Region defaults to us-east-1. The workflow creates a private versioned state bucket, adopts it into Terraform, creates/adopts GitHub's OIDC provider, and creates the Aenea role and policy. It outputs public configuration in bootstrap-public-settings and the job summary. Secrets and Terraform state are not uploaded as artifacts.
 
-Use those outputs for GitHub environment demo variables AWS_REGION, TF_STATE_BUCKET and AWS_ROLE_ARN. Configure environment deployment branches to main before allowing normal OIDC deployments. The OIDC role trusts only this repo's demo environment.
+The workflow automatically writes its outputs into GitHub environment demo variables AWS_REGION, TF_STATE_BUCKET and AWS_ROLE_ARN. Configure environment deployment branches to main before allowing normal OIDC deployments. The OIDC role trusts only this repo's demo environment.
 
 Then run Deploy changed components with all. It emits DNS records for aenea.qleam.com. After the user enters those records at Namecheap, component domain attaches the issued certificate.
 
