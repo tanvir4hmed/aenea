@@ -68,6 +68,19 @@
     {
       "Effect": "Allow",
       "Action": [
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${region}"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "acm:RequestCertificate",
         "acm:DescribeCertificate",
         "acm:DeleteCertificate",
