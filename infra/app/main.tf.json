@@ -144,7 +144,6 @@
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
         "timeout": 25,
         "memory_size": 256,
-        "reserved_concurrent_executions": 5,
         "environment": {
           "variables": {
             "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
