@@ -12,7 +12,7 @@ Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. 
 5. Dispatch **Deploy changed components** with `all` once. Subsequent main pushes deploy affected components automatically.
 6. Create a Cognito demo user as an account administrator. Self-registration is disabled. Hosted UI uses authorization code + PKCE and API routes require access-token scopes.
 
-The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
+The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted demo-environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
 
 After the first bootstrap apply in CloudShell, copy `infra/bootstrap/backend.tf.json.example` to `infra/bootstrap/backend.tf.json`, then run `terraform -chdir=infra/bootstrap init -migrate-state` with backend-config arguments for the new bucket, `key=bootstrap/terraform.tfstate`, region, `encrypt=true` and `use_lockfile=true`. Keep the resulting state private. The backend file is ignored by Git to preserve the first-time bootstrap path.
 
