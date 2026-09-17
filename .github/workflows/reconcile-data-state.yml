@@ -1,0 +1,49 @@
+name: Reconcile evidence state
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aenea-demo-deployment
+  cancel-in-progress: false
+
+jobs:
+  untaint:
+    runs-on: ubuntu-latest
+    environment: demo
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_region: ${{ vars.AWS_REGION }}
+      TF_VAR_environment: demo
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: "1.14.0"
+          terraform_wrapper: false
+      - name: Clear stale evidence-bucket taint
+        run: |
+          terraform -chdir=infra/data init -input=false \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=data/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          aws s3api head-bucket --bucket "aenea-demo-552794253321-evidence" --expected-bucket-owner 552794253321
+          terraform -chdir=infra/data untaint aws_s3_bucket.evidence
+      - name: Start normal OIDC deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run 'Deploy changed components' --repo "$GITHUB_REPOSITORY" --ref main -f component=all
