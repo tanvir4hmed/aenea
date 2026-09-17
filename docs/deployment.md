@@ -34,7 +34,7 @@ Each regular layer uses its own S3 state key and native S3 locking. Terraform ow
 - State-machine changes update only that workflow.
 - A Terraform layer change applies that layer; data/platform changes also refresh dependent app wiring.
 - Platform changes refresh public web configuration without rebuilding unchanged frontend code.
-- Shared deployment script/workflow changes or an explicit all dispatch refresh all components.
+- Changes to `scripts/deploy.py`, the deploy workflow, or an explicit all dispatch refresh all components. Bootstrap/reconciliation scripts do not trigger application deployment.
 - Documentation and planning changes do not trigger deployment.
 
 Builds run on GitHub Linux runners. No test suite, browser verification or post-deploy health probe is invoked by this workflow. AWS wait-for-update calls sequence Lambda deployments; they are not application tests.

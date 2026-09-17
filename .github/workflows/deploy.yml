@@ -10,7 +10,7 @@ on:
       - "infra/data/**"
       - "infra/platform/**"
       - "infra/app/**"
-      - "scripts/**"
+      - "scripts/deploy.py"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
