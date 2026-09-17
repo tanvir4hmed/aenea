@@ -1,0 +1,26 @@
+name: OIDC claim context
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  claims:
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - name: Display non-secret OIDC claims
+        shell: bash
+        run: |
+          token="$(curl -fsSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)"
+          TOKEN="$token" python3 - <<'PY'
+          import base64, json, os
+          payload = os.environ["TOKEN"].split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          print(json.dumps({key: claims.get(key) for key in ("iss", "aud", "sub", "repository", "environment", "ref")}, indent=2))
+          PY
