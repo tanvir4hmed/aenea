@@ -18,7 +18,7 @@ After the first bootstrap apply in CloudShell, copy `infra/bootstrap/backend.tf.
 
 ## State layers
 
-- bootstrap: retained state bucket and deployment OIDC role.
+- bootstrap: CLI-managed retained state bucket plus Terraform-managed deployment OIDC role.
 - tls: ACM certificate for aenea.qleam.com in us-east-1; DNS validation records are output for manual entry at Namecheap.
 - data: DynamoDB state and versioned evidence S3; protected against routine destroy.
 - platform: private web S3, CloudFront origin access, Cognito, API Gateway JWT auth/logging, EventBridge bus, delivery DLQ and operations SNS.

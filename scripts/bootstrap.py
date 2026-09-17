@@ -55,18 +55,11 @@ def main():
     run("aws", "s3api", "put-bucket-encryption", "--bucket", bucket,
         "--server-side-encryption-configuration",
         json.dumps({"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}))
-    shutil.copy2(ROOT / "infra/bootstrap/backend.tf.json.example",
-                 ROOT / "infra/bootstrap/backend.tf.json")
     run("terraform", "-chdir=infra/bootstrap", "init", "-input=false",
         f"-backend-config=bucket={bucket}", "-backend-config=key=bootstrap/terraform.tfstate",
         f"-backend-config=region={region}", "-backend-config=encrypt=true",
         "-backend-config=use_lockfile=true")
     state = state_addresses()
-    for address in ["aws_s3_bucket.state", "aws_s3_bucket_versioning.state",
-                    "aws_s3_bucket_server_side_encryption_configuration.state",
-                    "aws_s3_bucket_public_access_block.state"]:
-        if address not in state:
-            run("terraform", "-chdir=infra/bootstrap", "import", "-input=false", address, bucket)
     provider_arn = f"arn:aws:iam::{account}:oidc-provider/token.actions.githubusercontent.com"
     providers = json.loads(capture("aws", "iam", "list-open-id-connect-providers"))
     if any(item["Arn"] == provider_arn for item in providers["OpenIDConnectProviderList"]):
@@ -77,7 +70,8 @@ def main():
                 raise RuntimeError("Shared GitHub OIDC provider needs review before Terraform adoption")
             run("terraform", "-chdir=infra/bootstrap", "import", "-input=false",
                 "aws_iam_openid_connect_provider.github", provider_arn)
-    run("terraform", "-chdir=infra/bootstrap", "apply", "-input=false", "-auto-approve")
+    run("terraform", "-chdir=infra/bootstrap", "apply", "-input=false", "-auto-approve",
+        f"-var=state_bucket={bucket}")
     settings = {
         "AWS_REGION": region, "TF_STATE_BUCKET": bucket,
         "AWS_ROLE_ARN": f"arn:aws:iam::{account}:role/aenea-demo-github",
