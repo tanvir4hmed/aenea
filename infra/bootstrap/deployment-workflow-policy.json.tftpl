@@ -64,12 +64,21 @@
         "states:UpdateStateMachine",
         "states:DeleteStateMachine",
         "states:DescribeStateMachine",
-        "states:ValidateStateMachineDefinition",
         "states:ListTagsForResource",
         "states:TagResource",
         "states:UntagResource"
       ],
       "Resource": "arn:aws:states:${region}:${account_id}:stateMachine:aenea-${environment}-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "states:ValidateStateMachineDefinition",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${region}"
+        }
+      }
     },
     {
       "Effect": "Allow",
