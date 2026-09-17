@@ -79,7 +79,7 @@
       "value": "${aws_iam_role.deploy.arn}"
     },
     "state_bucket": {
-      "value": "${aws_s3_bucket.state.id}"
+      "value": "${var.state_bucket}"
     }
   },
   "data": {
