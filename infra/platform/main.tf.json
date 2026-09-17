@@ -32,6 +32,15 @@
     },
     "state_bucket": {
       "type": "string"
+    },
+    "web_domain": {
+      "type": "string",
+      "default": "aenea.qleam.com"
+    },
+    "web_certificate_arn": {
+      "type": "string",
+      "default": "",
+      "description": "Issued us-east-1 ACM certificate; empty keeps CloudFront hostname until DNS validation."
     }
   },
   "data": {
@@ -125,8 +134,12 @@
           }
         },
         "viewer_certificate": {
-          "cloudfront_default_certificate": true
-        }
+          "cloudfront_default_certificate": "${!local.custom_domain_ready}",
+          "acm_certificate_arn": "${local.custom_domain_ready ? var.web_certificate_arn : null}",
+          "ssl_support_method": "${local.custom_domain_ready ? \"sni-only\" : null}",
+          "minimum_protocol_version": "${local.custom_domain_ready ? \"TLSv1.2_2021\" : \"TLSv1\"}"
+        },
+        "aliases": "${local.custom_domain_ready ? [var.web_domain] : []}"
       }
     },
     "aws_s3_bucket_policy": {
@@ -193,10 +206,12 @@
           "COGNITO"
         ],
         "callback_urls": [
-          "https://${aws_cloudfront_distribution.web.domain_name}/auth/callback"
+          "https://${aws_cloudfront_distribution.web.domain_name}/auth/callback",
+          "https://${var.web_domain}/auth/callback"
         ],
         "logout_urls": [
-          "https://${aws_cloudfront_distribution.web.domain_name}/command-center"
+          "https://${aws_cloudfront_distribution.web.domain_name}/command-center",
+          "https://${var.web_domain}/command-center"
         ],
         "prevent_user_existence_errors": "ENABLED",
         "enable_token_revocation": true,
@@ -224,7 +239,8 @@
         "protocol_type": "HTTP",
         "cors_configuration": {
           "allow_origins": [
-            "https://${aws_cloudfront_distribution.web.domain_name}"
+            "https://${aws_cloudfront_distribution.web.domain_name}",
+            "https://${var.web_domain}"
           ],
           "allow_methods": [
             "GET",
@@ -326,7 +342,7 @@
       "value": "${aws_cloudfront_distribution.web.id}"
     },
     "web_url": {
-      "value": "https://${aws_cloudfront_distribution.web.domain_name}"
+      "value": "${local.web_origin}"
     },
     "user_pool_id": {
       "value": "${aws_cognito_user_pool.household.id}"
@@ -337,6 +353,19 @@
         "clientId": "${aws_cognito_user_pool_client.web.id}",
         "cognitoDomain": "https://${aws_cognito_user_pool_domain.web.domain}.auth.${var.region}.amazoncognito.com"
       }
+    },
+    "website_dns": {
+      "value": {
+        "type": "CNAME",
+        "host": "aenea",
+        "name": "${var.web_domain}",
+        "value": "${aws_cloudfront_distribution.web.domain_name}",
+        "ttl": "Automatic"
+      }
     }
+  },
+  "locals": {
+    "custom_domain_ready": "${var.web_certificate_arn != \"\"}",
+    "web_origin": "${local.custom_domain_ready ? \"https://${var.web_domain}\" : \"https://${aws_cloudfront_distribution.web.domain_name}\"}"
   }
 }

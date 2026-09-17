@@ -20,6 +20,7 @@ After the first bootstrap apply in CloudShell, copy `infra/bootstrap/backend.tf.
 ## State layers
 
 - bootstrap: retained state bucket and deployment OIDC role.
+- tls: ACM certificate for aenea.qleam.com in us-east-1; DNS validation records are output for manual entry at Namecheap.
 - data: DynamoDB state and versioned evidence S3; protected against routine destroy.
 - platform: private web S3, CloudFront origin access, Cognito, API Gateway JWT auth/logging, EventBridge bus, delivery DLQ and operations SNS.
 - app: function roles/code/environment, Step Functions, EventBridge delivery, API integrations and execution-failure alarm.
@@ -45,4 +46,4 @@ Python dependencies are assembled on the runner with the pinned IncidentBridge c
 
 The default demo maps one Cognito identity to one household. Shared membership invitations come later. SNS has no recipient until a verified subscription is added. EventBridge DLQ captures delivery failures; failed Step Functions executions trigger a separate alarm and require operator investigation/re-drive. A bucket write or publish failure can be retried using the same event ID and payload.
 
-No real device, Ring account or external weather feed is required. CloudFront uses its AWS domain and TLS certificate; a custom DNS name, regional API WAF arrangement and extra edge controls can be added when chosen. HTTP API does not have a direct WAF association in this implementation.
+No real device, Ring account or external weather feed is required. The selected domain is aenea.qleam.com; see [custom-domain setup](custom-domain.md). CloudFront's AWS hostname is used until the certificate is issued. HTTP API does not have a direct WAF association in this implementation.

@@ -33,6 +33,30 @@ def outputs(layer):
     return {key: value["value"] for key, value in values.items()}
 
 
+def prepare_domain():
+    terraform_init("tls")
+    run("terraform", "-chdir=infra/tls", "apply", "-input=false", "-auto-approve")
+    tls = outputs("tls")
+    status = capture("aws", "acm", "describe-certificate", "--region", "us-east-1",
+                     "--certificate-arn", tls["certificate_arn"],
+                     "--query", "Certificate.Status", "--output", "text")
+    if status not in {"ISSUED", "PENDING_VALIDATION"}:
+        raise RuntimeError(f"Certificate requires attention: {status}")
+    os.environ["TF_VAR_web_certificate_arn"] = tls["certificate_arn"] if status == "ISSUED" else ""
+    lines = ["## aenea.qleam.com DNS", "",
+             "Add these certificate records to qleam.com in Namecheap Advanced DNS.",
+             "Keep validation records for certificate renewal.", "",
+             "| Type | Host | Value |", "|---|---|---|"]
+    for record in tls["validation_records"]:
+        host = record["name"].rstrip(".").removesuffix(".qleam.com")
+        lines.append(f"| {record['type']} | {host} | {record['value']} |")
+    lines.extend(["", f"Certificate status: {status}.",
+                  "After adding DNS, dispatch component domain to attach the issued certificate.",
+                  "No certificate-validation wait or application testing is performed."])
+    with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+        summary.write("\n".join(lines) + "\n")
+
+
 def changed_paths():
     before = os.environ.get("BEFORE_SHA", "")
     if not before or set(before) == {"0"}:
@@ -64,8 +88,13 @@ def main():
     ) or (not paths and not selected)
     web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
     infra_all = all_components or selected == "infrastructure"
+    domain = infra_all or selected == "domain" or any(p.startswith("infra/tls/") for p in paths)
     layers = {layer for layer in ("data", "platform", "app")
               if infra_all or any(p.startswith(f"infra/{layer}/") for p in paths)}
+    if domain:
+        layers.add("platform")
+    if "platform" in layers:
+        prepare_domain()
     if "data" in layers or "platform" in layers:
         layers.add("app")
     changed_functions = set(FUNCTIONS) if all_components or selected == "backend" else {
@@ -100,6 +129,10 @@ def main():
             app["workflow_arn"], "--definition", f"file://{target}")
     if web or "platform" in layers:
         platform = outputs("platform")
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+            dns = platform["website_dns"]
+            summary.write(f"\nWebsite DNS: CNAME `{dns['host']}` → `{dns['value']}` (TTL Automatic).\n")
+            summary.write(f"Website origin currently configured: {platform['web_url']}\n")
         config = ARTIFACTS / "config.json"
         config.write_text(json.dumps(platform["web_config"]))
         if web:

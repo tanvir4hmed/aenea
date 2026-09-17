@@ -1,0 +1,44 @@
+{
+  "terraform": {
+    "required_version": ">= 1.10, < 2.0",
+    "required_providers": {
+      "aws": {
+        "source": "hashicorp/aws",
+        "version": "~> 6.0"
+      }
+    },
+    "backend": {
+      "s3": {}
+    }
+  },
+  "provider": {
+    "aws": {
+      "region": "us-east-1",
+      "default_tags": {
+        "tags": {
+          "Project": "Aenea",
+          "Environment": "demo"
+        }
+      }
+    }
+  },
+  "resource": {
+    "aws_acm_certificate": {
+      "web": {
+        "domain_name": "aenea.qleam.com",
+        "validation_method": "DNS",
+        "lifecycle": {
+          "create_before_destroy": true
+        }
+      }
+    }
+  },
+  "output": {
+    "certificate_arn": {
+      "value": "${aws_acm_certificate.web.arn}"
+    },
+    "validation_records": {
+      "value": "${[for item in aws_acm_certificate.web.domain_validation_options : { name = item.resource_record_name, type = item.resource_record_type, value = item.resource_record_value }]}"
+    }
+  }
+}

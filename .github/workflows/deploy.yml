@@ -6,6 +6,7 @@ on:
       - "apps/web/**"
       - "functions/**"
       - "workflows/**"
+      - "infra/tls/**"
       - "infra/data/**"
       - "infra/platform/**"
       - "infra/app/**"
@@ -16,7 +17,7 @@ on:
       component:
         description: "Deploy scope (all for the first deployment)"
         type: choice
-        options: [all, web, backend, infrastructure]
+        options: [all, web, backend, infrastructure, domain]
         default: all
 permissions:
   contents: read
