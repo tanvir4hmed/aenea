@@ -33,6 +33,7 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Product feedback](docs/product-feedback.md)
 - [Friction log](docs/friction-log.md)
 - [Cloud deployment and required account configuration](docs/deployment.md)
+- [One-time CloudShell bootstrap](docs/cloudshell-bootstrap.md)
 - [Event pipeline and API semantics](docs/event-pipeline.md)
 
 Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.

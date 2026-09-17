@@ -1,4 +1,4 @@
-"""One-time cloud bootstrap; keep Terraform state in private S3 from the start."""
+"""One-time CloudShell bootstrap; keep Terraform state in private S3 from the start."""
 import json
 import os
 from pathlib import Path
@@ -68,12 +68,16 @@ def main():
     target = ROOT / ".artifacts"
     target.mkdir(exist_ok=True)
     (target / "bootstrap-settings.json").write_text(json.dumps(settings, indent=2))
-    with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-        summary.write("## Bootstrap configuration\n\nSet these GitHub demo environment variables:\n\n")
-        for name, value in settings.items():
-            summary.write(f"- {name}: {value}\n")
-        summary.write("\nThen dispatch Deploy changed components with component all. "
-                      "Routine deployments use OIDC, not these bootstrap access keys.\n")
+    lines = ["Bootstrap configuration", ""]
+    lines += [f"{name}={value}" for name, value in settings.items()]
+    lines += ["", "Set these as GitHub demo environment variables, then dispatch "
+              "Deploy changed components with component all."]
+    output = "\n".join(lines) + "\n"
+    print(output)
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        with open(summary_path, "a") as summary:
+            summary.write("## " + output)
 
 
 if __name__ == "__main__":

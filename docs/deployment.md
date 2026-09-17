@@ -4,12 +4,11 @@ Implementation is written for Phases 2–3. Deployment success and end-to-end be
 
 ## First-time AWS setup
 
-Use an authorized AWS CloudShell or other cloud workspace. No AWS credential is committed or pasted into application configuration.
+Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. No AWS credential is committed or pasted into application configuration.
 
-1. Choose the AWS account and region. Create account-specific deployment policies covering the planned resources, Terraform state access and limited PassRole to Aenea runtime roles.
-2. Run Terraform in `infra/bootstrap` with region, a globally unique state_bucket, github_repository and the approved deployment_policy_arns. This creates the state bucket and GitHub OIDC role. If the account already has GitHub's OIDC provider, import it into this state instead of creating a duplicate.
-3. Preserve the bootstrap state: initialize an S3 backend and migrate the local CloudShell state into `bootstrap/terraform.tfstate` in the new bucket. Never commit state.
-4. In GitHub create environment `demo`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
+1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit Phase 2–3 deployment policy.
+2. Follow [CloudShell bootstrap](cloudshell-bootstrap.md). It creates/adopts the private state bucket and GitHub OIDC role, then stores bootstrap state in `bootstrap/terraform.tfstate` in that bucket. Never commit state.
+3. In GitHub create environment `demo`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
 5. Dispatch **Deploy changed components** with `all` once. Subsequent main pushes deploy affected components automatically.
 6. Create a Cognito demo user as an account administrator. Self-registration is disabled. Hosted UI uses authorization code + PKCE and API routes require access-token scopes.
 
