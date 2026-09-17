@@ -16,6 +16,23 @@ def capture(*args):
     return subprocess.check_output(args, cwd=ROOT, text=True).strip()
 
 
+def state_addresses():
+    """An initialized, empty S3 backend has no state file yet."""
+    result = subprocess.run(
+        ("terraform", "-chdir=infra/bootstrap", "state", "list"),
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode == 0:
+        return set(result.stdout.splitlines())
+    if "No state file was found" in result.stderr:
+        return set()
+    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+
+
 def main():
     region = os.environ["AWS_REGION"]
     account = capture("aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text")
@@ -44,7 +61,7 @@ def main():
         f"-backend-config=bucket={bucket}", "-backend-config=key=bootstrap/terraform.tfstate",
         f"-backend-config=region={region}", "-backend-config=encrypt=true",
         "-backend-config=use_lockfile=true")
-    state = set(capture("terraform", "-chdir=infra/bootstrap", "state", "list").splitlines())
+    state = state_addresses()
     for address in ["aws_s3_bucket.state", "aws_s3_bucket_versioning.state",
                     "aws_s3_bucket_server_side_encryption_configuration.state",
                     "aws_s3_bucket_public_access_block.state"]:
