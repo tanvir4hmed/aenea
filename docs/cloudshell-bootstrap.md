@@ -4,7 +4,7 @@ The one-time Terraform state/bootstrap operation runs from AWS CloudShell. It cr
 
 The state bucket is named `aenea-demo-<AWS-account-ID>-terraform-state`. It has versioning, server-side encryption, public access block and Terraform `prevent_destroy`. A normal `terraform destroy` stops before deleting it, so its state file remains. Do not force-destroy it. It is intentionally independent from normal application deployment.
 
-In CloudShell, use an authorized AWS account session and run:
+Do **not** run these commands in Windows PowerShell (`PS D:\...>`). Open the AWS Console for the target account, choose the CloudShell icon in the top bar, wait for the browser terminal prompt (normally ending in `$`), then run:
 
 ```bash
 git clone https://github.com/tanvir4hmed/aenea.git
