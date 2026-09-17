@@ -2,6 +2,11 @@ name: Reconcile deployment role
 
 on:
   workflow_dispatch:
+    inputs:
+      start_deploy:
+        description: Start normal OIDC deployment after reconciliation
+        type: boolean
+        default: false
 
 permissions:
   actions: write
@@ -38,7 +43,10 @@ jobs:
           terraform_wrapper: false
       - name: Adopt and update bootstrap role and policies
         run: python scripts/reconcile_bootstrap.py
+      - name: Show resulting OIDC trust
+        run: aws iam get-role --role-name aenea-demo-github --query 'Role.AssumeRolePolicyDocument' --output json
       - name: Start normal OIDC deployment
+        if: inputs.start_deploy
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run 'Deploy changed components' --repo "$GITHUB_REPOSITORY" --ref main -f component=all
