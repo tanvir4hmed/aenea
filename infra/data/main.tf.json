@@ -1,0 +1,118 @@
+{
+  "terraform": {
+    "required_version": ">= 1.10, < 2.0",
+    "required_providers": {
+      "aws": {
+        "source": "hashicorp/aws",
+        "version": "~> 6.0"
+      }
+    },
+    "backend": {
+      "s3": {}
+    }
+  },
+  "provider": {
+    "aws": {
+      "region": "${var.region}",
+      "default_tags": {
+        "tags": {
+          "Project": "Aenea",
+          "Environment": "${var.environment}"
+        }
+      }
+    }
+  },
+  "variable": {
+    "region": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "default": "demo"
+    }
+  },
+  "data": {
+    "aws_caller_identity": {
+      "current": {}
+    }
+  },
+  "resource": {
+    "aws_dynamodb_table": {
+      "state": {
+        "name": "aenea-${var.environment}-state",
+        "billing_mode": "PAY_PER_REQUEST",
+        "hash_key": "pk",
+        "range_key": "sk",
+        "attribute": [
+          {
+            "name": "pk",
+            "type": "S"
+          },
+          {
+            "name": "sk",
+            "type": "S"
+          }
+        ],
+        "point_in_time_recovery": {
+          "enabled": true
+        },
+        "server_side_encryption": {
+          "enabled": true
+        },
+        "deletion_protection_enabled": true,
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      }
+    },
+    "aws_s3_bucket": {
+      "evidence": {
+        "bucket": "aenea-${var.environment}-${data.aws_caller_identity.current.account_id}-evidence",
+        "lifecycle": {
+          "prevent_destroy": true
+        }
+      }
+    },
+    "aws_s3_bucket_versioning": {
+      "evidence": {
+        "bucket": "${aws_s3_bucket.evidence.id}",
+        "versioning_configuration": {
+          "status": "Enabled"
+        }
+      }
+    },
+    "aws_s3_bucket_server_side_encryption_configuration": {
+      "evidence": {
+        "bucket": "${aws_s3_bucket.evidence.id}",
+        "rule": {
+          "apply_server_side_encryption_by_default": {
+            "sse_algorithm": "AES256"
+          }
+        }
+      }
+    },
+    "aws_s3_bucket_public_access_block": {
+      "evidence": {
+        "bucket": "${aws_s3_bucket.evidence.id}",
+        "block_public_acls": true,
+        "block_public_policy": true,
+        "ignore_public_acls": true,
+        "restrict_public_buckets": true
+      }
+    }
+  },
+  "output": {
+    "table_name": {
+      "value": "${aws_dynamodb_table.state.name}"
+    },
+    "table_arn": {
+      "value": "${aws_dynamodb_table.state.arn}"
+    },
+    "evidence_bucket": {
+      "value": "${aws_s3_bucket.evidence.id}"
+    },
+    "evidence_arn": {
+      "value": "${aws_s3_bucket.evidence.arn}"
+    }
+  }
+}

@@ -1,12 +1,14 @@
 # Aenea
 
-Aenea is an Alexa+-centered prototype for household incident coordination. It correlates labeled simulated safety, camera/doorbell and household signals, keeps an auditable incident timeline, asks household members for status, and gates every proposed device action through deterministic policy.
+Aenea is an Alexa+-centered prototype for household incident coordination. Its intended full workflow combines simulated household signals, an auditable incident timeline, household check-ins and policy-gated device actions. The current implementation covers cloud foundation, authenticated simulation ingestion and incident evidence timelines.
 
 > **Safety notice:** Aenea is a hackathon prototype for coordination and decision support. It is not a certified alarm, monitoring service, medical device, or replacement for emergency services. It does not automatically contact emergency responders.
 
 ## Status
 
-Phase 0: repository and technical-feasibility baseline. The working implementation will be built during the Amazon App Dev Challenge 2026 window. Do not treat planned capabilities as implemented until they appear in the source and test evidence.
+Phases 2–3 implementation is written: Terraform layers, React shell with Cognito PKCE sign-in, authenticated APIs, IncidentBridge ingestion, evidence S3, EventBridge/Step Functions and DynamoDB timelines. Pushes trigger component-specific GitHub build/deployment. Deployment results and end-to-end verification are deferred; a working cloud deployment is not yet claimed.
+
+The Alexa+, household check-in and handoff routes are explicit placeholders for later phases. The reasoner and device policy/action execution are Phase 4 work.
 
 ## Planned proof path
 
@@ -30,8 +32,10 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Build evidence](docs/build-evidence.md)
 - [Product feedback](docs/product-feedback.md)
 - [Friction log](docs/friction-log.md)
+- [Cloud deployment and required account configuration](docs/deployment.md)
+- [Event pipeline and API semantics](docs/event-pipeline.md)
 
-Build and deployment instructions will be added with the first executable vertical slice so this README never advertises commands that do not work.
+Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 
 ## License
 

@@ -1,0 +1,25 @@
+{
+  "Comment": "Phase 3 collects evidence; reasoning and actions are added in Phase 4.",
+  "StartAt": "RecordEvidence",
+  "States": {
+    "RecordEvidence": {
+      "Type": "Task",
+      "Resource": "${correlate_arn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}

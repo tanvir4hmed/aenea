@@ -1,0 +1,5 @@
+{
+  "apiUrl": "https://API_ID.execute-api.REGION.amazonaws.com",
+  "cognitoDomain": "https://DOMAIN.auth.REGION.amazoncognito.com",
+  "clientId": "COGNITO_CLIENT_ID"
+}

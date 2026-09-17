@@ -1,0 +1,2 @@
+incidentbridge @ git+https://github.com/tanvir4hmed/incidentbridge.git@53ab20a35e9f7b9b87504862228b7ace090dee68
+boto3>=1.40,<2

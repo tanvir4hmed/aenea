@@ -6,4 +6,4 @@ The [final architecture diagram](architecture/01_aenea_architecture_overview_fin
 
 Camera/doorbell, sensor, weather, household and device events are synthetic and visibly labeled. They still enter the real hosted backend through HTTP. No Ring API, official Ring simulator, Ring credentials, physical Alexa or physical IoT device is required.
 
-This document intentionally distinguishes planned components from implemented components. At repository baseline, no runtime component has been claimed as complete. Terraform remains the infrastructure source of truth; exact AWS provider/resource support and authentication flows must be verified before deployment.
+Phases 2–3 now have source implementation for hosting/authentication, ingestion, the event workflow and state/timeline reads. Runtime success is unverified: build/deploy is delegated to GitHub Actions and its results will be reviewed later. Terraform remains the infrastructure source of truth. AgentCore reasoning, MCP coordination and action policy are subsequent phases.

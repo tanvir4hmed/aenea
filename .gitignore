@@ -27,6 +27,10 @@ coverage/
 *.tfstate.*
 crash.log
 *.tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+infra/bootstrap/backend.tf.json
 
 # Editors and operating systems
 .idea/

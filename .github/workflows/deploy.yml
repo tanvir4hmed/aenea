@@ -1,0 +1,66 @@
+name: Deploy changed components
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "functions/**"
+      - "workflows/**"
+      - "infra/data/**"
+      - "infra/platform/**"
+      - "infra/app/**"
+      - "scripts/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Deploy scope (all for the first deployment)"
+        type: choice
+        options: [all, web, backend, infrastructure]
+        default: all
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: aenea-demo-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: demo
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_region: ${{ vars.AWS_REGION }}
+      TF_VAR_environment: demo
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+      TF_IN_AUTOMATION: "true"
+      BEFORE_SHA: ${{ github.event.before }}
+      DEPLOY_COMPONENT: ${{ inputs.component }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Required deployment settings
+        env:
+          DEPLOY_ROLE: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          : "${AWS_REGION:?Set the AWS_REGION environment variable in GitHub}"
+          : "${TF_STATE_BUCKET:?Complete the Terraform bootstrap and set TF_STATE_BUCKET}"
+          : "${DEPLOY_ROLE:?Set the GitHub OIDC AWS_ROLE_ARN}"
+      - uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: "1.14.0"
+          terraform_wrapper: false
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+      - name: Build and deploy only affected components
+        run: python scripts/deploy.py
