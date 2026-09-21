@@ -4,9 +4,12 @@ Only use the final text after hosted acceptance and video review. Prepared 21 Se
 
 ## Project
 
-**Name:** Aenea  
-**Tagline:** Shared household context, accountable incident coordination.  
-**Primary:** Alexa+  
+**Name:** Aenea
+
+**Tagline:** Shared household context, accountable incident coordination.
+
+**Primary:** Alexa+
+
 **Proposed minis:** AWS Builder; Open Source alongside the separate IncidentBridge contribution. Final entry selection is the owner's decision.
 
 ## Description draft
