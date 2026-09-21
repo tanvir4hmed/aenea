@@ -9,7 +9,6 @@ fi
 
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export TF_VAR_region="$AWS_REGION"
-export TF_VAR_environment="demo"
 export TF_IN_AUTOMATION="true"
 
 python3 scripts/bootstrap.py

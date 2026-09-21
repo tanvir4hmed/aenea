@@ -79,7 +79,7 @@ function App() {
     const incidentId = selected || crypto.randomUUID();
     const payload = pending || { incident_id: incidentId, adapter: camera ? 'camera-simulator' : ['smoke','carbon_monoxide','water_leak','medical_sos'].includes(kind) ? 'sensor' : 'webhook',
       event: { event_id: crypto.randomUUID(), household_id: identity, occurred_at: new Date().toISOString(),
-        source: { source_id: camera ? 'demo-camera' : 'demo-sensor', category: camera ? 'camera' : kind === 'severe_weather' ? 'weather' : 'sensor', simulated: true },
+      source: { source_id: camera ? 'simulation-camera' : 'simulation-sensor', category: camera ? 'camera' : kind === 'severe_weather' ? 'weather' : 'sensor', simulated: true },
         kind, observation: 'Synthetic ' + kind.replaceAll('_', ' ') + ' observation' } };
     setPending(payload);
     try {

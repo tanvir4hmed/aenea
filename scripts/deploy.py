@@ -142,7 +142,7 @@ def main():
             terraform_init(layer)
             run("terraform", f"-chdir=infra/{layer}", "apply", "-input=false", "-auto-approve")
     for name in sorted(changed_functions):
-        function = f"aenea-demo-{name}"
+        function = f"aenea-{name}"
         run("aws", "lambda", "update-function-code", "--function-name", function,
             "--zip-file", f"fileb://{ARTIFACTS / (name + '.zip')}", "--no-cli-pager")
         # Deployment sequencing only: AWS rejects overlapping code/config updates.
@@ -154,7 +154,7 @@ def main():
     if workflow_changed and "app" not in layers:
         definition = (ROOT / "workflows/incident_state_machine/definition.asl.json").read_text()
         for name in ("correlate", "invoke_reasoner", "policy", "action_executor"):
-            arn = capture("aws", "lambda", "get-function", "--function-name", f"aenea-demo-{name}",
+            arn = capture("aws", "lambda", "get-function", "--function-name", f"aenea-{name}",
                           "--query", "Configuration.FunctionArn", "--output", "text")
             definition = definition.replace("${" + name + "_arn}", arn)
         target = ARTIFACTS / "workflow.json"

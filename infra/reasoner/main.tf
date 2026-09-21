@@ -7,10 +7,6 @@ terraform {
 }
 
 variable "region" { type = string }
-variable "environment" {
-  type    = string
-  default = "demo"
-}
 variable "state_bucket" { type = string }
 variable "bedrock_model_id" {
   type    = string
@@ -22,12 +18,12 @@ variable "bedrock_model_id" {
 }
 provider "aws" {
   region = var.region
-  default_tags { tags = { Project = "Aenea", Environment = var.environment } }
+  default_tags { tags = { Project = "Aenea", Name = "Aenea", Environment = "development", ManagedBy = "Terraform", Repository = "tanvir4hmed/aenea", Lifecycle = "Hackathon2026" } }
 }
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "code" {
-  bucket = "aenea-${var.environment}-${data.aws_caller_identity.current.account_id}-reasoner-code"
+  bucket = "aenea-${data.aws_caller_identity.current.account_id}-reasoner-code"
 }
 resource "aws_s3_bucket_public_access_block" "code" {
   bucket                  = aws_s3_bucket.code.id
@@ -49,7 +45,7 @@ resource "aws_s3_object" "code" {
   source_hash = filesha256("${path.module}/../../.artifacts/reasoner.zip")
 }
 resource "aws_iam_role" "reasoner" {
-  name = "aenea-${var.environment}-reasoner"
+  name = "aenea-reasoner"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -57,7 +53,7 @@ resource "aws_iam_role" "reasoner" {
       Action = "sts:AssumeRole",
       Condition = {
         StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
-        ArnLike      = { "aws:SourceArn" = "arn:aws:bedrock-agentcore:${var.region}:${data.aws_caller_identity.current.account_id}:runtime/aenea_${var.environment}_reasoner*" }
+        ArnLike      = { "aws:SourceArn" = "arn:aws:bedrock-agentcore:${var.region}:${data.aws_caller_identity.current.account_id}:runtime/aenea_reasoner*" }
       }
     }]
   })
@@ -71,7 +67,7 @@ resource "aws_iam_role_policy" "reasoner" {
       Resource = "arn:aws:bedrock:${var.region}::foundation-model/${var.bedrock_model_id}" },
       { Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.code.arn}/reasoner/*" },
       { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams", "logs:PutResourcePolicy"],
-      Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/aenea_${var.environment}_reasoner*" },
+      Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/aenea_reasoner*" },
       { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
       { Effect = "Allow", Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"], Resource = "*" },
       { Effect = "Allow", Action = ["cloudwatch:PutMetricData"], Resource = "*",
@@ -80,7 +76,7 @@ resource "aws_iam_role_policy" "reasoner" {
   })
 }
 resource "aws_bedrockagentcore_agent_runtime" "reasoner" {
-  agent_runtime_name = "aenea_${var.environment}_reasoner"
+  agent_runtime_name = "aenea_reasoner"
   role_arn           = aws_iam_role.reasoner.arn
   description        = "Aenea evidence assessment. No device execution permissions."
   agent_runtime_artifact {

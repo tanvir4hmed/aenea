@@ -17,7 +17,11 @@
       "default_tags": {
         "tags": {
           "Project": "Aenea",
-          "Environment": "${var.environment}"
+          "Name": "Aenea",
+          "Environment": "development",
+          "ManagedBy": "Terraform",
+          "Repository": "tanvir4hmed/aenea",
+          "Lifecycle": "Hackathon2026"
         }
       }
     }
@@ -25,10 +29,6 @@
   "variable": {
     "region": {
       "type": "string"
-    },
-    "environment": {
-      "type": "string",
-      "default": "demo"
     },
     "state_bucket": {
       "type": "string"
@@ -51,7 +51,7 @@
   "resource": {
     "aws_s3_bucket": {
       "web": {
-        "bucket": "aenea-${var.environment}-${data.aws_caller_identity.current.account_id}-web"
+        "bucket": "aenea-${data.aws_caller_identity.current.account_id}-web"
       }
     },
     "aws_s3_bucket_public_access_block": {
@@ -75,7 +75,7 @@
     },
     "aws_cloudfront_origin_access_control": {
       "web": {
-        "name": "aenea-${var.environment}",
+        "name": "aenea",
         "origin_access_control_origin_type": "s3",
         "signing_behavior": "always",
         "signing_protocol": "sigv4"
@@ -150,7 +150,7 @@
     },
     "aws_cognito_user_pool": {
       "household": {
-        "name": "aenea-${var.environment}",
+        "name": "aenea",
         "username_attributes": [
           "email"
         ],
@@ -229,13 +229,13 @@
     },
     "aws_cognito_user_pool_domain": {
       "web": {
-        "domain": "aenea-${var.environment}-${data.aws_caller_identity.current.account_id}",
+        "domain": "aenea-${data.aws_caller_identity.current.account_id}",
         "user_pool_id": "${aws_cognito_user_pool.household.id}"
       }
     },
     "aws_apigatewayv2_api": {
       "http": {
-        "name": "aenea-${var.environment}",
+        "name": "aenea",
         "protocol_type": "HTTP",
         "cors_configuration": {
           "allow_origins": [
@@ -278,7 +278,7 @@
     },
     "aws_cloudwatch_log_group": {
       "api": {
-        "name": "/aenea/${var.environment}/api",
+        "name": "/aenea/api",
         "retention_in_days": 14
       }
     },
@@ -299,19 +299,19 @@
     },
     "aws_cloudwatch_event_bus": {
       "incidents": {
-        "name": "aenea-${var.environment}-incidents"
+        "name": "aenea-incidents"
       }
     },
     "aws_sqs_queue": {
       "delivery_failures": {
-        "name": "aenea-${var.environment}-event-dlq",
+        "name": "aenea-event-dlq",
         "message_retention_seconds": 1209600,
         "sqs_managed_sse_enabled": true
       }
     },
     "aws_sns_topic": {
       "operations": {
-        "name": "aenea-${var.environment}-operations"
+        "name": "aenea-operations"
       }
     }
   },

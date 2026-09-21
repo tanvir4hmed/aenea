@@ -42,7 +42,7 @@ def evidence(owner, incident):
     result = table.query(**query)
     # Fail closed rather than silently overlooking smoke behind a truncated evidence page.
     if result.get("LastEvaluatedKey"):
-        raise ValueError("Incident evidence exceeds demo policy budget; review required")
+        raise ValueError("Incident evidence exceeds Aenea policy budget; review required")
     return [item["event"] for item in result["Items"]]
 
 

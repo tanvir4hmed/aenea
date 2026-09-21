@@ -17,7 +17,11 @@
       "default_tags": {
         "tags": {
           "Project": "Aenea",
-          "Environment": "demo"
+          "Name": "Aenea",
+          "Environment": "development",
+          "ManagedBy": "Terraform",
+          "Repository": "tanvir4hmed/aenea",
+          "Lifecycle": "Hackathon2026"
         }
       }
     }

@@ -17,7 +17,11 @@
       "default_tags": {
         "tags": {
           "Project": "Aenea",
-          "Environment": "${var.environment}"
+          "Name": "Aenea",
+          "Environment": "development",
+          "ManagedBy": "Terraform",
+          "Repository": "tanvir4hmed/aenea",
+          "Lifecycle": "Hackathon2026"
         }
       }
     }
@@ -30,10 +34,6 @@
     },
     "region": {
       "type": "string"
-    },
-    "environment": {
-      "type": "string",
-      "default": "demo"
     },
     "state_bucket": {
       "type": "string"
@@ -121,26 +121,26 @@
     "aws_cloudwatch_log_group": {
       "lambda": {
         "for_each": "${toset(local.functions)}",
-        "name": "/aws/lambda/aenea-${var.environment}-${each.key}",
+        "name": "/aws/lambda/aenea-${each.key}",
         "retention_in_days": 14
       },
       "workflow": {
-        "name": "/aws/vendedlogs/states/aenea-${var.environment}",
+        "name": "/aws/vendedlogs/states/aenea",
         "retention_in_days": 14
       }
     },
     "aws_iam_role": {
       "lambda": {
         "for_each": "${toset(local.functions)}",
-        "name": "aenea-${var.environment}-${each.key}",
+        "name": "aenea-${each.key}",
         "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
       },
       "workflow": {
-        "name": "aenea-${var.environment}-workflow",
+        "name": "aenea-workflow",
         "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"states.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
       },
       "eventbridge": {
-        "name": "aenea-${var.environment}-eventbridge",
+        "name": "aenea-eventbridge",
         "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
       }
     },
@@ -174,7 +174,7 @@
     "aws_lambda_function": {
       "function": {
         "for_each": "${toset(local.functions)}",
-        "function_name": "aenea-${var.environment}-${each.key}",
+        "function_name": "aenea-${each.key}",
         "role": "${aws_iam_role.lambda[each.key].arn}",
         "runtime": "python3.12",
         "handler": "handler.handler",
@@ -189,7 +189,7 @@
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
             "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}",
-            "MCP_PARAMETER": "/aenea/${var.environment}/mcp/runtime-arn",
+            "MCP_PARAMETER": "/aenea/mcp/runtime-arn",
             "COGNITO_ISSUER": "https://cognito-idp.${var.region}.amazonaws.com/${data.terraform_remote_state.platform.outputs.user_pool_id}",
             "MCP_RESOURCE_URL": "${data.terraform_remote_state.platform.outputs.web_config.apiUrl}/mcp",
             "MCP_ALLOWED_ORIGINS": "${jsonencode(data.terraform_remote_state.platform.outputs.web_origins)}"
@@ -209,7 +209,7 @@
     },
     "aws_sfn_state_machine": {
       "incident": {
-        "name": "aenea-${var.environment}-incident",
+        "name": "aenea-incident",
         "role_arn": "${aws_iam_role.workflow.arn}",
         "type": "STANDARD",
         "definition": "${templatefile(\"${path.module}/../../workflows/incident_state_machine/definition.asl.json\", { correlate_arn = aws_lambda_function.function[\"correlate\"].arn, invoke_reasoner_arn = aws_lambda_function.function[\"invoke_reasoner\"].arn, policy_arn = aws_lambda_function.function[\"policy\"].arn, action_executor_arn = aws_lambda_function.function[\"action_executor\"].arn })}",
@@ -225,7 +225,7 @@
     },
     "aws_cloudwatch_event_rule": {
       "incident": {
-        "name": "aenea-${var.environment}-incident",
+        "name": "aenea-incident",
         "event_bus_name": "${data.terraform_remote_state.platform.outputs.event_bus}",
         "event_pattern": "{\"source\":[\"aenea.ingress\"],\"detail-type\":[\"IncidentEvent\"]}"
       }
@@ -285,7 +285,7 @@
     },
     "aws_cloudwatch_metric_alarm": {
       "workflow_failures": {
-        "alarm_name": "aenea-${var.environment}-workflow-failed",
+        "alarm_name": "aenea-workflow-failed",
         "namespace": "AWS/States",
         "metric_name": "ExecutionsFailed",
         "statistic": "Sum",

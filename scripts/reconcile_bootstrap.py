@@ -49,7 +49,7 @@ def main():
     run("terraform", "-chdir=infra/bootstrap", "init", "-input=false",
         f"-backend-config=bucket={bucket}", "-backend-config=key=bootstrap/terraform.tfstate",
         f"-backend-config=region={region}", "-backend-config=encrypt=true", "-backend-config=use_lockfile=true")
-    role_name = "aenea-demo-github"
+    role_name = "aenea-github"
     provider_arn = f"arn:aws:iam::{account}:oidc-provider/token.actions.githubusercontent.com"
     import_if_present("aws_iam_openid_connect_provider.github", provider_arn,
                       exists("aws", "iam", "get-open-id-connect-provider", "--open-id-connect-provider-arn", provider_arn))
@@ -64,7 +64,7 @@ def main():
         "workflow": "aws_iam_policy.deployment_workflow",
         "edge": "aws_iam_policy.deployment_edge",
     }.items():
-        arn = f"arn:aws:iam::{account}:policy/aenea-demo-deployment-{name}"
+        arn = f"arn:aws:iam::{account}:policy/aenea-deployment-{name}"
         present = exists("aws", "iam", "get-policy", "--policy-arn", arn)
         import_if_present(address, arn, present)
         attachment = f"aws_iam_role_policy_attachment.builtin_{name}"

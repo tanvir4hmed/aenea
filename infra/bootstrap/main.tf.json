@@ -17,7 +17,11 @@
       "default_tags": {
         "tags": {
           "Project": "Aenea",
-          "Environment": "${var.environment}"
+          "Name": "Aenea",
+          "Environment": "development",
+          "ManagedBy": "Terraform",
+          "Repository": "tanvir4hmed/aenea",
+          "Lifecycle": "Hackathon2026"
         }
       }
     }
@@ -25,10 +29,6 @@
   "variable": {
     "region": {
       "type": "string"
-    },
-    "environment": {
-      "type": "string",
-      "default": "demo"
     },
     "state_bucket": {
       "type": "string"
@@ -54,8 +54,8 @@
     },
     "aws_iam_role": {
       "deploy": {
-        "name": "aenea-${var.environment}-github",
-        "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"${aws_iam_openid_connect_provider.github.arn}\"},\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"token.actions.githubusercontent.com:aud\":\"sts.amazonaws.com\",\"token.actions.githubusercontent.com:sub\":\"repo:tanvir4hmed@17692694/aenea@1372790069:environment:demo\"}}}]}"
+        "name": "aenea-github",
+        "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"${aws_iam_openid_connect_provider.github.arn}\"},\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"token.actions.githubusercontent.com:aud\":\"sts.amazonaws.com\",\"token.actions.githubusercontent.com:sub\":\"repo:tanvir4hmed@17692694/aenea@1372790069:environment:development\"}}}]}"
       }
     },
     "aws_iam_role_policy_attachment": {
@@ -79,19 +79,19 @@
     },
     "aws_iam_policy": {
       "deployment_core": {
-        "name": "aenea-${var.environment}-deployment-core",
+        "name": "aenea-deployment-core",
         "description": "Aenea storage and observability deployment permissions.",
-        "policy": "${templatefile(\"${path.module}/deployment-core-policy.json.tftpl\", { state_bucket = var.state_bucket, environment = var.environment, region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
+        "policy": "${templatefile(\"${path.module}/deployment-core-policy.json.tftpl\", { state_bucket = var.state_bucket, region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
       },
       "deployment_workflow": {
-        "name": "aenea-${var.environment}-deployment-workflow",
+        "name": "aenea-deployment-workflow",
         "description": "Aenea compute and workflow deployment permissions.",
-        "policy": "${templatefile(\"${path.module}/deployment-workflow-policy.json.tftpl\", { environment = var.environment, region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
+        "policy": "${templatefile(\"${path.module}/deployment-workflow-policy.json.tftpl\", { region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
       },
       "deployment_edge": {
-        "name": "aenea-${var.environment}-deployment-edge",
+        "name": "aenea-deployment-edge",
         "description": "Aenea edge, API and identity deployment permissions.",
-        "policy": "${templatefile(\"${path.module}/deployment-edge-policy.json.tftpl\", { environment = var.environment, region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
+        "policy": "${templatefile(\"${path.module}/deployment-edge-policy.json.tftpl\", { region = var.region, account_id = data.aws_caller_identity.current.account_id })}"
       }
     }
   },

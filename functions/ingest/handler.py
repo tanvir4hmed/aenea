@@ -33,7 +33,7 @@ def handler(request, context):
         if event.household_id != owner:
             return response(403, {"error": "Household does not belong to this identity"})
         if not event.source.simulated:
-            return response(400, {"error": "This demo accepts simulated signals only"})
+            return response(400, {"error": "Aenea accepts simulated signals only"})
         key = idempotency_key(event)
         digest = payload_digest(event)
         item_key = {"pk": f"H#{owner}", "sk": f"INGEST#{key}"}

@@ -36,7 +36,7 @@ def state_addresses():
 def main():
     region = os.environ["AWS_REGION"]
     account = capture("aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text")
-    bucket = f"aenea-demo-{account}-terraform-state"
+    bucket = f"aenea-{account}-terraform-state"
     os.environ["TF_VAR_state_bucket"] = bucket
     # Check ownership before adopting the deterministically named state bucket.
     listed = json.loads(capture("aws", "s3api", "list-buckets", "--output", "json"))
@@ -55,7 +55,13 @@ def main():
     run("aws", "s3api", "put-bucket-encryption", "--bucket", bucket,
         "--server-side-encryption-configuration",
         json.dumps({"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}))
-    run("terraform", "-chdir=infra/bootstrap", "init", "-input=false",
+    run("aws", "s3api", "put-bucket-tagging", "--bucket", bucket, "--tagging", json.dumps({"TagSet": [
+        {"Key": "Project", "Value": "Aenea"}, {"Key": "Name", "Value": "Aenea"}, {"Key": "Environment", "Value": "development"},
+        {"Key": "ManagedBy", "Value": "AWSCLI"}, {"Key": "Repository", "Value": "tanvir4hmed/aenea"},
+        {"Key": "Lifecycle", "Value": "Hackathon2026"},
+    ]}))
+    # A clean namespace uses a new bucket/state; never reuse an old namespace backend by accident.
+    run("terraform", "-chdir=infra/bootstrap", "init", "-reconfigure", "-input=false",
         f"-backend-config=bucket={bucket}", "-backend-config=key=bootstrap/terraform.tfstate",
         f"-backend-config=region={region}", "-backend-config=encrypt=true",
         "-backend-config=use_lockfile=true")
@@ -74,14 +80,14 @@ def main():
         f"-var=state_bucket={bucket}")
     settings = {
         "AWS_REGION": region, "TF_STATE_BUCKET": bucket,
-        "AWS_ROLE_ARN": f"arn:aws:iam::{account}:role/aenea-demo-github",
+        "AWS_ROLE_ARN": f"arn:aws:iam::{account}:role/aenea-github",
     }
     target = ROOT / ".artifacts"
     target.mkdir(exist_ok=True)
     (target / "bootstrap-settings.json").write_text(json.dumps(settings, indent=2))
     lines = ["Bootstrap configuration", ""]
     lines += [f"{name}={value}" for name, value in settings.items()]
-    lines += ["", "Set these as GitHub demo environment variables, then dispatch "
+    lines += ["", "Set these as GitHub development environment variables, then dispatch "
               "Deploy changed components with component all."]
     output = "\n".join(lines) + "\n"
     print(output)

@@ -14,6 +14,6 @@ Once DNS is entered, dispatch the deployment workflow with component `domain`. T
 
 Cognito callback/logout URLs and API CORS include the selected custom origin. HTTPS uses the ACM certificate; the hosted frontend reads API/auth settings from config.json.
 
-AWS access was unavailable when this configuration was authored. No actual certificate token or CloudFront hostname has been produced or represented as a live deployment. Required GitHub demo environment variables: AWS_REGION, TF_STATE_BUCKET, AWS_ROLE_ARN. The approved deployment policy must also cover ACM operations in us-east-1 and the tls state key.
+AWS access was unavailable when this configuration was authored. No actual certificate token or CloudFront hostname has been produced or represented as a live deployment. Required GitHub development environment variables: AWS_REGION, TF_STATE_BUCKET, AWS_ROLE_ARN. The approved deployment policy must also cover ACM operations in us-east-1 and the tls state key.
 
 References: [CloudFront certificate requirements](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html), [ACM DNS validation](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html).

@@ -27,8 +27,8 @@
       "Resource": [
         "arn:aws:s3:::${state_bucket}",
         "arn:aws:s3:::${state_bucket}/*",
-        "arn:aws:s3:::aenea-${environment}-${account_id}-*",
-        "arn:aws:s3:::aenea-${environment}-${account_id}-*/*"
+        "arn:aws:s3:::aenea-${account_id}-*",
+        "arn:aws:s3:::aenea-${account_id}-*/*"
       ]
     },
     {
@@ -46,7 +46,7 @@
         "dynamodb:TagResource",
         "dynamodb:UntagResource"
       ],
-      "Resource": "arn:aws:dynamodb:${region}:${account_id}:table/aenea-${environment}-*"
+      "Resource": "arn:aws:dynamodb:${region}:${account_id}:table/aenea-*"
     },
     {
       "Effect": "Allow",
@@ -92,7 +92,7 @@
         "cloudwatch:TagResource",
         "cloudwatch:UntagResource"
       ],
-      "Resource": "arn:aws:cloudwatch:${region}:${account_id}:alarm:aenea-${environment}-*"
+      "Resource": "arn:aws:cloudwatch:${region}:${account_id}:alarm:aenea-*"
     }
   ]
 }

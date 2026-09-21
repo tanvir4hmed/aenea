@@ -2,7 +2,7 @@
 
 The one-time bootstrap runs from AWS CloudShell or Git Bash. AWS CLI creates or adopts the state bucket, then Terraform stores bootstrap state inside it while creating or adopting GitHub's OIDC provider and the Aenea GitHub deployment role.
 
-The state bucket is named `aenea-demo-<AWS-account-ID>-terraform-state`. It has versioning, server-side encryption and public access block. AWS CLI owns the bucket lifecycle; Terraform does not model it as a resource. A normal Terraform destroy therefore cannot delete it, and its state file remains. Do not delete this bucket while any Terraform layer uses it.
+The canonical state bucket is named `aenea-<AWS-account-ID>-terraform-state`. It has versioning, server-side encryption, public access block and Aenea ownership tags. AWS CLI owns the bucket lifecycle; Terraform does not model it as a resource. A normal Terraform destroy therefore cannot delete it, and its state file remains. Do not delete this bucket while any Terraform layer uses it.
 
 Run these commands either in AWS CloudShell or in Git Bash with AWS CLI credentials already configured for the target account. Do **not** use Windows PowerShell (`PS D:\...>`) unless Bash and the AWS CLI are configured there.
 
@@ -14,13 +14,13 @@ git checkout main
 bash scripts/bootstrap-cloudshell.sh
 ```
 
-The script prints three non-secret values. Add them in GitHub repository Settings -> Environments -> demo -> Variables:
+The script prints three non-secret values. Add them in GitHub repository Settings -> Environments -> development -> Variables:
 
 - `AWS_REGION`
 - `TF_STATE_BUCKET`
 - `AWS_ROLE_ARN`
 
-The two repository-level AWS secrets are only bootstrap credentials. Normal deployments use the created OIDC role and do not read them. The `demo` environment should restrict deployments to `main`.
+The two repository-level AWS secrets are only bootstrap credentials. Normal deployments use the created OIDC role and do not read them. The `development` environment should restrict deployments to `main`.
 
 The prior GitHub bootstrap run had already completed when this CloudShell path was adopted. Its result was intentionally not inspected. Run this script to safely adopt/reconcile the desired state; it refuses to adopt a conflicting shared GitHub OIDC provider.
 
@@ -30,7 +30,7 @@ For this project's existing account, refresh the administrator CLI session (`aws
 
 ```bash
 export AWS_REGION=us-east-1
-export TF_STATE_BUCKET=aenea-demo-552794253321-terraform-state
+export TF_STATE_BUCKET=aenea-552794253321-terraform-state
 aws sts get-caller-identity --query Account --output text
 # Continue only if the printed account is 552794253321.
 python scripts/reconcile_bootstrap.py

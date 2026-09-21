@@ -45,7 +45,7 @@ def handler(event, context):
         with urlopen(request, timeout=20) as result:
             body = result.read(200001)
             if len(body) > 200000:
-                return response(502, {"error": "MCP response exceeded the demo size limit. Read state before retrying a write."})
+                return response(502, {"error": "MCP response exceeded the Aenea size limit. Read state before retrying a write."})
             outgoing = {"content-type": result.headers.get("content-type", "application/json"), "cache-control": "no-store"}
             if result.headers.get("mcp-session-id"):
                 outgoing["mcp-session-id"] = result.headers["mcp-session-id"]
