@@ -1,6 +1,6 @@
 # Cloud deployment
 
-Source implementation covers Phases 2–6. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–6 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Phase 4–5 bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md). Phase 6 adds no infrastructure or credentials.
+Source implementation covers Phases 2–7. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–7 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md). Phase 7 adds optional `INGESTION_ENABLED` configuration, described in [operations](operations.md); no new secret is required.
 
 ## First-time AWS setup
 
@@ -14,7 +14,7 @@ Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. 
 
 The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted demo-environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
 
-After the first bootstrap apply in CloudShell, copy `infra/bootstrap/backend.tf.json.example` to `infra/bootstrap/backend.tf.json`, then run `terraform -chdir=infra/bootstrap init -migrate-state` with backend-config arguments for the new bucket, `key=bootstrap/terraform.tfstate`, region, `encrypt=true` and `use_lockfile=true`. Keep the resulting state private. The backend file is ignored by Git to preserve the first-time bootstrap path.
+The bootstrap script initializes the declared S3 backend directly with the retained bucket and `bootstrap/terraform.tfstate`. No extra backend file or local-state migration is required. Keep state private. For an account with manually created roles/policies not yet in bootstrap state, follow the reconciliation section in the bootstrap guide instead of importing blindly.
 
 ## State layers
 

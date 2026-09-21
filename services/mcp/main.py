@@ -4,6 +4,7 @@ import os
 from typing import Literal
 
 import boto3
+from botocore.config import Config
 import jwt
 from mcp.server.fastmcp import FastMCP, Context
 
@@ -11,7 +12,8 @@ mcp = FastMCP("Aenea", host="0.0.0.0", port=8000, stateless_http=True, json_resp
     instructions="Coordinate simulated household incidents. Never infer occupancy from motion. Confirm valve actions only after an explicit user approval of that exact action. Never claim emergency dispatch.")
 issuer = os.environ["COGNITO_ISSUER"]
 jwks = jwt.PyJWKClient(issuer + "/.well-known/jwks.json")
-lambda_client = boto3.client("lambda")
+lambda_client = boto3.client("lambda", config=Config(connect_timeout=3, read_timeout=15,
+    retries={"total_max_attempts": 1}))
 
 
 def call(ctx, name, arguments):
@@ -55,9 +57,9 @@ def get_household_status(incident_id: str, ctx: Context, cursor: str | None = No
 
 @mcp.tool()
 def report_person_status(incident_id: str, person: str,
-                         status: Literal["safe", "needs_help", "not_home", "unknown"], ctx: Context) -> dict:
-    """Record the user's explicit simulated household check-in."""
-    return call(ctx, "report_person_status", {"incident_id": incident_id, "person": person, "status": status})
+                         status: Literal["safe", "needs_help", "not_home", "unknown"], request_id: str, ctx: Context) -> dict:
+    """Record an explicit simulated check-in. Generate a UUID request_id once; reuse on retry."""
+    return call(ctx, "report_person_status", {"incident_id": incident_id, "person": person, "status": status, "request_id": request_id})
 
 
 @mcp.tool()

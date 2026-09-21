@@ -12,7 +12,9 @@ Phase 4 source adds the AgentCore-hosted Strands/Bedrock reasoner, strict assess
 
 Phase 5 source adds an AgentCore MCP runtime, nine authenticated household tools and an Alexa+ web simulator using those tools and shared state. See [MCP setup, OAuth and deferred acceptance](docs/alexa-mcp.md). Native Alexa+ connection and hosted MCP acceptance are not yet verified.
 
-Phase 6 source adds guided synthetic scenarios, dedicated household check-ins, a reviewable copy/print handoff and virtual-failure visibility. [Phase 6 status](docs/phase-6.md) and the [demo runbook](docs/demo-runbook.md) distinguish implementation from the still-deferred hosted rehearsal. Phase 7 hardening/submission remains.
+Phase 6 source adds guided synthetic scenarios, dedicated household check-ins, a reviewable copy/print handoff and virtual-failure visibility. [Phase 6 status](docs/phase-6.md) and the [demo runbook](docs/demo-runbook.md) distinguish implementation from the still-deferred hosted rehearsal.
+
+Phase 7 hardening source and submission preparation are complete, but **release acceptance is not cleared**. See the [remaining verification/submission gates](docs/release-checklist.md). No native Alexa connection, final hosted success, recorded video or completed submission is claimed.
 
 ## Planned proof path
 
@@ -43,6 +45,10 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Alexa+ simulator, MCP tools and OAuth](docs/alexa-mcp.md)
 - [Household simulation and handoff](docs/phase-6.md)
 - [Timed demo runbook](docs/demo-runbook.md)
+- [Phase 7 status](docs/phase-7.md)
+- [Operations and cost boundaries](docs/operations.md)
+- [Submission draft](docs/submission-draft.md)
+- [Uncleared release checklist](docs/release-checklist.md)
 
 Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 

@@ -23,3 +23,19 @@ The script prints three non-secret values. Add them in GitHub repository Setting
 The two repository-level AWS secrets are only bootstrap credentials. Normal deployments use the created OIDC role and do not read them. The `demo` environment should restrict deployments to `main`.
 
 The prior GitHub bootstrap run had already completed when this CloudShell path was adopted. Its result was intentionally not inspected. Run this script to safely adopt/reconcile the desired state; it refuses to adopt a conflicting shared GitHub OIDC provider.
+
+## Existing-account policy reconciliation
+
+For this project's existing account, refresh the administrator CLI session (`aws login`) or use authorized CloudShell. Do not paste credentials into source or chat. In Bash:
+
+```bash
+export AWS_REGION=us-east-1
+export TF_STATE_BUCKET=aenea-demo-552794253321-terraform-state
+aws sts get-caller-identity --query Account --output text
+# Continue only if the printed account is 552794253321.
+python scripts/reconcile_bootstrap.py
+```
+
+The script initializes the bootstrap backend, imports recognized existing project IAM resources when absent from state, and applies the current policy templates. It now supplies required Terraform inputs during import and stops on unexpected state errors. It changes account IAM resources; an authorized operator must review the existing account/OIDC configuration before running it. It has not been executed during Phase 7. Do not run against an unrelated account or shared OIDC setup without review.
+
+Repository-level GitHub variables are also read by the deployment workflow; environment-level variables override them. Existing repository AWS key secrets are not consumed by normal deployment, which uses OIDC. Revoke unused static keys only after verifying no other workflow relies on them.

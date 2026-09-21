@@ -120,7 +120,7 @@ def main():
         run("terraform", "-chdir=infra/reasoner", "apply", "-input=false", "-auto-approve")
     domain = infra_all or selected == "domain" or any(p.startswith("infra/tls/") for p in paths)
     layers = {layer for layer in ("data", "platform", "app")
-              if infra_all or any(p.startswith(f"infra/{layer}/") for p in paths)}
+              if infra_all or selected == layer or any(p.startswith(f"infra/{layer}/") for p in paths)}
     if domain:
         layers.add("platform")
     if "platform" in layers:

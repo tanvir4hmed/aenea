@@ -2,18 +2,30 @@
 
 Create one section for every tool, API or SDK actually used. Delete planned tools that are not used in the final build.
 
-## Tool or service name
+Runtime onboarding, reliability, performance and reuse judgments remain pending unless specifically evidenced below. For the final submission, complete those answers with actual observations for every inventory entry; this is not final experiential feedback.
 
-- Used for:
-- What worked well:
-- What needs improvement:
-- Onboarding experience:
-- Reliability or performance observations:
-- Workaround required:
-- Would we use it again, and why:
-- Supporting issue, screenshot or trace:
+## Implementation inventory — final observations still required
 
-Do not fabricate feedback before hands-on use.
+| Tool/service | Actual source use | Design observation / remaining feedback |
+|---|---|---|
+| AgentCore / SDK | Two hosted runtime configurations | Separates reasoner and MCP privileges; cold starts/onboarding pending |
+| Strands / Bedrock | Structured assessment with Amazon Nova | Strict output boundary implemented; inference quality/latency pending |
+| MCP Python SDK | Typed tools and Streamable HTTP | Shares tools across browser views; protocol/session reliability pending |
+| Cognito / PyJWT | PKCE login and JWT verification | Audience and scope boundaries explicit; hosted sign-in feedback pending |
+| Lambda / Boto3 | Ingress, policy, execution, MCP bridge | Narrow task-specific handlers; SDK timeout/retry observations pending |
+| EventBridge / Step Functions / SQS | Delivery, workflow, failure queue | Delivery failure and execution failure treated separately; recovery exercise pending |
+| DynamoDB | Evidence, profiles, transactions, audit | Atomic check-in/action writes implemented; concurrency verification pending |
+| S3 / CloudFront / ACM | Evidence, artifacts, web, TLS | Private origin and custom-domain source; final hosted/access review pending |
+| IAM / GitHub OIDC | Scoped cloud deployment | User-reported missing permissions delayed earlier runs; see friction log |
+| SSM | MCP runtime ARN discovery | Removes Terraform circular dependency; runtime observation pending |
+| CloudWatch / SNS | Logs and operational alarm topic | Payload logging reduced; recipient delivery not configured/verified |
+| IncidentBridge / Pydantic | Canonical input and assessment validation | Reusable strict boundaries; fresh-install regression verification pending |
+| React / Vite | Web views and runner build | No new media/dependency for scenario cards; accessibility/build QA pending |
+| Browser speech/clipboard/print | Optional interaction/export | Explicit user actions and fallbacks; browser support QA pending |
+| Terraform / AWS provider / AWS CLI | Infrastructure and bootstrap | Import inputs/state errors hardened after reported bootstrap friction |
+| GitHub Actions | Selective build/deploy | Source paths select deployment targets; final run not reviewed |
+
+For each row before submission: record task, observed result, onboarding experience, improvement request, whether to reuse and why, and supporting trace/screenshot. Do not fabricate feedback before hands-on use.
 
 ## Phase 4 integration notes — 17 September 2026
 

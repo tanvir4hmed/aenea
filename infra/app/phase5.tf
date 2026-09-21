@@ -1,3 +1,5 @@
+data "aws_caller_identity" "app" {}
+
 resource "aws_iam_role_policy" "mcp_tools" {
   role = aws_iam_role.lambda["mcp_tools"].id
   policy = jsonencode({
@@ -16,7 +18,7 @@ resource "aws_iam_role_policy" "mcp_proxy" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["ssm:GetParameter"]
-      Resource = "arn:aws:ssm:${var.region}:*:parameter/aenea/${var.environment}/mcp/runtime-arn"
+      Resource = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.app.account_id}:parameter/aenea/${var.environment}/mcp/runtime-arn"
     }]
   })
 }

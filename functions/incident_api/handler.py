@@ -7,13 +7,14 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from common import household, response, table_name
+from cursors import decode_cursor
 
 table = boto3.resource("dynamodb").Table(table_name())
 
 
 def handler(request, context):
     if request["routeKey"] == "GET /health":
-        return response(200, {"service": "aenea", "phase": "reasoner-safety"})
+        return response(200, {"service": "aenea", "status": "handler-responsive", "dependency_checks": False})
     try:
         owner = household(request)
         params = request.get("queryStringParameters") or {}
@@ -29,11 +30,7 @@ def handler(request, context):
             "Limit": 50, "ConsistentRead": True,
         }
         if params.get("cursor"):
-            cursor = json.loads(base64.urlsafe_b64decode(params["cursor"]).decode())
-            if (not isinstance(cursor, dict) or set(cursor) != {"pk", "sk"}
-                    or cursor["pk"] != partition or not cursor["sk"].startswith(prefix)):
-                raise ValueError("Invalid cursor")
-            query["ExclusiveStartKey"] = cursor
+            query["ExclusiveStartKey"] = decode_cursor(params["cursor"], partition, prefix)
         result = table.query(**query)
         next_cursor = None
         if result.get("LastEvaluatedKey"):

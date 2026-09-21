@@ -18,6 +18,8 @@ events = boto3.client("events")
 def handler(request, context):
     try:
         owner = household(request)
+        if os.environ.get("INGESTION_ENABLED", "true") != "true":
+            return response(503, {"error": "New simulated signals are paused by the operator; no event accepted"})
         raw = request.get("body") or ""
         if request.get("isBase64Encoded"):
             raw = base64.b64decode(raw, validate=True).decode("utf-8")

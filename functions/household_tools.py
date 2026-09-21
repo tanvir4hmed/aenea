@@ -7,7 +7,9 @@ import boto3
 from datetime import datetime, timezone
 
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 from coordination import audit, audit_item, attrs, execute, get, profile, table
+from cursors import decode_cursor
 
 WRITE_TOOLS = {"report_person_status", "acknowledge_incident", "request_safe_action", "confirm_action"}
 TOOLS = WRITE_TOOLS | {"get_incident_status", "get_incident_timeline", "get_household_status",
@@ -18,11 +20,7 @@ def page(partition, prefix="", cursor=None):
     query = {"KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with(prefix),
              "Limit": 50, "ConsistentRead": True}
     if cursor:
-        key = json.loads(base64.urlsafe_b64decode(cursor))
-        if (set(key) != {"pk", "sk"} or key["pk"] != partition
-                or not isinstance(key["sk"], str) or not key["sk"].startswith(prefix)):
-            raise ValueError("Invalid cursor")
-        query["ExclusiveStartKey"] = key
+        query["ExclusiveStartKey"] = decode_cursor(cursor, partition, prefix)
     result = table.query(**query)
     return {"items": result["Items"], "next_cursor": base64.urlsafe_b64encode(
         json.dumps(result["LastEvaluatedKey"]).encode()).decode() if result.get("LastEvaluatedKey") else None}
@@ -35,7 +33,7 @@ def dispatch(owner, scopes, name, args):
         raise PermissionError("Write permission required")
     allowed = {
         "get_incident_status": {"incident_id"}, "get_incident_timeline": {"incident_id", "cursor"},
-        "get_household_status": {"incident_id", "cursor"}, "report_person_status": {"incident_id", "person", "status"},
+        "get_household_status": {"incident_id", "cursor"}, "report_person_status": {"incident_id", "person", "status", "request_id"},
         "acknowledge_incident": {"incident_id"}, "request_safe_action": {"incident_id", "action_id"},
         "confirm_action": {"incident_id", "action_id", "confirm"},
         "get_action_status": {"incident_id", "action_id"}, "get_responder_summary": {"incident_id"},
@@ -63,24 +61,50 @@ def dispatch(owner, scopes, name, args):
         person = person.strip()
         if status not in {"safe", "needs_help", "not_home", "unknown"}:
             raise ValueError("Unknown check-in status")
+        request_id = str(uuid.UUID(args["request_id"]))
+        saved = get(owner, incident, "AUDIT#person_status#" + request_id)
+        if saved:
+            if saved["data"]["person"] != person or saved["data"]["status"] != status:
+                raise ValueError("Request ID already used for another check-in")
+            return saved["data"]
         item = {"pk": f"H#{owner}#I#{incident}", "sk": "PERSON#" + person.casefold(), "person": person,
                 "status": status, "incident_id": incident, "reported_by": owner,
                 "reported_at": datetime.now(timezone.utc).isoformat(), "self_reported": True,
                 "simulated": True}
         # A saved check-in and its evidence must commit together.
-        entry = audit_item(owner, incident, "person_status", str(uuid.uuid4()), item)
-        boto3.client("dynamodb").transact_write_items(TransactItems=[
-            {"Put": {"TableName": table.name, "Item": attrs(item)}},
-            {"Put": {"TableName": table.name, "Item": attrs(entry),
-                     "ConditionExpression": "attribute_not_exists(pk)"}},
-        ])
+        entry = audit_item(owner, incident, "person_status", request_id, item)
+        try:
+            boto3.client("dynamodb").transact_write_items(TransactItems=[
+                {"Put": {"TableName": table.name, "Item": attrs(item)}},
+                {"Put": {"TableName": table.name, "Item": attrs(entry),
+                         "ConditionExpression": "attribute_not_exists(pk)"}},
+            ])
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "TransactionCanceledException":
+                raise
+            saved = get(owner, incident, "AUDIT#person_status#" + request_id)
+            if not saved or saved["data"]["person"] != person or saved["data"]["status"] != status:
+                raise
+            return saved["data"]
         return item
     if name == "acknowledge_incident":
         # Acknowledgment is not incident resolution or a claim that everyone is safe.
-        table.update_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"},
-            UpdateExpression="SET acknowledged_by = :owner",
-            ConditionExpression="attribute_exists(pk)", ExpressionAttributeValues={":owner": owner})
-        audit(owner, incident, "acknowledged", owner, {"actor": owner})
+        if not get(owner, incident, "AUDIT#acknowledged#" + owner):
+            try:
+                boto3.client("dynamodb").transact_write_items(TransactItems=[
+                    {"Update": {"TableName": table.name,
+                        "Key": attrs({"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"}),
+                        "UpdateExpression": "SET acknowledged_by = :owner",
+                        "ConditionExpression": "attribute_exists(pk)",
+                        "ExpressionAttributeValues": attrs({":owner": owner})}},
+                    {"Put": {"TableName": table.name,
+                        "Item": attrs(audit_item(owner, incident, "acknowledged", owner, {"actor": owner})),
+                        "ConditionExpression": "attribute_not_exists(pk)"}},
+                ])
+            except ClientError as exc:
+                if (exc.response["Error"]["Code"] != "TransactionCanceledException"
+                        or not get(owner, incident, "AUDIT#acknowledged#" + owner)):
+                    raise
         return {"acknowledged": True, "incident_id": incident, "resolved": False}
     if name == "get_responder_summary":
         records = page(f"H#{owner}#I#{incident}")

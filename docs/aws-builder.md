@@ -4,7 +4,7 @@ Aenea's implemented Phase 4 path uses real AWS SDK calls. Household observations
 
 | Service / SDK | Runtime responsibility |
 |---|---|
-| Amazon Bedrock AgentCore Runtime | IAM-authenticated Python reasoner hosting |
+| Amazon Bedrock AgentCore Runtime | IAM-authenticated reasoner and separate JWT-authenticated MCP runtime |
 | Strands Agents SDK | Request-local agent and structured assessment generation |
 | Amazon Bedrock | Amazon Nova inference, selected by BEDROCK_MODEL_ID |
 | Step Functions | Evidence → assessment → policy → execution ordering |
@@ -13,7 +13,7 @@ Aenea's implemented Phase 4 path uses real AWS SDK calls. Household observations
 | DynamoDB | Household profiles, evidence index, assessments, action state and atomic audit/device updates |
 | S3 | Source evidence, versioned-by-hash runtime ZIP artifacts and frontend |
 
-AgentCore has no authority to execute devices. The policy/executor uses saved household permissions and rechecks evidence independently of the model's proposed severity or confidence.
+The reasoner runtime has no household storage or execution authority. The separate MCP runtime may invoke only the private tools Lambda, which reuses the deterministic executor. The policy/executor uses saved household permissions and rechecks evidence independently of the model's proposed severity or confidence. All effects remain virtual.
 
 Source evidence: `agent/reasoner/main.py`, `shared/assessment.py`, `infra/reasoner/main.tf`, `functions/invoke_reasoner/`, `functions/policy/`, `functions/action_executor/`, and `workflows/incident_state_machine/definition.asl.json`.
 

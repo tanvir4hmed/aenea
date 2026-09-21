@@ -2,7 +2,7 @@
 
 Use a focused branch and keep changes small. Before opening a pull request:
 
-1. Run the documented formatter, linter, type checker, and tests.
+1. Follow the authorized verification scope. Terraform formatting uses `terraform fmt -check -recursive infra`; pure Python regressions use `python -m unittest discover -s tests`. No dedicated JavaScript lint/typecheck configuration is currently supplied. The project owner has deferred local builds and test execution; do not imply those checks passed.
 2. Add or update tests for behavior changes.
 3. Update setup and architecture documentation with the code.
 4. Never commit secrets, personal data, real security footage, generated build output, or Terraform state.

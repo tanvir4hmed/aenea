@@ -16,14 +16,23 @@ def capture(*args):
 
 
 def exists(*args):
-    return subprocess.run(args, cwd=ROOT, stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL, check=False).returncode == 0
+    result = subprocess.run(args, cwd=ROOT, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, check=False)
+    if result.returncode == 0:
+        return True
+    if "NoSuchEntity" in result.stderr:
+        return False
+    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
 
 
 def state_addresses():
     result = subprocess.run(("terraform", "-chdir=infra/bootstrap", "state", "list"), cwd=ROOT,
                             text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    return set(result.stdout.splitlines()) if result.returncode == 0 else set()
+    if result.returncode == 0:
+        return set(result.stdout.splitlines())
+    if "No state file was found" in result.stderr:
+        return set()
+    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
 
 
 def import_if_present(address, resource_id, present):
@@ -34,6 +43,8 @@ def import_if_present(address, resource_id, present):
 def main():
     region = os.environ["AWS_REGION"]
     bucket = os.environ["TF_STATE_BUCKET"]
+    os.environ["TF_VAR_region"] = region
+    os.environ["TF_VAR_state_bucket"] = bucket
     account = capture("aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text")
     run("terraform", "-chdir=infra/bootstrap", "init", "-input=false",
         f"-backend-config=bucket={bucket}", "-backend-config=key=bootstrap/terraform.tfstate",

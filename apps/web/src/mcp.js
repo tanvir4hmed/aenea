@@ -4,6 +4,7 @@ const protocol = '2025-11-25';
 export function createMcpClient(apiUrl) {
   let initialized = false;
   let sessionId;
+  const pendingReports = new Map();
   async function request(method, params = {}, notification = false) {
     const credentials = session();
     if (!credentials) throw new Error('Sign in to connect to your household.');
@@ -36,6 +37,11 @@ export function createMcpClient(apiUrl) {
   }
   return {
     async call(name, args) {
+      const reportKey = name === 'report_person_status' ? JSON.stringify(args) : null;
+      if (reportKey && !args.request_id) {
+        if (!pendingReports.has(reportKey)) pendingReports.set(reportKey, crypto.randomUUID());
+        args = { ...args, request_id: pendingReports.get(reportKey) };
+      }
       if (!initialized) {
         const hello = await request('initialize', { protocolVersion: protocol, capabilities: {},
           clientInfo: { name: 'aenea-alexa-web-simulator', version: '0.1.0' } });
@@ -45,9 +51,10 @@ export function createMcpClient(apiUrl) {
       }
       const result = await request('tools/call', { name, arguments: args });
       if (result.isError) throw new Error(result.content?.find(x => x.type === 'text')?.text || 'Tool rejected.');
-      if (result.structuredContent) return result.structuredContent;
       const text = result.content?.find(x => x.type === 'text')?.text;
-      return text ? JSON.parse(text) : {};
+      const data = result.structuredContent || (text ? JSON.parse(text) : {});
+      if (reportKey) pendingReports.delete(reportKey);
+      return data;
     },
   };
 }

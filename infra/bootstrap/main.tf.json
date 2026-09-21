@@ -39,7 +39,7 @@
     },
     "deployment_policy_arns": {
       "type": "set(string)",
-      "description": "Optional additional account-approved policies; built-in policy covers the Phase 2–3 services.",
+      "description": "Optional additional account-approved policies; built-in templates cover the implemented project services.",
       "default": []
     }
   },

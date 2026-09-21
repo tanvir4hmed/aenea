@@ -23,6 +23,11 @@
     }
   },
   "variable": {
+    "ingestion_enabled": {
+      "type": "bool",
+      "default": true,
+      "description": "Operator pause for new simulated signals; does not stop in-flight work or all AWS charges."
+    },
     "region": {
       "type": "string"
     },
@@ -179,7 +184,8 @@
         "memory_size": 256,
         "environment": {
           "variables": {
-            "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
+              "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
+              "INGESTION_ENABLED": "${tostring(var.ingestion_enabled)}",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
             "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}",

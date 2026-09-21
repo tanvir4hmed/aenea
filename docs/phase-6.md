@@ -31,4 +31,4 @@ Hosted prerequisites inherited from Phases 4–5: refresh the AWS administrator 
 - [ ] Mobile/desktop, keyboard navigation, clipboard fallback and print layout visually reviewed.
 - [ ] Hosted narrative rehearsed repeatedly in 2:45–2:55; record measured timing and actual evidence links.
 
-These boxes remain unchecked until observed. Phase 7 (hardening and submission) is the one remaining numbered phase and requires separate permission. Runtime verification across prior phases is still outstanding work, not an extra completed phase.
+These boxes remain unchecked until observed. Phase 7 source hardening and submission preparation are now documented in [Phase 7](phase-7.md). Runtime verification across prior phases is still outstanding work, not an extra completed phase.
