@@ -9,4 +9,6 @@ Aenea is a new project created for the Amazon App Dev Challenge 2026.
 
 Implementation commits, deployments, releases, and immutable evidence links will be appended as they occur.
 
-17 September 2026: Phases 2–3 source implementation added for Terraform/cloud hosting/authentication, React shell, IncidentBridge ingress, EventBridge/Step Functions and DynamoDB evidence timelines. GitHub Actions builds/deploys on applicable pushes. Deployment outcomes and runtime verification are deferred; this entry is source-progress evidence only.
+17 September 2026: Phases 2–3 source implementation added for Terraform/cloud hosting/authentication, React shell, IncidentBridge ingress, EventBridge/Step Functions and DynamoDB evidence timelines. Deployment run 35198485841 succeeded. Runtime acceptance remains deferred.
+
+17 September 2026: Phase 4 source implemented: separate AgentCore reasoner, Strands structured output with Amazon Nova, deterministic policy, household virtual permissions, expiring valve confirmation, atomic simulated device outcomes and UI audit views. Python/JSON syntax and Terraform formatting checked; no model invocation or hosted scenario test claimed. Phase 5 awaits project-owner permission.

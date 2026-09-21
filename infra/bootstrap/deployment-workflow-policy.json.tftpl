@@ -52,7 +52,8 @@
           "iam:PassedToService": [
             "lambda.amazonaws.com",
             "states.amazonaws.com",
-            "events.amazonaws.com"
+            "events.amazonaws.com",
+            "bedrock-agentcore.amazonaws.com"
           ]
         }
       }
@@ -81,6 +82,23 @@
           "aws:RequestedRegion": "${region}"
         }
       }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock-agentcore:CreateAgentRuntime", "bedrock-agentcore:UpdateAgentRuntime",
+                 "bedrock-agentcore:GetAgentRuntime", "bedrock-agentcore:DeleteAgentRuntime",
+                 "bedrock-agentcore:ListAgentRuntimeVersions", "bedrock-agentcore:ListAgentRuntimeEndpoints",
+                 "bedrock-agentcore:GetAgentRuntimeEndpoint", "bedrock-agentcore:ListTagsForResource",
+                 "bedrock-agentcore:TagResource", "bedrock-agentcore:UntagResource"],
+      "Resource": "arn:aws:bedrock-agentcore:${region}:${account_id}:runtime/aenea_${environment}_reasoner*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock-agentcore:CreateWorkloadIdentity"],
+      "Resource": [
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default",
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_reasoner*"
+      ]
     },
     {
       "Effect": "Allow",

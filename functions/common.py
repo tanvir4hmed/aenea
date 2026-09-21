@@ -8,7 +8,7 @@ def response(status, body):
     return {
         "statusCode": status,
         "headers": {"content-type": "application/json", "cache-control": "no-store"},
-        "body": json.dumps(body, default=lambda x: int(x) if isinstance(x, Decimal) else str(x)),
+        "body": json.dumps(body, default=lambda x: (int(x) if x == x.to_integral_value() else float(x)) if isinstance(x, Decimal) else str(x)),
     }
 
 

@@ -5,6 +5,9 @@ on:
     paths:
       - "apps/web/**"
       - "functions/**"
+      - "shared/**"
+      - "agent/reasoner/**"
+      - "infra/reasoner/**"
       - "workflows/**"
       - "infra/tls/**"
       - "infra/data/**"
@@ -17,7 +20,7 @@ on:
       component:
         description: "Deploy scope (all for the first deployment)"
         type: choice
-        options: [all, web, backend, infrastructure, domain]
+        options: [all, web, backend, infrastructure, domain, reasoner]
         default: all
 permissions:
   contents: read

@@ -1,5 +1,6 @@
 {
-  "Comment": "Phase 3 collects evidence; reasoning and actions are added in Phase 4.",
+  "Comment": "Evidence, AgentCore assessment, deterministic policy and virtual actions.",
+  "TimeoutSeconds": 420,
   "StartAt": "RecordEvidence",
   "States": {
     "RecordEvidence": {
@@ -19,6 +20,30 @@
           "BackoffRate": 2
         }
       ],
+      "Next": "Assess"
+    },
+    "Assess": {
+      "Type": "Task",
+      "Resource": "${invoke_reasoner_arn}",
+      "TimeoutSeconds": 180,
+      "Next": "ReasonerAvailable"
+    },
+    "ReasonerAvailable": {
+      "Type": "Choice",
+      "Choices": [{"Variable": "$.reasoner_ok", "BooleanEquals": true, "Next": "Authorize"}],
+      "Default": "AssessmentUnavailable"
+    },
+    "AssessmentUnavailable": {"Type": "Succeed"},
+    "Authorize": {
+      "Type": "Task",
+      "Resource": "${policy_arn}",
+      "Next": "ExecuteVirtualActions",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 2, "MaxAttempts": 2, "BackoffRate": 2}]
+    },
+    "ExecuteVirtualActions": {
+      "Type": "Task",
+      "Resource": "${action_executor_arn}",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 2, "MaxAttempts": 2, "BackoffRate": 2}],
       "End": true
     }
   }

@@ -1,0 +1,56 @@
+"""Execute virtual actions only; authenticated settings and confirmation endpoints."""
+import base64
+import json
+import re
+import uuid
+
+from common import household, response
+from coordination import audit, execute, get, profile, table
+from safety import DEVICES
+
+
+def handler(event, context):
+    if "routeKey" not in event:
+        results = [execute(event["household_id"], event["incident_id"], key) for key in event["action_ids"]]
+        return {**event, "results": [{"action_id": r["action_id"], "status": r["status"]} for r in results]}
+    try:
+        owner = household(event)
+        route = event["routeKey"]
+        if route == "GET /household/devices":
+            return response(200, profile(owner))
+        raw = event.get("body") or "{}"
+        if event.get("isBase64Encoded"):
+            raw = base64.b64decode(raw, validate=True).decode()
+        if len(raw) > 8000:
+            raise ValueError("Oversized request")
+        body = json.loads(raw)
+        if route == "PUT /household/devices":
+            if set(body) != {"devices"} or not isinstance(body["devices"], dict):
+                raise ValueError("Expected devices")
+            devices = body["devices"]
+            if set(devices) - set(DEVICES):
+                raise ValueError("Unknown device")
+            for device in devices.values():
+                if set(device) != {"enabled", "preauthorized", "fail_next"} or any(type(v) is not bool for v in device.values()):
+                    raise ValueError("Expected boolean device settings")
+                device["simulated"] = True
+            item = {"pk": f"H#{owner}", "sk": "PROFILE", "devices": devices, "revision": str(uuid.uuid4())}
+            table.put_item(Item=item)
+            return response(200, item)
+        params = event["pathParameters"]
+        incident = str(uuid.UUID(params["incident_id"]))
+        identifier = params["action_id"]
+        if (not re.fullmatch(r"[a-f0-9]{32}", identifier) or not isinstance(body, dict)
+                or set(body) != {"confirm"} or body["confirm"] is not True):
+            raise ValueError("Explicit confirmation required")
+        item = get(owner, incident, "ACTION#" + identifier)
+        if not item:
+            return response(404, {"error": "Action not found"})
+        if item["status"] != "pending_confirmation":
+            return response(409, {"error": "Action is not awaiting confirmation", "status": item["status"]})
+        audit(owner, incident, "confirmation", identifier, {"actor": owner, "action_id": identifier})
+        return response(200, execute(owner, incident, identifier, confirmed=True))
+    except PermissionError:
+        return response(401, {"error": "Authentication required"})
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return response(400, {"error": "Invalid action request"})

@@ -4,7 +4,7 @@
     "required_providers": {
       "aws": {
         "source": "hashicorp/aws",
-        "version": "~> 6.0"
+        "version": "= 6.65.0"
       }
     },
     "backend": {
@@ -58,9 +58,24 @@
     "functions": [
       "ingest",
       "correlate",
-      "incident_api"
+      "incident_api",
+      "invoke_reasoner",
+      "policy",
+      "action_executor"
     ],
     "routes": {
+      "GET /household/devices": {
+        "function": "action_executor",
+        "scope": "aenea/read"
+      },
+      "PUT /household/devices": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /incidents/{incident_id}/actions/{action_id}/confirm": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
       "POST /events": {
         "function": "ingest",
         "scope": "aenea/write"
@@ -126,7 +141,7 @@
       },
       "workflow": {
         "role": "${aws_iam_role.workflow.id}",
-        "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"${aws_lambda_function.function[\"correlate\"].arn}\"},{\"Effect\":\"Allow\",\"Action\":[\"logs:CreateLogDelivery\",\"logs:GetLogDelivery\",\"logs:UpdateLogDelivery\",\"logs:DeleteLogDelivery\",\"logs:ListLogDeliveries\",\"logs:PutResourcePolicy\",\"logs:DescribeResourcePolicies\",\"logs:DescribeLogGroups\"],\"Resource\":\"*\"}]}"
+        "policy": "${jsonencode({Version = \"2012-10-17\", Statement = [{Effect = \"Allow\", Action = \"lambda:InvokeFunction\", Resource = [for name in [\"correlate\", \"invoke_reasoner\", \"policy\", \"action_executor\"] : aws_lambda_function.function[name].arn]}, {Effect = \"Allow\", Action = [\"logs:CreateLogDelivery\",\"logs:GetLogDelivery\",\"logs:UpdateLogDelivery\",\"logs:DeleteLogDelivery\",\"logs:ListLogDeliveries\",\"logs:PutResourcePolicy\",\"logs:DescribeResourcePolicies\",\"logs:DescribeLogGroups\"], Resource = \"*\"}]})}"
       },
       "events": {
         "role": "${aws_iam_role.eventbridge.id}",
@@ -142,13 +157,14 @@
         "handler": "handler.handler",
         "filename": "${path.module}/../../.artifacts/${each.key}.zip",
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
-        "timeout": 25,
+        "timeout": "${each.key == \"invoke_reasoner\" ? 170 : 25}",
         "memory_size": 256,
         "environment": {
           "variables": {
             "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
-            "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}"
+            "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
+            "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}"
           }
         },
         "lifecycle": {
@@ -168,7 +184,7 @@
         "name": "aenea-${var.environment}-incident",
         "role_arn": "${aws_iam_role.workflow.arn}",
         "type": "STANDARD",
-        "definition": "${templatefile(\"${path.module}/../../workflows/incident_state_machine/definition.asl.json\", { correlate_arn = aws_lambda_function.function[\"correlate\"].arn })}",
+        "definition": "${templatefile(\"${path.module}/../../workflows/incident_state_machine/definition.asl.json\", { correlate_arn = aws_lambda_function.function[\"correlate\"].arn, invoke_reasoner_arn = aws_lambda_function.function[\"invoke_reasoner\"].arn, policy_arn = aws_lambda_function.function[\"policy\"].arn, action_executor_arn = aws_lambda_function.function[\"action_executor\"].arn })}",
         "logging_configuration": {
           "log_destination": "${aws_cloudwatch_log_group.workflow.arn}:*",
           "include_execution_data": false,
@@ -210,7 +226,7 @@
     },
     "aws_apigatewayv2_integration": {
       "lambda": {
-        "for_each": "${toset([\"ingest\", \"incident_api\"])}",
+        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\"])}",
         "api_id": "${data.terraform_remote_state.platform.outputs.api_id}",
         "integration_type": "AWS_PROXY",
         "integration_uri": "${aws_lambda_function.function[each.key].invoke_arn}",
@@ -231,7 +247,7 @@
     },
     "aws_lambda_permission": {
       "api": {
-        "for_each": "${toset([\"ingest\", \"incident_api\"])}",
+        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\"])}",
         "statement_id": "AllowApiGateway",
         "action": "lambda:InvokeFunction",
         "function_name": "${aws_lambda_function.function[each.key].function_name}",

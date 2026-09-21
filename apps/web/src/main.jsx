@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { callback, login, logout, session } from './auth';
 import './style.css';
+import Coordination from './Coordination';
 
 const pages = [['command-center','Command center'],['simulation-lab','Simulation lab'],['alexa-sim','Alexa+'],['check-in','Household'],['handoff','Handoff']];
 function App() {
@@ -95,7 +96,7 @@ function App() {
       {notice && <div role="status" className="notice">{notice}</div>}
       {!session() && <section className="card"><h2>Connect your household</h2><p>Sign in to view incident evidence and send simulated signals.</p></section>}
       {session() && ['command-center','simulation-lab'].includes(page) && <>
-        <section className="metrics"><div className="card"><span>Loaded incidents</span><strong>{incidents.length}</strong></div><div className="card"><span>Signal provenance</span><strong className="small">Simulation</strong></div><div className="card"><span>Response stage</span><strong className="small">Collecting evidence</strong></div></section>
+        <section className="metrics"><div className="card"><span>Loaded incidents</span><strong>{incidents.length}</strong></div><div className="card"><span>Signal provenance</span><strong className="small">Simulation</strong></div><div className="card"><span>Coordination</span><strong className="small">Assessment and policy</strong></div></section>
         {page==='simulation-lab' && <section className="card"><h2>Send a household signal</h2><p>Select an existing incident to add context, or start a new one. Camera motion does not establish occupancy.</p>
           <label>Signal type <select disabled={!!pending} value={kind} onChange={e=>setKind(e.target.value)}>{['smoke','carbon_monoxide','water_leak','medical_sos','severe_weather','motion','doorbell','package','vehicle'].map(k=><option key={k}>{k}</option>)}</select></label>
           <div className="actions"><button disabled={busy || !!pending} onClick={()=>{setSelected('');setTimeline([]);}}>New incident</button><button className="primary" disabled={busy || !identity} onClick={emit}>{busy?'Sending…':pending?'Retry same event':'Send simulated signal'}</button>{pending && <button onClick={()=>setPending(null)}>Discard pending event</button>}</div>
@@ -105,9 +106,10 @@ function App() {
           {incidents.map(i=><button className={'incident '+(selected===i.incident_id?'selected':'')} key={i.incident_id} onClick={()=>setSelected(i.incident_id)}><b>{i.incident_id.slice(0,8)}</b><span>{i.event_count} signals · {i.status.replaceAll('_',' ')}</span></button>)}
           {incidentCursor && <button onClick={()=>loadIncidents(incidentCursor).catch(e=>setError(e.message))}>Load more</button>}
         </section><section className="card"><h2>Evidence timeline</h2>{!selected && <p>Select an incident to see its evidence.</p>}{selected && !timeline.length && <p>Waiting for processed evidence…</p>}
-          <ol className="timeline">{timeline.map(item=><li key={item.sk}><span className="badge">SIMULATED</span><h3>{item.event.kind.replaceAll('_',' ')}</h3><p>{item.event.observation}</p><time>{new Date(item.event.occurred_at).toLocaleString()}</time><small>{item.event.source.source_id}</small></li>)}</ol>
+          <ol className="timeline">{timeline.filter(item=>item.event || item.kind).map(item=><li key={item.sk}><span className="badge">SIMULATED</span><h3>{(item.event?.kind || item.kind).replaceAll('_',' ')}</h3><p>{item.event?.observation || item.data?.result || item.data?.policy_reason || item.data?.message || item.data?.assessment?.summary || 'Coordination decision recorded'}</p><time>{new Date(item.event?.occurred_at || item.recorded_at).toLocaleString()}</time><small>{item.event?.source.source_id}</small></li>)}</ol>
           {timelineCursor && <button onClick={()=>loadTimeline(selected,timelineCursor).catch(e=>setError(e.message))}>Earlier / additional events</button>}
         </section></div>
+        <Coordination api={api} timeline={timeline} incident={selected} simulation={page==='simulation-lab'} onRefresh={()=>loadTimeline(selected)} />
       </>}
       {session() && !['command-center','simulation-lab'].includes(page) && <section className="card"><h2>{page==='alexa-sim'?'Alexa+ coordination':page==='check-in'?'Household check-ins':'Incident handoff'}</h2><p>This workspace is reserved for the upcoming coordination phase. Its interactions are not available yet.</p><button onClick={()=>navigate('command-center')}>View incident evidence</button></section>}
     </main></div>;

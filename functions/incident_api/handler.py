@@ -13,7 +13,7 @@ table = boto3.resource("dynamodb").Table(table_name())
 
 def handler(request, context):
     if request["routeKey"] == "GET /health":
-        return response(200, {"service": "aenea", "phase": "event-pipeline"})
+        return response(200, {"service": "aenea", "phase": "reasoner-safety"})
     try:
         owner = household(request)
         params = request.get("queryStringParameters") or {}
@@ -23,7 +23,7 @@ def handler(request, context):
         if incident_id:
             incident_id = str(uuid.UUID(incident_id))
             partition += f"#I#{incident_id}"
-            prefix = "EVENT#"
+            prefix = ""  # Evidence, assessments, policy decisions and action results share this partition.
         query = {
             "KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with(prefix),
             "Limit": 50, "ConsistentRead": True,

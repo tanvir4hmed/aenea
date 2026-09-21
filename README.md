@@ -1,14 +1,16 @@
 # Aenea
 
-Aenea is an Alexa+-centered prototype for household incident coordination. Its intended full workflow combines simulated household signals, an auditable incident timeline, household check-ins and policy-gated device actions. The current implementation covers cloud foundation, authenticated simulation ingestion and incident evidence timelines.
+Aenea is an Alexa+-centered prototype for household incident coordination. Its intended full workflow combines simulated household signals, an auditable incident timeline, household check-ins and policy-gated device actions. Implemented source covers cloud foundation, authenticated ingestion, evidence timelines, AI assessment and policy-gated virtual actions.
 
 > **Safety notice:** Aenea is a hackathon prototype for coordination and decision support. It is not a certified alarm, monitoring service, medical device, or replacement for emergency services. It does not automatically contact emergency responders.
 
 ## Status
 
-Phases 2–3 implementation is written: Terraform layers, React shell with Cognito PKCE sign-in, authenticated APIs, IncidentBridge ingestion, evidence S3, EventBridge/Step Functions and DynamoDB timelines. Pushes trigger component-specific GitHub build/deployment. Deployment results and end-to-end verification are deferred; a working cloud deployment is not yet claimed.
+Phases 2–3 infrastructure and web deployment completed in [the recorded deployment run](https://github.com/tanvir4hmed/aenea/actions/runs/35198485841). This establishes deployment success, not end-to-end scenario verification. Pushes trigger component-specific GitHub build/deployment.
 
-The Alexa+, household check-in and handoff routes are explicit placeholders for later phases. The reasoner and device policy/action execution are Phase 4 work.
+Phase 4 source adds the AgentCore-hosted Strands/Bedrock reasoner, strict assessments, deterministic policy, expiring valve confirmations and atomic virtual-device actions. The command center shows their shared audit state. See [Phase 4 setup and acceptance procedure](docs/phase-4.md) and [AWS Builder integration](docs/aws-builder.md). Phase 4 runtime verification remains deferred.
+
+The Alexa+, household check-in and handoff routes remain explicit placeholders for Phases 5–6.
 
 ## Planned proof path
 
@@ -35,6 +37,7 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Cloud deployment and required account configuration](docs/deployment.md)
 - [One-time CloudShell bootstrap](docs/cloudshell-bootstrap.md)
 - [Event pipeline and API semantics](docs/event-pipeline.md)
+- [Reasoner, policy and virtual actions](docs/phase-4.md)
 
 Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 

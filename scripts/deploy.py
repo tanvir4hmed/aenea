@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts"
-FUNCTIONS = {"ingest", "correlate", "incident_api"}
+FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor"}
 
 
 def run(*args, cwd=ROOT):
@@ -73,21 +73,40 @@ def package_functions(names):
     for name in sorted(names):
         target = ARTIFACTS / name
         shutil.copytree(dependencies, target, dirs_exist_ok=True)
-        shutil.copy2(ROOT / "functions/common.py", target / "common.py")
+        for shared in (ROOT / "functions").glob("*.py"):
+            shutil.copy2(shared, target / shared.name)
+        shutil.copy2(ROOT / "shared/assessment.py", target / "assessment.py")
         shutil.copy2(ROOT / f"functions/{name}/handler.py", target / "handler.py")
         shutil.make_archive(str(ARTIFACTS / name), "zip", target)
+
+
+def package_reasoner():
+    target = ARTIFACTS / "reasoner"
+    run(sys.executable, "-m", "pip", "install", "--target", str(target),
+        "--platform", "manylinux2014_aarch64", "--python-version", "3.12",
+        "--implementation", "cp", "--only-binary=:all:",
+        "-r", "agent/reasoner/requirements.txt")
+    shutil.copy2(ROOT / "agent/reasoner/main.py", target / "main.py")
+    shutil.copy2(ROOT / "shared/assessment.py", target / "assessment.py")
+    shutil.make_archive(str(ARTIFACTS / "reasoner"), "zip", target)
 
 
 def main():
     ARTIFACTS.mkdir(exist_ok=True)
     paths = changed_paths()
     selected = os.environ.get("DEPLOY_COMPONENT", "")
-    # Scripts/workflow changes can affect every deploy consumer.
-    all_components = selected == "all" or any(
+    deployment_changed = any(
         p.startswith("scripts/") or p == ".github/workflows/deploy.yml" for p in paths
-    ) or (not paths and not selected)
+    )
+    all_components = selected == "all" or (not paths and not selected)
     web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
-    infra_all = all_components or selected == "infrastructure"
+    infra_all = all_components or selected == "infrastructure" or deployment_changed
+    reasoner_changed = infra_all or selected == "reasoner" or any(
+        p.startswith(("agent/reasoner/", "infra/reasoner/", "shared/")) for p in paths)
+    if reasoner_changed:
+        package_reasoner()
+        terraform_init("reasoner")
+        run("terraform", "-chdir=infra/reasoner", "apply", "-input=false", "-auto-approve")
     domain = infra_all or selected == "domain" or any(p.startswith("infra/tls/") for p in paths)
     layers = {layer for layer in ("data", "platform", "app")
               if infra_all or any(p.startswith(f"infra/{layer}/") for p in paths)}
@@ -97,10 +116,10 @@ def main():
         prepare_domain()
     if "data" in layers or "platform" in layers:
         layers.add("app")
-    changed_functions = set(FUNCTIONS) if all_components or selected == "backend" else {
+    changed_functions = set(FUNCTIONS) if all_components or deployment_changed or selected == "backend" else {
         name for name in FUNCTIONS if any(p.startswith(f"functions/{name}/") for p in paths)
     }
-    if any(p in {"functions/common.py", "functions/requirements.txt"} for p in paths):
+    if any((p.startswith("functions/") and p.count("/") == 1) or p.startswith("shared/") for p in paths):
         changed_functions = set(FUNCTIONS)
     packages = FUNCTIONS if "app" in layers else changed_functions
     workflow_changed = selected == "backend" or any(p.startswith("workflows/") for p in paths)
@@ -118,10 +137,11 @@ def main():
         # Deployment sequencing only: AWS rejects overlapping code/config updates.
         run("aws", "lambda", "wait", "function-updated-v2", "--function-name", function)
     if workflow_changed and "app" not in layers:
-        arn = capture("aws", "lambda", "get-function", "--function-name", "aenea-demo-correlate",
-                      "--query", "Configuration.FunctionArn", "--output", "text")
         definition = (ROOT / "workflows/incident_state_machine/definition.asl.json").read_text()
-        definition = definition.replace("${correlate_arn}", arn)
+        for name in ("correlate", "invoke_reasoner", "policy", "action_executor"):
+            arn = capture("aws", "lambda", "get-function", "--function-name", f"aenea-demo-{name}",
+                          "--query", "Configuration.FunctionArn", "--output", "text")
+            definition = definition.replace("${" + name + "_arn}", arn)
         target = ARTIFACTS / "workflow.json"
         target.write_text(definition)
         app = outputs("app")
