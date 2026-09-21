@@ -18,7 +18,7 @@
         "tags": {
           "Project": "Aenea",
           "Name": "Aenea",
-          "Environment": "development",
+          "Environment": "dev",
           "ManagedBy": "Terraform",
           "Repository": "tanvir4hmed/aenea",
           "Lifecycle": "Hackathon2026"
@@ -55,7 +55,7 @@
     "aws_iam_role": {
       "deploy": {
         "name": "aenea-github",
-        "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"${aws_iam_openid_connect_provider.github.arn}\"},\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"token.actions.githubusercontent.com:aud\":\"sts.amazonaws.com\",\"token.actions.githubusercontent.com:sub\":\"repo:tanvir4hmed@17692694/aenea@1372790069:environment:development\"}}}]}"
+        "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"${aws_iam_openid_connect_provider.github.arn}\"},\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"token.actions.githubusercontent.com:aud\":\"sts.amazonaws.com\",\"token.actions.githubusercontent.com:sub\":\"repo:tanvir4hmed@17692694/aenea@1372790069:environment:dev\"}}}]}"
       }
     },
     "aws_iam_role_policy_attachment": {

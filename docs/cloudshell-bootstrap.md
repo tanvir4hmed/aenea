@@ -14,13 +14,13 @@ git checkout main
 bash scripts/bootstrap-cloudshell.sh
 ```
 
-The script prints three non-secret values. Add them in GitHub repository Settings -> Environments -> development -> Variables:
+The script prints three non-secret values. Add them in GitHub repository Settings -> Environments -> dev -> Variables:
 
 - `AWS_REGION`
 - `TF_STATE_BUCKET`
 - `AWS_ROLE_ARN`
 
-The two repository-level AWS secrets are only bootstrap credentials. Normal deployments use the created OIDC role and do not read them. The `development` environment should restrict deployments to `main`.
+The two repository-level AWS secrets are only bootstrap credentials. Normal deployments use the created OIDC role and do not read them. The `dev` environment should restrict deployments to `main`.
 
 The prior GitHub bootstrap run had already completed when this CloudShell path was adopted. Its result was intentionally not inspected. Run this script to safely adopt/reconcile the desired state; it refuses to adopt a conflicting shared GitHub OIDC provider.
 

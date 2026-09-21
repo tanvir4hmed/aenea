@@ -8,11 +8,11 @@ Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. 
 
 1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit deployment policies.
 2. Follow [CloudShell bootstrap](cloudshell-bootstrap.md). It creates/adopts the private state bucket and GitHub OIDC role, then stores bootstrap state in `bootstrap/terraform.tfstate` in that bucket. Never commit state.
-3. In GitHub create environment `development`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
+3. In GitHub create environment `dev`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
 5. Dispatch **Deploy changed components** with `all` once. Subsequent main pushes deploy affected components automatically.
 6. Create a synthetic-test Cognito user as an account administrator. Self-registration is disabled. Hosted UI uses authorization code + PKCE and API routes require access-token scopes.
 
-The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted development-environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
+The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted `dev` environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
 
 The bootstrap script initializes the declared S3 backend directly with the retained bucket and `bootstrap/terraform.tfstate`. No extra backend file or local-state migration is required. Keep state private. For an account with manually created roles/policies not yet in bootstrap state, follow the reconciliation section in the bootstrap guide instead of importing blindly.
 
@@ -46,6 +46,6 @@ Python dependencies are assembled on the runner with the pinned IncidentBridge c
 
 ## Operational boundaries
 
-The default development deployment maps one Cognito identity to one household. Shared membership invitations come later. SNS has no recipient until a verified subscription is added. EventBridge DLQ captures delivery failures; failed Step Functions executions trigger a separate alarm and require operator investigation/re-drive. A bucket write or publish failure can be retried using the same event ID and payload.
+The default `dev` deployment maps one Cognito identity to one household. Shared membership invitations come later. SNS has no recipient until a verified subscription is added. EventBridge DLQ captures delivery failures; failed Step Functions executions trigger a separate alarm and require operator investigation/re-drive. A bucket write or publish failure can be retried using the same event ID and payload.
 
 No real device, Ring account or external weather feed is required. The selected domain is aenea.qleam.com; see [custom-domain setup](custom-domain.md). CloudFront's AWS hostname is used until the certificate is issued. HTTP API does not have a direct WAF association in this implementation.

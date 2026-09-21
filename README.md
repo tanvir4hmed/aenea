@@ -51,7 +51,7 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Uncleared release checklist](docs/release-checklist.md)
 - [Resource naming and clean-stack migration](docs/naming-and-migration.md)
 
-Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub development environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
+Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub `dev` environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 
 ## License
 

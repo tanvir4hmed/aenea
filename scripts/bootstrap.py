@@ -37,6 +37,7 @@ def main():
     region = os.environ["AWS_REGION"]
     account = capture("aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text")
     bucket = f"aenea-{account}-terraform-state"
+    os.environ["TF_VAR_region"] = region
     os.environ["TF_VAR_state_bucket"] = bucket
     # Check ownership before adopting the deterministically named state bucket.
     listed = json.loads(capture("aws", "s3api", "list-buckets", "--output", "json"))
@@ -56,7 +57,7 @@ def main():
         "--server-side-encryption-configuration",
         json.dumps({"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}))
     run("aws", "s3api", "put-bucket-tagging", "--bucket", bucket, "--tagging", json.dumps({"TagSet": [
-        {"Key": "Project", "Value": "Aenea"}, {"Key": "Name", "Value": "Aenea"}, {"Key": "Environment", "Value": "development"},
+        {"Key": "Project", "Value": "Aenea"}, {"Key": "Name", "Value": "Aenea"}, {"Key": "Environment", "Value": "dev"},
         {"Key": "ManagedBy", "Value": "AWSCLI"}, {"Key": "Repository", "Value": "tanvir4hmed/aenea"},
         {"Key": "Lifecycle", "Value": "Hackathon2026"},
     ]}))
@@ -77,7 +78,7 @@ def main():
             run("terraform", "-chdir=infra/bootstrap", "import", "-input=false",
                 "aws_iam_openid_connect_provider.github", provider_arn)
     run("terraform", "-chdir=infra/bootstrap", "apply", "-input=false", "-auto-approve",
-        f"-var=state_bucket={bucket}")
+        f"-var=region={region}", f"-var=state_bucket={bucket}")
     settings = {
         "AWS_REGION": region, "TF_STATE_BUCKET": bucket,
         "AWS_ROLE_ARN": f"arn:aws:iam::{account}:role/aenea-github",
@@ -87,7 +88,7 @@ def main():
     (target / "bootstrap-settings.json").write_text(json.dumps(settings, indent=2))
     lines = ["Bootstrap configuration", ""]
     lines += [f"{name}={value}" for name, value in settings.items()]
-    lines += ["", "Set these as GitHub development environment variables, then dispatch "
+    lines += ["", "Set these as GitHub dev environment variables, then dispatch "
               "Deploy changed components with component all."]
     output = "\n".join(lines) + "\n"
     print(output)

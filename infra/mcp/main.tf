@@ -9,7 +9,7 @@ variable "region" { type = string }
 variable "state_bucket" { type = string }
 provider "aws" {
   region = var.region
-  default_tags { tags = { Project = "Aenea", Name = "Aenea", Environment = "development", ManagedBy = "Terraform", Repository = "tanvir4hmed/aenea", Lifecycle = "Hackathon2026" } }
+  default_tags { tags = { Project = "Aenea", Name = "Aenea", Environment = "dev", ManagedBy = "Terraform", Repository = "tanvir4hmed/aenea", Lifecycle = "Hackathon2026" } }
 }
 data "aws_caller_identity" "current" {}
 data "terraform_remote_state" "platform" {

@@ -28,12 +28,12 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: aenea-development-deployment
+  group: aenea-dev-deployment
   cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: development
+    environment: dev
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
