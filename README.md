@@ -1,6 +1,6 @@
 # Aenea
 
-Aenea is an Alexa+-centered prototype for household incident coordination. Its intended full workflow combines simulated household signals, an auditable incident timeline, household check-ins and policy-gated device actions. Implemented source covers cloud foundation, authenticated ingestion, evidence timelines, AI assessment and policy-gated virtual actions.
+Aenea is an Alexa+-centered prototype for household incident coordination. Implemented source combines simulated household signals, authenticated ingestion, auditable evidence timelines, AI assessment, MCP household check-ins, policy-gated virtual actions and a reviewable synthetic handoff. Hosted acceptance remains separate from source implementation.
 
 > **Safety notice:** Aenea is a hackathon prototype for coordination and decision support. It is not a certified alarm, monitoring service, medical device, or replacement for emergency services. It does not automatically contact emergency responders.
 
@@ -10,7 +10,9 @@ Phases 2–3 infrastructure and web deployment completed in [the recorded deploy
 
 Phase 4 source adds the AgentCore-hosted Strands/Bedrock reasoner, strict assessments, deterministic policy, expiring valve confirmations and atomic virtual-device actions. The command center shows their shared audit state. See [Phase 4 setup and acceptance procedure](docs/phase-4.md) and [AWS Builder integration](docs/aws-builder.md). Phase 4 runtime verification remains deferred.
 
-Phase 5 source adds an AgentCore MCP runtime, nine authenticated household tools and an Alexa+ web simulator using those tools and shared state. See [MCP setup, OAuth and deferred acceptance](docs/alexa-mcp.md). Native Alexa+ connection and hosted MCP acceptance are not yet verified. Dedicated household/handoff views remain Phase 6.
+Phase 5 source adds an AgentCore MCP runtime, nine authenticated household tools and an Alexa+ web simulator using those tools and shared state. See [MCP setup, OAuth and deferred acceptance](docs/alexa-mcp.md). Native Alexa+ connection and hosted MCP acceptance are not yet verified.
+
+Phase 6 source adds guided synthetic scenarios, dedicated household check-ins, a reviewable copy/print handoff and virtual-failure visibility. [Phase 6 status](docs/phase-6.md) and the [demo runbook](docs/demo-runbook.md) distinguish implementation from the still-deferred hosted rehearsal. Phase 7 hardening/submission remains.
 
 ## Planned proof path
 
@@ -39,6 +41,8 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [Event pipeline and API semantics](docs/event-pipeline.md)
 - [Reasoner, policy and virtual actions](docs/phase-4.md)
 - [Alexa+ simulator, MCP tools and OAuth](docs/alexa-mcp.md)
+- [Household simulation and handoff](docs/phase-6.md)
+- [Timed demo runbook](docs/demo-runbook.md)
 
 Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 

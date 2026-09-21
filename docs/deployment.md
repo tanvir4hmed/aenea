@@ -1,6 +1,6 @@
 # Cloud deployment
 
-Source implementation covers Phases 2–5. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–5 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Phase 4–5 bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md).
+Source implementation covers Phases 2–6. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–6 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Phase 4–5 bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md). Phase 6 adds no infrastructure or credentials.
 
 ## First-time AWS setup
 

@@ -30,7 +30,7 @@ All tools require `aenea/read`. Mutations additionally require `aenea/write`. Th
 
 Every tool requires `incident_id`. Action tools additionally require `action_id`; confirmation requires literal `confirm: true`. Check-in arguments are `person` (synthetic name) and `status`: `unknown`, `safe`, `needs_help`, or `not_home`. Incident and cursor ownership are checked before access. Household status never imports a safe check-in from an older incident. Self-reports carry timestamps and are not verified location/safety. One Cognito identity currently represents one demo household, not a multi-user family membership system.
 
-Actions use the existing Phase 4 executor; no new physical-device capabilities or emergency dispatch were added. Check-in/acknowledgment retries can add evidence; do not blindly replay writes. A handoff can be partial when the 50-record/page limit is reached; use timeline/household cursors for further review. Dedicated household and handoff views remain Phase 6.
+Actions use the existing Phase 4 executor; no new physical-device capabilities or emergency dispatch were added. Check-in/acknowledgment retries can add evidence; do not blindly replay writes. A handoff can be partial when any 50-record/page limit is reached; use timeline/household cursors for further review. Phase 6 now includes dedicated household and handoff views. Handoff queries signals/actions/people separately and retrieves the latest assessment explicitly; this is a timestamped multi-read snapshot, not a frozen transaction.
 
 ## OAuth onboarding
 

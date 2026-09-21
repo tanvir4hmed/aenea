@@ -85,9 +85,15 @@ def dispatch(owner, scopes, name, args):
     if name == "get_responder_summary":
         records = page(f"H#{owner}#I#{incident}")
         people = page(f"H#{owner}#I#{incident}", "PERSON#")
+        signals = page(f"H#{owner}#I#{incident}", "EVENT#")
+        actions = page(f"H#{owner}#I#{incident}", "ACTION#")
+        latest = get(owner, incident, "ASSESSMENT#" + summary["latest_assessment"]) if summary.get("latest_assessment") else None
         return {"incident": summary, "records": records["items"],
+                "assessment": latest, "signals": signals["items"], "actions": actions["items"],
                 "people": [p for p in people["items"] if p["incident_id"] == incident],
-                "partial": bool(records["next_cursor"] or people["next_cursor"]),
+                "partial": any(p["next_cursor"] for p in (records, people, signals, actions)),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "consistency": "Multi-read snapshot; incident updates can arrive during preparation. Refresh before sharing.",
                 "notice": "Synthetic coordination handoff only. Not sent to emergency services."}
     identifier = args["action_id"]
     if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{32}", identifier):

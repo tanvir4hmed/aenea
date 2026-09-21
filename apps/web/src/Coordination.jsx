@@ -11,15 +11,17 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
   const [devices, setDevices] = useState(defaults);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  async function reloadDevices() {
+    const data = await api('/household/devices');
+    setDevices(Object.fromEntries(Object.keys(deviceNames).map(id => [id, {
+      enabled: data.devices?.[id]?.enabled ?? false,
+      preauthorized: data.devices?.[id]?.preauthorized ?? false,
+      fail_next: data.devices?.[id]?.fail_next ?? false,
+    }])));
+    setLoaded(true);
+  }
   useEffect(() => {
-    api('/household/devices').then(data => {
-      setDevices(Object.fromEntries(Object.keys(deviceNames).map(id => [id, {
-        enabled: data.devices?.[id]?.enabled ?? true,
-        preauthorized: data.devices?.[id]?.preauthorized ?? false,
-        fail_next: data.devices?.[id]?.fail_next ?? false,
-      }])));
-      setLoaded(true);
-    }).catch(e => setMessage(e.message));
+    reloadDevices().catch(e => setMessage(e.message));
   }, []);
   async function perform(task) {
     setBusy(true); setMessage('');
@@ -43,8 +45,12 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
       </fieldset>)}
       <button disabled={busy || !loaded} onClick={() => perform(async () => {
         await api('/household/devices', { method: 'PUT', body: JSON.stringify({ devices }) });
-        setMessage('Virtual household permissions saved.');
+        await reloadDevices(); setMessage('Virtual household permissions saved.');
       })}>Save permissions</button>
+      <button disabled={busy} onClick={() => perform(async () => {
+        await reloadDevices(); setMessage('Loaded saved permissions and remaining failure flags. Unsaved edits were replaced.');
+      })}>Reload saved device settings</button>
+      <p>Failure flags are consumed only when an eligible virtual action executes. Reload after a run before configuring the next one; no physical device is affected.</p>
     </details>}
     {!latest && <p>{incident ? 'Waiting for an assessment. Load additional timeline entries if needed.' : 'Select an incident to see assessments and policy decisions.'}</p>}
     {latest?.status === 'assessment_failed' && <p role="alert">Assessment unavailable. No actions authorized. Send a new signal to request a new assessment.</p>}

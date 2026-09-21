@@ -4,6 +4,10 @@ import { callback, login, logout, session } from './auth';
 import './style.css';
 import Coordination from './Coordination';
 import AlexaSimulator from './AlexaSimulator';
+import Household from './Household';
+import Handoff from './Handoff';
+import IncidentPicker from './IncidentPicker';
+import ScenarioLab from './ScenarioLab';
 
 const pages = [['command-center','Command center'],['simulation-lab','Simulation lab'],['alexa-sim','Alexa+'],['check-in','Household'],['handoff','Handoff']];
 function App() {
@@ -13,6 +17,7 @@ function App() {
   const [selected, setSelected] = useState(''), [timeline, setTimeline] = useState([]);
   const [kind, setKind] = useState('smoke'), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(''), [pending, setPending] = useState(null);
+  const [scenarioBusy, setScenarioBusy] = useState(false);
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
   const additionalPages = useRef(false);
   async function api(path, options = {}) {
@@ -87,7 +92,7 @@ function App() {
   }
   return <div className="app">
     <aside><a className="brand" href="/command-center">aenea<span>HOUSEHOLD COORDINATION</span></a>
-      <nav aria-label="Main navigation">{pages.map(([id,label]) => <button key={id} className={page===id?'active':''} onClick={() => navigate(id)}>{label}</button>)}</nav>
+      <nav aria-label="Main navigation">{pages.map(([id,label]) => <button key={id} aria-current={page===id?'page':undefined} className={page===id?'active':''} onClick={() => navigate(id)}>{label}</button>)}</nav>
       <p className="side-note">A shared picture.<br/>A coordinated response.</p>
     </aside>
     <main><header><div><span className="eyebrow">YOUR HOUSEHOLD · SIMULATED SIGNALS</span><h1>{pages.find(([id])=>id===page)?.[1] || 'Command center'}</h1></div>
@@ -96,11 +101,16 @@ function App() {
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
       {!session() && <section className="card"><h2>Connect your household</h2><p>Sign in to view incident evidence and send simulated signals.</p></section>}
+      {session() && config && <div hidden={page !== 'simulation-lab'}>
+        <ScenarioLab api={api} household={identity} disabled={busy || !!pending} onBusy={setScenarioBusy} onAccepted={id => {
+          setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
+        }} />
+      </div>}
       {session() && ['command-center','simulation-lab'].includes(page) && <>
         <section className="metrics"><div className="card"><span>Loaded incidents</span><strong>{incidents.length}</strong></div><div className="card"><span>Signal provenance</span><strong className="small">Simulation</strong></div><div className="card"><span>Coordination</span><strong className="small">Assessment and policy</strong></div></section>
         {page==='simulation-lab' && <section className="card"><h2>Send a household signal</h2><p>Select an existing incident to add context, or start a new one. Camera motion does not establish occupancy.</p>
           <label>Signal type <select disabled={!!pending} value={kind} onChange={e=>setKind(e.target.value)}>{['smoke','carbon_monoxide','water_leak','medical_sos','severe_weather','motion','doorbell','package','vehicle'].map(k=><option key={k}>{k}</option>)}</select></label>
-          <div className="actions"><button disabled={busy || !!pending} onClick={()=>{setSelected('');setTimeline([]);}}>New incident</button><button className="primary" disabled={busy || !identity} onClick={emit}>{busy?'Sending…':pending?'Retry same event':'Send simulated signal'}</button>{pending && <button onClick={()=>setPending(null)}>Discard pending event</button>}</div>
+          <div className="actions"><button disabled={busy || scenarioBusy || !!pending} onClick={()=>{setSelected('');setTimeline([]);}}>New incident</button><button className="primary" disabled={busy || scenarioBusy || !identity} onClick={emit}>{busy?'Sending…':pending?'Retry same event':'Send simulated signal'}</button>{pending && <button disabled={busy || scenarioBusy} onClick={()=>setPending(null)}>Discard pending event</button>}</div>
         </section>}
         <div className="columns"><section className="card"><div className="row"><h2>Incidents</h2><button onClick={()=>loadIncidents().catch(e=>setError(e.message))}>Refresh</button></div>
           {!incidents.length && <p>No incidents yet. Send a signal from the Simulation lab.</p>}
@@ -113,7 +123,13 @@ function App() {
         <Coordination api={api} timeline={timeline} incident={selected} simulation={page==='simulation-lab'} onRefresh={()=>loadTimeline(selected)} />
       </>}
       {session() && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
-      {session() && ['check-in','handoff'].includes(page) && <section className="card"><h2>{page==='check-in'?'Household check-ins':'Incident handoff'}</h2><p>Use Alexa+ simulation to record check-ins or prepare a handoff. Dedicated views are planned for the next phase.</p><button onClick={()=>navigate('alexa-sim')}>Open Alexa+ simulation</button></section>}
+      {session() && config && ['check-in','handoff'].includes(page) && <>
+        <IncidentPicker incidents={incidents} selected={selected} onSelect={setSelected}
+          onRefresh={()=>loadIncidents().catch(e=>setError(e.message))}
+          onMore={incidentCursor ? ()=>loadIncidents(incidentCursor).catch(e=>setError(e.message)) : null}/>
+        {page==='check-in' ? <Household key={selected} config={config} incident={selected}/> :
+          <Handoff key={selected} config={config} incident={selected}/>}
+      </>}
     </main></div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);
