@@ -85,7 +85,7 @@
     },
     {
       "Effect": "Allow",
-      "Action": ["bedrock-agentcore:CreateAgentRuntime", "bedrock-agentcore:UpdateAgentRuntime",
+      "Action": ["bedrock-agentcore:UpdateAgentRuntime",
                  "bedrock-agentcore:GetAgentRuntime", "bedrock-agentcore:DeleteAgentRuntime",
                  "bedrock-agentcore:ListAgentRuntimeVersions", "bedrock-agentcore:ListAgentRuntimeEndpoints",
                  "bedrock-agentcore:GetAgentRuntimeEndpoint", "bedrock-agentcore:ListTagsForResource",
@@ -96,13 +96,10 @@
       ]
     },
     {
+      "Sid": "AgentCoreCreateActionsWithoutResourceLevelPermissions",
       "Effect": "Allow",
-      "Action": ["bedrock-agentcore:CreateWorkloadIdentity"],
-      "Resource": [
-        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default",
-        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_reasoner*",
-        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_mcp*"
-      ]
+      "Action": ["bedrock-agentcore:CreateAgentRuntime", "bedrock-agentcore:CreateWorkloadIdentity"],
+      "Resource": "*"
     },
     {
       "Effect": "Allow",
