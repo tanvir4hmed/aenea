@@ -7,6 +7,8 @@ on:
       - "functions/**"
       - "shared/**"
       - "agent/reasoner/**"
+      - "services/mcp/**"
+      - "infra/mcp/**"
       - "infra/reasoner/**"
       - "workflows/**"
       - "infra/tls/**"
@@ -20,7 +22,7 @@ on:
       component:
         description: "Deploy scope (all for the first deployment)"
         type: choice
-        options: [all, web, backend, infrastructure, domain, reasoner]
+        options: [all, web, backend, infrastructure, domain, reasoner, mcp]
         default: all
 permissions:
   contents: read

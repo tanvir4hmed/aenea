@@ -59,4 +59,4 @@ The deployment role's bootstrap template includes AgentCore lifecycle permission
 
 Deferred verification: model/schema failures, cross-household confirmation denial, duplicate/concurrent execution, expired confirmations, changing permissions during execution, smoke blocking valve actions, ARM64 runtime cold start and full hosted scenario. Pure policy regression cases are in `tests/test_safety.py`; run later with `python -m unittest discover -s tests`.
 
-Phase 5 (Alexa+/MCP) still requires separate authorization.
+Phase 5 source is now documented in [Alexa+/MCP](alexa-mcp.md); runtime acceptance remains deferred for both phases.

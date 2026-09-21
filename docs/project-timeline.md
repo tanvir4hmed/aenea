@@ -11,4 +11,6 @@ Implementation commits, deployments, releases, and immutable evidence links will
 
 17 September 2026: Phases 2–3 source implementation added for Terraform/cloud hosting/authentication, React shell, IncidentBridge ingress, EventBridge/Step Functions and DynamoDB evidence timelines. Deployment run 35198485841 succeeded. Runtime acceptance remains deferred.
 
-17 September 2026: Phase 4 source implemented: separate AgentCore reasoner, Strands structured output with Amazon Nova, deterministic policy, household virtual permissions, expiring valve confirmation, atomic simulated device outcomes and UI audit views. Python/JSON syntax and Terraform formatting checked; no model invocation or hosted scenario test claimed. Phase 5 awaits project-owner permission.
+17 September 2026: Phase 4 source implemented: separate AgentCore reasoner, Strands structured output with Amazon Nova, deterministic policy, household virtual permissions, expiring valve confirmation, atomic simulated device outcomes and UI audit views. Python/JSON syntax and Terraform formatting checked; no model invocation or hosted scenario test claimed.
+
+21 September 2026: Authorized Phase 5 source added: JWT AgentCore MCP server, nine shared household tools, incident-scoped check-ins, OAuth resource binding and explicit-command Alexa+ web simulation with optional browser speech input/output. No native Alexa connection or hosted test success is claimed. Phase 6 awaits separate permission. AWS admin login refresh and Phase 4–5 deployment-policy synchronization remain outstanding.

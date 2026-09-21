@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { callback, login, logout, session } from './auth';
 import './style.css';
 import Coordination from './Coordination';
+import AlexaSimulator from './AlexaSimulator';
 
 const pages = [['command-center','Command center'],['simulation-lab','Simulation lab'],['alexa-sim','Alexa+'],['check-in','Household'],['handoff','Handoff']];
 function App() {
@@ -111,7 +112,8 @@ function App() {
         </section></div>
         <Coordination api={api} timeline={timeline} incident={selected} simulation={page==='simulation-lab'} onRefresh={()=>loadTimeline(selected)} />
       </>}
-      {session() && !['command-center','simulation-lab'].includes(page) && <section className="card"><h2>{page==='alexa-sim'?'Alexa+ coordination':page==='check-in'?'Household check-ins':'Incident handoff'}</h2><p>This workspace is reserved for the upcoming coordination phase. Its interactions are not available yet.</p><button onClick={()=>navigate('command-center')}>View incident evidence</button></section>}
+      {session() && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
+      {session() && ['check-in','handoff'].includes(page) && <section className="card"><h2>{page==='check-in'?'Household check-ins':'Incident handoff'}</h2><p>Use Alexa+ simulation to record check-ins or prepare a handoff. Dedicated views are planned for the next phase.</p><button onClick={()=>navigate('alexa-sim')}>Open Alexa+ simulation</button></section>}
     </main></div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);

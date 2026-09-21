@@ -1,12 +1,12 @@
 # Cloud deployment
 
-Implementation is written for Phases 2–3. Deployment success and end-to-end behavior have not been verified. Per the project workflow, the assistant pushes implementation; GitHub Actions owns build/deploy execution and its results will be reviewed later.
+Source implementation covers Phases 2–5. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–5 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Phase 4–5 bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md).
 
 ## First-time AWS setup
 
 Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. No AWS credential is committed or pasted into application configuration.
 
-1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit Phase 2–3 deployment policy.
+1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit deployment policies.
 2. Follow [CloudShell bootstrap](cloudshell-bootstrap.md). It creates/adopts the private state bucket and GitHub OIDC role, then stores bootstrap state in `bootstrap/terraform.tfstate` in that bucket. Never commit state.
 3. In GitHub create environment `demo`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
 5. Dispatch **Deploy changed components** with `all` once. Subsequent main pushes deploy affected components automatically.
@@ -23,6 +23,8 @@ After the first bootstrap apply in CloudShell, copy `infra/bootstrap/backend.tf.
 - data: DynamoDB state and versioned evidence S3; protected against routine destroy.
 - platform: private web S3, CloudFront origin access, Cognito, API Gateway JWT auth/logging, EventBridge bus, delivery DLQ and operations SNS.
 - app: function roles/code/environment, Step Functions, EventBridge delivery, API integrations and execution-failure alarm.
+- reasoner: private code bucket and AgentCore Strands/Bedrock runtime; deployed before app.
+- mcp: private code bucket, JWT AgentCore MCP runtime and SSM ARN parameter; deployed after app.
 
 Each regular layer uses its own S3 state key and native S3 locking. Terraform owns infrastructure/configuration. The deployment script owns subsequent Lambda code updates; Terraform ignores package filename/hash changes to avoid restoring old code. Step Functions-only changes update the workflow directly; its source remains the Terraform template.
 
@@ -34,6 +36,7 @@ Each regular layer uses its own S3 state key and native S3 locking. Terraform ow
 - State-machine changes update only that workflow.
 - A Terraform layer change applies that layer; data/platform changes also refresh dependent app wiring.
 - Platform changes refresh public web configuration without rebuilding unchanged frontend code.
+- MCP source/infrastructure changes package and deploy MCP only; platform changes also refresh MCP wiring.
 - Changes to `scripts/deploy.py`, the deploy workflow, or an explicit all dispatch refresh all components. Bootstrap/reconciliation scripts do not trigger application deployment.
 - Documentation and planning changes do not trigger deployment.
 

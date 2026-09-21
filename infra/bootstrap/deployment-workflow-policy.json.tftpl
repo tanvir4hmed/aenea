@@ -90,15 +90,24 @@
                  "bedrock-agentcore:ListAgentRuntimeVersions", "bedrock-agentcore:ListAgentRuntimeEndpoints",
                  "bedrock-agentcore:GetAgentRuntimeEndpoint", "bedrock-agentcore:ListTagsForResource",
                  "bedrock-agentcore:TagResource", "bedrock-agentcore:UntagResource"],
-      "Resource": "arn:aws:bedrock-agentcore:${region}:${account_id}:runtime/aenea_${environment}_reasoner*"
+      "Resource": [
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:runtime/aenea_${environment}_reasoner*",
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:runtime/aenea_${environment}_mcp*"
+      ]
     },
     {
       "Effect": "Allow",
       "Action": ["bedrock-agentcore:CreateWorkloadIdentity"],
       "Resource": [
         "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default",
-        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_reasoner*"
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_reasoner*",
+        "arn:aws:bedrock-agentcore:${region}:${account_id}:workload-identity-directory/default/workload-identity/aenea_${environment}_mcp*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ssm:PutParameter", "ssm:GetParameter", "ssm:DeleteParameter", "ssm:AddTagsToResource", "ssm:RemoveTagsFromResource", "ssm:ListTagsForResource"],
+      "Resource": "arn:aws:ssm:${region}:${account_id}:parameter/aenea/${environment}/mcp/*"
     },
     {
       "Effect": "Allow",

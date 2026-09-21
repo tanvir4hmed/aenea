@@ -5,6 +5,8 @@ Source dependencies currently referenced:
 - [Strands Agents SDK](https://github.com/strands-agents/sdk-python), Apache-2.0: Bedrock agent and structured output.
 - [Bedrock AgentCore SDK](https://github.com/aws/bedrock-agentcore-sdk-python), Apache-2.0: hosted Python runtime entry point.
 - [Pydantic](https://github.com/pydantic/pydantic), MIT: strict assessment schemas.
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk), MIT: MCP tools and Streamable HTTP server.
+- [PyJWT](https://github.com/jpadilla/pyjwt), MIT: JWT signature, issuer, audience and claim validation.
 
 - [IncidentBridge](https://github.com/tanvir4hmed/incidentbridge), Apache-2.0: canonical events and validation; pinned to the v0.1.0 commit.
 - [Boto3](https://github.com/boto/boto3), Apache-2.0: AWS SDK calls from Python handlers.

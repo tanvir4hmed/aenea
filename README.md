@@ -10,7 +10,7 @@ Phases 2–3 infrastructure and web deployment completed in [the recorded deploy
 
 Phase 4 source adds the AgentCore-hosted Strands/Bedrock reasoner, strict assessments, deterministic policy, expiring valve confirmations and atomic virtual-device actions. The command center shows their shared audit state. See [Phase 4 setup and acceptance procedure](docs/phase-4.md) and [AWS Builder integration](docs/aws-builder.md). Phase 4 runtime verification remains deferred.
 
-The Alexa+, household check-in and handoff routes remain explicit placeholders for Phases 5–6.
+Phase 5 source adds an AgentCore MCP runtime, nine authenticated household tools and an Alexa+ web simulator using those tools and shared state. See [MCP setup, OAuth and deferred acceptance](docs/alexa-mcp.md). Native Alexa+ connection and hosted MCP acceptance are not yet verified. Dedicated household/handoff views remain Phase 6.
 
 ## Planned proof path
 
@@ -38,6 +38,7 @@ No Ring API, Ring account, physical Alexa or physical smart-home device is requi
 - [One-time CloudShell bootstrap](docs/cloudshell-bootstrap.md)
 - [Event pipeline and API semantics](docs/event-pipeline.md)
 - [Reasoner, policy and virtual actions](docs/phase-4.md)
+- [Alexa+ simulator, MCP tools and OAuth](docs/alexa-mcp.md)
 
 Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub demo environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
 

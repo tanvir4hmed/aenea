@@ -13,7 +13,7 @@ export async function login(config) {
   const challenge = b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
   const query = new URLSearchParams({ client_id: config.clientId, response_type: 'code',
     redirect_uri: location.origin + '/auth/callback', scope: 'openid email aenea/read aenea/write',
-    state, code_challenge: challenge, code_challenge_method: 'S256' });
+    state, code_challenge: challenge, code_challenge_method: 'S256', resource: config.apiUrl + '/mcp' });
   location.assign(config.cognitoDomain + '/oauth2/authorize?' + query);
 }
 export async function callback(config) {
@@ -26,7 +26,8 @@ export async function callback(config) {
   const result = await fetch(config.cognitoDomain + '/oauth2/token', { method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', client_id: config.clientId,
-      code: query.get('code'), redirect_uri: location.origin + '/auth/callback', code_verifier: saved.verifier }) });
+      code: query.get('code'), redirect_uri: location.origin + '/auth/callback', code_verifier: saved.verifier,
+      resource: config.apiUrl + '/mcp' }) });
   if (!result.ok) throw new Error('Sign-in failed. Please retry.');
   const tokens = await result.json();
   sessionStorage.setItem(key, JSON.stringify({ accessToken: tokens.access_token, expires: Date.now() + tokens.expires_in * 1000 }));

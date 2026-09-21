@@ -248,9 +248,12 @@
             "PUT",
             "OPTIONS"
           ],
+          "expose_headers": ["mcp-session-id", "www-authenticate"],
           "allow_headers": [
             "authorization",
-            "content-type"
+            "content-type",
+            "mcp-protocol-version",
+            "mcp-session-id"
           ],
           "max_age": 300
         }
@@ -266,7 +269,8 @@
         ],
         "jwt_configuration": {
           "audience": [
-            "${aws_cognito_user_pool_client.web.id}"
+            "${aws_cognito_user_pool_client.web.id}",
+            "${aws_apigatewayv2_api.http.api_endpoint}/mcp"
           ],
           "issuer": "https://${aws_cognito_user_pool.household.endpoint}"
         }
@@ -344,6 +348,9 @@
     },
     "web_url": {
       "value": "${local.web_origin}"
+    },
+    "web_origins": {
+      "value": ["https://${aws_cloudfront_distribution.web.domain_name}", "https://${var.web_domain}"]
     },
     "user_pool_id": {
       "value": "${aws_cognito_user_pool.household.id}"

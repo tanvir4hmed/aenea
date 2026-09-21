@@ -61,7 +61,9 @@
       "incident_api",
       "invoke_reasoner",
       "policy",
-      "action_executor"
+      "action_executor",
+      "mcp_tools",
+      "mcp_proxy"
     ],
     "routes": {
       "GET /household/devices": {
@@ -90,6 +92,22 @@
       },
       "GET /health": {
         "function": "incident_api",
+        "scope": ""
+      },
+      "POST /mcp": {
+        "function": "mcp_proxy",
+        "scope": "aenea/read"
+      },
+      "GET /mcp": {
+        "function": "mcp_proxy",
+        "scope": "aenea/read"
+      },
+      "GET /.well-known/oauth-protected-resource": {
+        "function": "mcp_proxy",
+        "scope": ""
+      },
+      "GET /.well-known/oauth-protected-resource/mcp": {
+        "function": "mcp_proxy",
         "scope": ""
       }
     }
@@ -164,7 +182,11 @@
             "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
-            "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}"
+            "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}",
+            "MCP_PARAMETER": "/aenea/${var.environment}/mcp/runtime-arn",
+            "COGNITO_ISSUER": "https://cognito-idp.${var.region}.amazonaws.com/${data.terraform_remote_state.platform.outputs.user_pool_id}",
+            "MCP_RESOURCE_URL": "${data.terraform_remote_state.platform.outputs.web_config.apiUrl}/mcp",
+            "MCP_ALLOWED_ORIGINS": "${jsonencode(data.terraform_remote_state.platform.outputs.web_origins)}"
           }
         },
         "lifecycle": {
@@ -226,7 +248,7 @@
     },
     "aws_apigatewayv2_integration": {
       "lambda": {
-        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\"])}",
+        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\", \"mcp_proxy\"])}",
         "api_id": "${data.terraform_remote_state.platform.outputs.api_id}",
         "integration_type": "AWS_PROXY",
         "integration_uri": "${aws_lambda_function.function[each.key].invoke_arn}",
@@ -247,7 +269,7 @@
     },
     "aws_lambda_permission": {
       "api": {
-        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\"])}",
+        "for_each": "${toset([\"ingest\", \"incident_api\", \"action_executor\", \"mcp_proxy\"])}",
         "statement_id": "AllowApiGateway",
         "action": "lambda:InvokeFunction",
         "function_name": "${aws_lambda_function.function[each.key].function_name}",

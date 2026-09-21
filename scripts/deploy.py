@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts"
-FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor"}
+FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor", "mcp_tools", "mcp_proxy"}
 
 
 def run(*args, cwd=ROOT):
@@ -91,6 +91,15 @@ def package_reasoner():
     shutil.make_archive(str(ARTIFACTS / "reasoner"), "zip", target)
 
 
+def package_mcp():
+    target = ARTIFACTS / "mcp"
+    run(sys.executable, "-m", "pip", "install", "--target", str(target),
+        "--platform", "manylinux2014_aarch64", "--python-version", "3.12",
+        "--implementation", "cp", "--only-binary=:all:", "-r", "services/mcp/requirements.txt")
+    shutil.copy2(ROOT / "services/mcp/main.py", target / "main.py")
+    shutil.make_archive(str(ARTIFACTS / "mcp"), "zip", target)
+
+
 def main():
     ARTIFACTS.mkdir(exist_ok=True)
     paths = changed_paths()
@@ -101,6 +110,8 @@ def main():
     all_components = selected == "all" or (not paths and not selected)
     web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
     infra_all = all_components or selected == "infrastructure" or deployment_changed
+    mcp_changed = infra_all or selected == "mcp" or any(
+        p.startswith(("services/mcp/", "infra/mcp/", "infra/platform/")) for p in paths)
     reasoner_changed = infra_all or selected == "reasoner" or any(
         p.startswith(("agent/reasoner/", "infra/reasoner/", "shared/")) for p in paths)
     if reasoner_changed:
@@ -136,6 +147,10 @@ def main():
             "--zip-file", f"fileb://{ARTIFACTS / (name + '.zip')}", "--no-cli-pager")
         # Deployment sequencing only: AWS rejects overlapping code/config updates.
         run("aws", "lambda", "wait", "function-updated-v2", "--function-name", function)
+    if mcp_changed:
+        package_mcp()
+        terraform_init("mcp")
+        run("terraform", "-chdir=infra/mcp", "apply", "-input=false", "-auto-approve")
     if workflow_changed and "app" not in layers:
         definition = (ROOT / "workflows/incident_state_machine/definition.asl.json").read_text()
         for name in ("correlate", "invoke_reasoner", "policy", "action_executor"):
