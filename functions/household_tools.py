@@ -10,6 +10,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from coordination import audit, audit_item, attrs, execute, get, profile, table
 from cursors import decode_cursor
+from revisions import current_assessment
 
 WRITE_TOOLS = {"report_person_status", "acknowledge_incident", "request_safe_action", "confirm_action"}
 TOOLS = WRITE_TOOLS | {"get_incident_status", "get_incident_timeline", "get_household_status",
@@ -51,7 +52,8 @@ def dispatch(owner, scopes, name, args):
                 "notice": "Incident-scoped self-reports, not current location or verified safety. Absence means unknown."}
     if name == "get_incident_status":
         assessment = get(owner, incident, "ASSESSMENT#" + summary["latest_assessment"]) if summary.get("latest_assessment") else None
-        return {"incident": summary, "assessment": assessment, "simulated": True}
+        return {"incident": summary, "assessment": assessment, "simulated": True,
+                "assessment_current": current_assessment(summary, assessment)}
     if name == "get_incident_timeline":
         return page(f"H#{owner}#I#{incident}", cursor=args.get("cursor"))
     if name == "report_person_status":
@@ -113,6 +115,7 @@ def dispatch(owner, scopes, name, args):
         actions = page(f"H#{owner}#I#{incident}", "ACTION#")
         latest = get(owner, incident, "ASSESSMENT#" + summary["latest_assessment"]) if summary.get("latest_assessment") else None
         return {"incident": summary, "records": records["items"],
+                "assessment_current": current_assessment(summary, latest),
                 "assessment": latest, "signals": signals["items"], "actions": actions["items"],
                 "people": [p for p in people["items"] if p["incident_id"] == incident],
                 "partial": any(p["next_cursor"] for p in (records, people, signals, actions)),
@@ -126,6 +129,11 @@ def dispatch(owner, scopes, name, args):
     if not action:
         raise ValueError("Action not found")
     if name == "get_action_status":
+        if action["status"] not in {"succeeded", "failed", "blocked", "expired"} and (
+                action.get("evidence_revision") != summary.get("event_count")
+                or action["assessment_id"] != summary.get("latest_assessment")
+                or summary.get("decision_review") == "rejected"):
+            return {**action, "status": "superseded", "result": "New evidence or rejected review prevents execution", "execution_performed": False}
         return action
     if name == "confirm_action":
         if args.get("confirm") is not True:

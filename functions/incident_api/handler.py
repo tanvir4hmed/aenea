@@ -8,6 +8,7 @@ from boto3.dynamodb.conditions import Key
 
 from common import household, response, table_name
 from cursors import decode_cursor
+from revisions import current_assessment
 
 table = boto3.resource("dynamodb").Table(table_name())
 
@@ -37,8 +38,14 @@ def handler(request, context):
             next_cursor = base64.urlsafe_b64encode(
                 json.dumps(result["LastEvaluatedKey"]).encode()
             ).decode()
+        metadata = {}
+        if incident_id:
+            summary = table.get_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True).get("Item", {})
+            latest = table.get_item(Key={"pk": partition, "sk": "ASSESSMENT#" + summary["latest_assessment"]}, ConsistentRead=True).get("Item") if summary.get("latest_assessment") else None
+            metadata = {"incident": summary, "latest_assessment": latest,
+                        "assessment_current": current_assessment(summary, latest)}
         return response(200, {"household_id": owner, "items": result["Items"],
-                              "next_cursor": next_cursor})
+                              "next_cursor": next_cursor, **metadata})
     except PermissionError:
         return response(401, {"error": "Authentication required"})
     except (ValueError, TypeError, KeyError, UnicodeError, AttributeError):

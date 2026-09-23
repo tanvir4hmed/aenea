@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DecisionReview from './DecisionReview';
 
 const deviceNames = {
   virtual_lights: 'Virtual lights', virtual_siren: 'Virtual siren',
@@ -7,7 +8,7 @@ const deviceNames = {
 const defaults = Object.fromEntries(Object.keys(deviceNames).map(id =>
   [id, { enabled: true, preauthorized: false, fail_next: false }]));
 
-export default function Coordination({ api, timeline, incident, simulation, onRefresh, settingsOnly = false }) {
+export default function Coordination({ api, timeline, incident, incidentState, simulation, onRefresh, settingsOnly = false }) {
   const [devices, setDevices] = useState(defaults);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -28,11 +29,9 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
     try { await task(); } catch (e) { setMessage(e.message); }
     finally { setBusy(false); }
   }
-  const assessments = timeline.filter(i => i.sk.startsWith('ASSESSMENT#'))
-    .sort((a,b) => b.created_at - a.created_at);
-  const latest = assessments[0];
+  const latest = incidentState?.latest_assessment;
   const actions = timeline.filter(i => i.sk.startsWith('ACTION#'));
-  return <section className="card">
+  return <><section className="card">
     <h2>{settingsOnly ? 'Virtual action permissions' : 'Assessment and coordinated actions'}</h2>
     {settingsOnly && <p>These four simulated outputs are separate from the input sensors and cameras in your device catalog.</p>}
     {message && <p role="status">{message}</p>}
@@ -57,6 +56,7 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
     {latest?.status === 'assessment_failed' && <p role="alert">Assessment unavailable. No actions authorized. Send a new signal to request a new assessment.</p>}
     {latest?.assessment && <article>
       <span className="badge">AI ASSESSMENT · SIMULATED EVIDENCE</span>
+      {!incidentState?.assessment_current && <p role="status">Previous assessment — newer evidence has not been assessed yet.</p>}
       <h3>{latest.assessment.incident_type.replaceAll('_',' ')} · {latest.assessment.severity}</h3>
       <p>{latest.assessment.summary}</p>
       <p>Model confidence: {Math.round(latest.assessment.confidence * 100)}% (not a calibrated probability)</p>
@@ -67,13 +67,15 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
       <h3>{deviceNames[action.proposal.device_id]} · {action.proposal.action.replaceAll('_',' ')}</h3>
       <p>{action.status.replaceAll('_',' ')} — {action.result || action.policy_reason}</p>
       {action.alternate_plan && <p>Alternate plan: {action.alternate_plan}</p>}
-      {action.status === 'pending_confirmation' && <button disabled={busy || Date.now() >= action.expires_at * 1000}
+      {!['succeeded', 'failed'].includes(action.status) && (action.assessment_id !== latest?.assessment_id || !incidentState?.assessment_current || incidentState?.incident?.decision_review === 'rejected') && <p className="notice">Superseded or rejected: this proposal cannot execute.</p>}
+      <p>Policy {action.policy_version} · Evidence revision {action.evidence_revision ?? 'legacy'} · {action.policy_reason}</p>
+      {action.status === 'pending_confirmation' && <button disabled={busy || Date.now() >= action.expires_at * 1000 || action.assessment_id !== latest?.assessment_id || !incidentState?.assessment_current || incidentState?.incident?.decision_review === 'rejected'}
         onClick={() => perform(async () => {
-          await api('/incidents/' + incident + '/actions/' + action.action_id + '/confirm',
+          const outcome = await api('/incidents/' + incident + '/actions/' + action.action_id + '/confirm',
             { method: 'POST', body: JSON.stringify({ confirm: true }) });
-          await onRefresh(); setMessage('Confirmation processed; see the recorded result.');
+          await onRefresh(); setMessage(outcome.result || 'Confirmation processed; see the recorded result.');
         })}>Confirm closing virtual water valve</button>}
       {action.status === 'pending_confirmation' && <small>Expires {new Date(action.expires_at * 1000).toLocaleTimeString()}</small>}
     </article>)}</>}
-  </section>;
+  </section>{!settingsOnly && <DecisionReview api={api} incident={incident} timeline={timeline} state={incidentState} onRefresh={() => perform(onRefresh)}/>}</>;
 }

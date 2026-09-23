@@ -30,6 +30,14 @@ function App() {
   const [guestPassVisible, setGuestPassVisible] = useState(false), [copyNotice, setCopyNotice] = useState('');
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
   const additionalPages = useRef(false);
+  const activeIncident = useRef(selected);
+  activeIncident.current = selected;
+  const [incidentState, setIncidentState] = useState(null);
+  function receiveTimeline(data, append = false) {
+    setIncidentState(data);
+    setTimeline(old => append ? [...new Map([...old, ...data.items].map(item => [item.sk, item])).values()] : data.items);
+    if (data.incident?.incident_id) setIncidents(old => old.map(item => item.incident_id === data.incident.incident_id ? data.incident : item));
+  }
   async function api(path, options = {}) {
     const token = await accessToken(config);
     const result = await fetch(config.apiUrl + path, { ...options, headers: {
@@ -59,9 +67,10 @@ function App() {
     finally { setCatalogBusy(false); }
   }
   async function loadTimeline(id, cursor = null) {
-    if (cursor) additionalPages.current = true;
+    additionalPages.current = !!cursor;
     const data = await api('/incidents/' + id + '/timeline' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
-    setTimeline(old => cursor ? [...old, ...data.items] : data.items);
+    if (activeIncident.current !== id) return;
+    receiveTimeline(data, !!cursor);
     setTimelineCursor(data.next_cursor);
   }
   useEffect(() => {
@@ -85,16 +94,19 @@ function App() {
   useEffect(() => {
     if (!selected) sessionStorage.removeItem(incidentStorageKey);
     else sessionStorage.setItem(incidentStorageKey, selected);
+    setTimeline([]); setTimelineCursor(null); setIncidentState(null);
     if (!config || !selected || !authenticated) return;
-    setTimeline([]); setTimelineCursor(null);
     additionalPages.current = false;
     let active = true;
+    let refreshing = false;
     const refresh = async () => {
-      if (additionalPages.current) return;
+      if (refreshing) return;
+      refreshing = true;
       try {
         const data = await api('/incidents/' + selected + '/timeline');
-        if (active) { setTimeline(data.items); setTimelineCursor(data.next_cursor); }
+        if (active) { receiveTimeline(data, additionalPages.current); if (!additionalPages.current) setTimelineCursor(data.next_cursor); }
       } catch(e) { if(active) setError(e.message); }
+      finally { refreshing = false; }
     };
     refresh();
     const timer = setInterval(refresh, 10000);
@@ -147,7 +159,7 @@ function App() {
           <ol className="timeline">{timeline.filter(item=>item.event || item.kind).map(item=><li key={item.sk}><span className="badge">SIMULATED</span><h3>{(item.event?.kind || item.kind).replaceAll('_',' ')}</h3><p>{item.event?.observation || item.data?.result || item.data?.policy_reason || item.data?.message || item.data?.assessment?.summary || 'Coordination decision recorded'}</p><time>{new Date(item.event?.occurred_at || item.recorded_at).toLocaleString()}</time><small>{item.event?.source.source_id}</small></li>)}</ol>
           {timelineCursor && <button onClick={()=>loadTimeline(selected,timelineCursor).catch(e=>setError(e.message))}>Earlier / additional events</button>}
         </section></div>
-        <Coordination api={api} timeline={timeline} incident={selected} simulation={false} onRefresh={()=>loadTimeline(selected)} />
+        <Coordination key={selected} api={api} timeline={timeline} incident={selected} incidentState={incidentState} simulation={false} onRefresh={()=>loadTimeline(selected)} />
       </>}
       {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
       {authenticated && config && ['check-in','handoff'].includes(page) && <>

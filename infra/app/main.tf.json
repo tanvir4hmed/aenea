@@ -71,6 +71,10 @@
       "mcp_proxy"
     ],
     "routes": {
+      "POST /incidents/{incident_id}/assessments/{assessment_id}/review": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
       "GET /household/catalog": {
         "function": "action_executor",
         "scope": "aenea/read"
@@ -168,7 +172,7 @@
       },
       "read": {
         "role": "${aws_iam_role.lambda[\"incident_api\"].id}",
-        "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"dynamodb:Query\",\"Resource\":\"${data.terraform_remote_state.data.outputs.table_arn}\"}]}"
+        "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:Query\",\"dynamodb:GetItem\"],\"Resource\":\"${data.terraform_remote_state.data.outputs.table_arn}\"}]}"
       },
       "workflow": {
         "role": "${aws_iam_role.workflow.id}",

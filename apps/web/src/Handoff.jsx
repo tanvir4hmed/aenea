@@ -11,6 +11,8 @@ function handoffText(data) {
     'Acknowledged: ' + (data.incident.acknowledged_by ? 'yes (not resolved)' : 'not recorded'),
     'Coverage: ' + (data.partial ? 'PARTIAL — additional records exist' : 'bounded pages returned without a continuation cursor'),
     data.consistency, '', 'LATEST AI ASSESSMENT (NOT VERIFIED FACT)',
+    'Assessment freshness: ' + (data.assessment_current ? 'current evidence revision' : 'outdated or unavailable'),
+    'Human review: ' + (data.incident.decision_review || 'unreviewed'),
     assessment?.summary || 'No valid assessment is available.',
     ...(assessment?.uncertainties || []).map(x => 'Uncertainty: ' + x), '',
     'SELF-REPORTS — NOT VERIFIED SAFETY',
@@ -48,6 +50,7 @@ export default function Handoff({ config, incident }) {
       <p className={data.partial ? 'error' : 'notice'}>{data.partial ? 'PARTIAL SNAPSHOT: additional records exist. Review the full timeline and household pages before sharing.' : 'Returned pages have no continuation cursor. This is not a verified all-clear.'}</p>
       <p>{data.consistency}</p>
       <h3>Latest AI assessment</h3>
+      <p>Evidence revision {data.incident.event_count} · Assessed revision {data.assessment?.evidence_revision ?? 'legacy / unavailable'} · {data.assessment_current ? 'Current' : 'Outdated / unavailable'} · Human review: {data.incident.decision_review || 'unreviewed'}</p>
       <p>{data.assessment?.assessment?.summary || 'No valid assessment available. Do not infer a safe outcome.'}</p>
       {data.assessment?.assessment?.uncertainties?.map((u, i) => <p key={i}>Uncertainty: {u}</p>)}
       <h3>Household reports</h3>

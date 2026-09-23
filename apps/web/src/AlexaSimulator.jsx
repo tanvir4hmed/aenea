@@ -9,7 +9,7 @@ const commands = {
   'prepare a handoff': 'get_responder_summary',
 };
 function describe(name, data) {
-  if (data.assessment?.assessment) return data.assessment.assessment.summary;
+  if (data.assessment?.assessment) return (data.assessment_current ? '' : 'Previous assessment; newer evidence is awaiting assessment or revision tracking is unavailable. ') + (data.incident?.decision_review === 'rejected' ? 'This assessment has been rejected by a reviewer. ' : '') + data.assessment.assessment.summary;
   if (name === 'get_incident_status') return 'Incident stage: ' + (data.incident?.status || 'unknown').replaceAll('_',' ') + '.';
   if (name === 'get_household_status') return data.items?.length ?
     data.items.map(p => p.person + ': ' + p.status.replaceAll('_',' ') + ' (self-reported at ' + p.reported_at + ')').join('. ') + (data.next_cursor ? '. Partial page; more check-ins exist.' : '') :

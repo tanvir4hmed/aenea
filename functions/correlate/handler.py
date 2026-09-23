@@ -1,6 +1,7 @@
 """Idempotently append evidence and update one incident aggregate in a transaction."""
 import os
 import uuid
+from datetime import datetime, timezone
 
 import boto3
 from boto3.dynamodb.types import TypeSerializer
@@ -38,7 +39,7 @@ def handler(detail, context):
                 "TableName": os.environ["STATE_TABLE"],
                 "Key": attributes(summary_key),
                 "UpdateExpression": (
-                    "SET incident_id = :id, #status = if_not_exists(#status, :status), "
+                    "SET incident_id = :id, #status = :status, updated_at = :now, "
                     "created_at = if_not_exists(created_at, :time), "
                     "event_count = if_not_exists(event_count, :zero) + :one"
                 ),
@@ -46,6 +47,7 @@ def handler(detail, context):
                 "ExpressionAttributeValues": attributes({
                     ":id": incident_id, ":status": "collecting_evidence",
                     ":time": event.occurred_at.isoformat(), ":zero": 0, ":one": 1,
+                    ":now": datetime.now(timezone.utc).isoformat(),
                 }),
             }},
         ])

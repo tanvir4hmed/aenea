@@ -8,6 +8,7 @@ from common import household, response
 from coordination import audit, execute, get, profile, table
 from safety import DEVICES
 from catalog import read_catalog, save_catalog
+from decision_review import review
 
 
 def handler(event, context):
@@ -44,6 +45,8 @@ def handler(event, context):
             return response(200, item)
         params = event["pathParameters"]
         incident = str(uuid.UUID(params["incident_id"]))
+        if route == "POST /incidents/{incident_id}/assessments/{assessment_id}/review":
+            return review(owner, incident, params["assessment_id"], body)
         identifier = params["action_id"]
         if (not re.fullmatch(r"[a-f0-9]{32}", identifier) or not isinstance(body, dict)
                 or set(body) != {"confirm"} or body["confirm"] is not True):

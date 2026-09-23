@@ -6,12 +6,14 @@ from botocore.exceptions import ClientError
 from assessment import IncidentAssessment
 from coordination import action_id, audit, evidence, get, native, partition, profile, table
 from safety import decision
+from revisions import actionable
 
 
 def handler(event, context):
     owner, incident = event["household_id"], event["incident_id"]
     saved = get(owner, incident, "ASSESSMENT#" + event["assessment_id"])
-    if saved["status"] != "assessed":
+    summary = table.get_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"}, ConsistentRead=True)["Item"]
+    if not actionable(summary, saved):
         return {**event, "action_ids": []}
     assessment = IncidentAssessment.model_validate_json(json.dumps(saved["assessment"], default=float))
     current, events = profile(owner), evidence(owner, incident)
@@ -25,6 +27,7 @@ def handler(event, context):
                 "policy_reason": reason, "policy_version": "1.0",
                 "profile_revision": current["revision"],
                 "assessment_id": event["assessment_id"], "expires_at": saved["expires_at"],
+                "evidence_revision": saved["evidence_revision"],
                 "simulated": True}
         try:
             table.put_item(Item=native(item), ConditionExpression="attribute_not_exists(pk)")
@@ -33,8 +36,8 @@ def handler(event, context):
                 raise
             # A new assessment may reconsider blocked/expired proposals, never completed actions.
             previous = get(owner, incident, "ACTION#" + identifier)
-            replaceable = previous["status"] in {"blocked", "expired"} or (
-                previous["status"] in {"allowed", "pending_confirmation"} and previous["expires_at"] <= int(time.time()))
+            replaceable = previous["status"] in {"blocked", "expired", "allowed", "pending_confirmation"} and (
+                previous.get("evidence_revision", -1) < saved["evidence_revision"])
             if replaceable and previous["assessment_id"] != event["assessment_id"]:
                 table.put_item(Item=native(item), ConditionExpression="assessment_id = :old AND #s = :status",
                     ExpressionAttributeNames={"#s": "status"},

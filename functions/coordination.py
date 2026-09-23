@@ -13,6 +13,7 @@ from botocore.exceptions import ClientError
 
 from common import table_name
 from safety import decision
+from revisions import actionable
 
 table = boto3.resource("dynamodb").Table(table_name())
 serializer = TypeSerializer()
@@ -77,11 +78,15 @@ def execute(owner, incident, identifier, confirmed=False):
         raise KeyError("Unknown action")
     if item["status"] in {"succeeded", "failed", "blocked", "expired"}:
         return item
-    if item["status"] == "pending_confirmation" and not confirmed:
-        return item
     current = profile(owner)
     summary_key = {"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"}
-    revision = table.get_item(Key=summary_key, ConsistentRead=True)["Item"]["event_count"]
+    summary = table.get_item(Key=summary_key, ConsistentRead=True)["Item"]
+    revision = summary["event_count"]
+    assessment = get(owner, incident, "ASSESSMENT#" + item["assessment_id"])
+    if not actionable(summary, assessment) or item.get("evidence_revision") != revision:
+        return {**item, "status": "superseded", "result": "New evidence or a rejected review prevents this action. Review the current assessment.", "execution_performed": False}
+    if item["status"] == "pending_confirmation" and not confirmed:
+        return item
     state, reason = decision(item["proposal"], evidence(owner, incident), current,
                              int(time.time()), int(item["expires_at"]), confirmed)
     device = current.get("devices", {}).get(item["proposal"]["device_id"], {})
@@ -93,8 +98,8 @@ def execute(owner, incident, identifier, confirmed=False):
         updated["alternate_plan"] = "Device unavailable; request a household check-in and review the incident. No physical action was taken."
     operations = [
         {"ConditionCheck": {"TableName": table_name(), "Key": attrs(summary_key),
-            "ConditionExpression": "event_count = :revision",
-            "ExpressionAttributeValues": attrs({":revision": revision})}},
+            "ConditionExpression": "event_count = :revision AND latest_assessment = :assessment AND (attribute_not_exists(decision_review) OR decision_review <> :rejected)",
+            "ExpressionAttributeValues": attrs({":revision": revision, ":assessment": item["assessment_id"], ":rejected": "rejected"})}},
         {"ConditionCheck": {"TableName": table_name(),
             "Key": attrs({"pk": f"H#{owner}", "sk": "PROFILE"}),
             "ConditionExpression": "revision = :revision",
