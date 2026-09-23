@@ -23,5 +23,8 @@ code{overflow-wrap:anywhere;font-size:.85em}
 .scenario-steps .badge{display:inline-block;line-height:1.6}
 .handoff-action{border-left:3px solid #73a8a2;padding:12px 18px;margin:12px 0;background:#f8fafc}
 .handoff-sheet{overflow-wrap:anywhere}
+.guest-credentials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}
+.guest-credentials label{margin:0;font-weight:600}.credential-row{display:flex;gap:8px;margin-top:8px}.credential-row input{width:100%;min-width:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:400;background:#f8fafc}.credential-row button{flex:0 0 auto}.icon-button{min-width:44px;font-size:20px;line-height:1}.guest-warning{font-size:12px;margin-bottom:0}
 @media(max-width:600px){.row{align-items:stretch;flex-direction:column}select{max-width:100%;margin:8px 0}label{display:block}.actions button{flex:1}fieldset{padding:12px}}
+@media(max-width:700px){.guest-credentials{grid-template-columns:1fr}.credential-row{flex-wrap:wrap}.credential-row input{flex:1 1 100%}}
 @media print{body{background:white;color:black}.app{display:block}aside,header,.no-print,.disclaimer,main>.error,main>.notice{display:none!important}main{padding:0;max-width:none}.handoff-sheet{box-shadow:none;border:0;margin:0;padding:0}.handoff-sheet article,.handoff-sheet li{break-inside:avoid}.badge{color:black;background:none}.card p{color:#222}.handoff-sheet .error,.handoff-sheet .notice{border:1px solid #666;background:none;color:black}button{display:none!important}}

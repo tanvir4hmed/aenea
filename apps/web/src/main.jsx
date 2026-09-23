@@ -10,6 +10,7 @@ import IncidentPicker from './IncidentPicker';
 import ScenarioLab from './ScenarioLab';
 
 const pages = [['command-center','Command center'],['simulation-lab','Simulation lab'],['alexa-sim','Alexa+'],['check-in','Household'],['handoff','Handoff']];
+const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 function App() {
   const [config, setConfig] = useState(null), [error, setError] = useState('');
   const [page, setPage] = useState(location.pathname.split('/')[1] || 'command-center');
@@ -18,6 +19,7 @@ function App() {
   const [kind, setKind] = useState('smoke'), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(''), [pending, setPending] = useState(null);
   const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [guestPassVisible, setGuestPassVisible] = useState(false), [copyNotice, setCopyNotice] = useState('');
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
   const additionalPages = useRef(false);
   async function api(path, options = {}) {
@@ -73,6 +75,10 @@ function App() {
     return () => { active = false; clearInterval(timer); };
   }, [config, selected]);
   function navigate(next) { history.pushState(null, '', '/' + next); setPage(next); setError(''); }
+  async function copyGuest(value, label) {
+    try { await navigator.clipboard.writeText(value); setCopyNotice(label + ' copied.'); }
+    catch { setCopyNotice('Copy is unavailable. Select the value manually.'); }
+  }
   async function emit() {
     setBusy(true); setError(''); setNotice('');
     const camera = ['motion','doorbell','package','vehicle'].includes(kind);
@@ -100,7 +106,22 @@ function App() {
       <p className="disclaimer">Prototype for incident coordination. Follow official alarms and emergency guidance.</p>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
-      {!session() && <section className="card"><h2>Connect your household</h2><p>Sign in to view incident evidence and send simulated signals.</p></section>}
+      {!session() && <section className="card guest-access"><h2>Connect your household</h2>
+        <p>Sign in with your authorized account, or use the shared guest account to explore this public prototype.</p>
+        <div className="guest-credentials">
+          <label>Guest email <span className="credential-row"><input readOnly value={guestAccess.email}/>
+            <button type="button" onClick={() => copyGuest(guestAccess.email, 'Guest email')}>Copy</button></span></label>
+          <label>Guest password <span className="credential-row"><input readOnly type={guestPassVisible ? 'text' : 'password'} value={guestAccess.password}/>
+            <button type="button" className="icon-button" aria-label={guestPassVisible ? 'Hide guest password' : 'Show guest password'}
+              aria-pressed={guestPassVisible} onClick={() => setGuestPassVisible(value => !value)}>
+              <span aria-hidden="true">👁</span>
+            </button>
+            <button type="button" onClick={() => copyGuest(guestAccess.password, 'Guest password')}>Copy</button></span></label>
+        </div>
+        <div className="actions"><button className="primary" disabled={!config} onClick={() => login(config)}>Open guest sign in</button></div>
+        <p className="guest-warning">Shared demo account: use fictional data only. Activity may be visible to other demo visitors.</p>
+        {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
+      </section>}
       {session() && config && <div hidden={page !== 'simulation-lab'}>
         <ScenarioLab api={api} household={identity} disabled={busy || !!pending} onBusy={setScenarioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
