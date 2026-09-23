@@ -1,6 +1,6 @@
 # Phase 5: Alexa+ experience and MCP
 
-Source implemented on 21 September 2026. GitHub Actions owns packaging and deployment. Hosted acceptance is deferred: this document does not claim a working native Alexa connection or a successful hosted MCP invocation.
+Source implemented on 21 September 2026 and authentication flow updated on 23 September 2026. GitHub Actions owns packaging and deployment. Hosted acceptance is tracked separately: this document does not claim a working native Alexa connection.
 
 ## Shared coordination path
 
@@ -38,8 +38,8 @@ Actions use the existing Phase 4 executor; no new physical-device capabilities o
 2. The canonical MCP resource is `<apiUrl>/mcp`. Public resource metadata is at `<apiUrl>/.well-known/oauth-protected-resource/mcp` (also exposed without the `/mcp` suffix).
 3. Use the metadata's Cognito issuer and its `/.well-known/openid-configuration` discovery document. For the web client, authorization/token endpoints are `<cognitoDomain>/oauth2/authorize` and `/oauth2/token`.
 4. The preregistered public Cognito client uses authorization code + PKCE S256, verified OAuth state, exact `/auth/callback` URLs for the configured web origins and scopes `openid email aenea/read aenea/write`. No client secret or AWS key goes into the browser.
-5. Both authorization and token requests include `resource=<apiUrl>/mcp`. The MCP runtime independently verifies JWT signature, expiry, issuer, client ID, access-token type and resource audience. The gateway accepts the resource-bound audience; the private Lambda separately enforces tool scopes.
-6. Sign out and in after this rollout: an older browser token lacks resource binding and will be rejected by the MCP runtime. The 15-minute browser session currently requires a fresh sign-in after expiry; silent refresh is not implemented.
+5. Cognito access tokens for the current custom resource server do not contain an `aud` claim. AgentCore and the private runtime therefore validate signature, expiry, issuer, registered client ID, access-token type and the required custom scopes. The runtime does not mistake the ID-token audience for an API-resource audience.
+6. Sign out and in once after this rollout so Cognito can issue a refresh token. The browser renews the short-lived access token on demand; an invalid or revoked refresh session returns the user to sign-in without losing an active incident during ordinary token renewal.
 
 Native Alexa+/external-client onboarding is **not verified**. Before attempting it, obtain that client's actual registration/callback requirements and register the appropriate client, scopes and exact callbacks through Terraform. Do not reuse fabricated callbacks or claim automatic dynamic registration. API Gateway may reject unauthenticated calls before the proxy; use the documented public metadata URL for preregistration/discovery rather than assuming a gateway-generated WWW-Authenticate challenge. A native client's compatibility with this path remains an acceptance gate.
 
@@ -51,6 +51,6 @@ References used for implementation: [AWS MCP runtime contract](https://docs.aws.
 
 Selective deployment: web-only edits build only web; `services/mcp/**` or `infra/mcp/**` package/apply MCP; tool Lambda edits update that function; shared domain edits update Lambda consumers. Platform changes refresh app and MCP wiring. Deployment-orchestrator changes refresh infrastructure dependencies. No test suite or post-deploy monitoring is added.
 
-**Outstanding prerequisite:** the AWS administrator CLI login is expired. Phase 4–5 deployment-role permissions in the bootstrap templates still need live synchronization after `aws login` (or an authorized CloudShell login). The new workflow permissions include AgentCore MCP lifecycle and SSM parameter management. GitHub still authenticates with OIDC; no new GitHub secret is required. Do not interpret a source push as permission synchronization or successful deployment.
+GitHub authenticates with OIDC; no browser or long-lived AWS key is required. AgentCore MCP lifecycle and SSM parameter permissions remain defined in the bootstrap templates. Treat the workflow result—not the source push alone—as deployment evidence.
 
-Deferred hosted acceptance: PKCE sign-in/resource audience, initialize and tools/list, every tool's persisted result, cross-household/scoped-token denial, stale check-ins, action expiry and smoke/valve exclusion, duplicate/concurrent actions, failed writes/timeouts, multi-page results, runtime cold starts and optional microphone support. Capture actual results later; no passing runtime evidence is asserted here.
+Deferred hosted acceptance: PKCE sign-in/refresh, initialize and tools/list, every tool's persisted result, wrong-client/scoped-token denial, stale check-ins, action expiry and smoke/valve exclusion, duplicate/concurrent actions, failed writes/timeouts, multi-page results, runtime cold starts and optional microphone support. Capture actual results later; no passing runtime evidence is asserted here.

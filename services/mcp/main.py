@@ -23,10 +23,12 @@ def call(ctx, name, arguments):
         raise ValueError("Bearer access token required")
     token = header[7:]
     claims = jwt.decode(token, jwks.get_signing_key_from_jwt(token).key, algorithms=["RS256"],
-        issuer=issuer, audience=os.environ["MCP_RESOURCE_URL"],
-        options={"require": ["exp", "iat", "sub", "client_id", "token_use", "aud"]})
+        issuer=issuer, options={"require": ["exp", "iat", "sub", "client_id", "token_use"],
+                                "verify_aud": False})
     if claims["client_id"] != os.environ["COGNITO_CLIENT_ID"] or claims["token_use"] != "access":
         raise ValueError("Invalid access token")
+    if "aenea/read" not in set(claims.get("scope", "").split()):
+        raise ValueError("Read scope required")
     payload = {"principal": {"sub": claims["sub"], "scope": claims.get("scope", "")},
                "tool": name, "arguments": arguments}
     result = lambda_client.invoke(FunctionName=os.environ["TOOLS_FUNCTION_ARN"],

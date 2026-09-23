@@ -22,7 +22,7 @@ function describe(name, data) {
 }
 
 export default function AlexaSimulator({ config, incidents, selected, onSelect }) {
-  const client = useMemo(() => createMcpClient(config.apiUrl), [config.apiUrl]);
+  const client = useMemo(() => createMcpClient(config), [config.apiUrl, config.clientId, config.cognitoDomain]);
   const [input, setInput] = useState('what is happening'), [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [person, setPerson] = useState('Me'), [status, setStatus] = useState('unknown');

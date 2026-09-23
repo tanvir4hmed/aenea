@@ -25,7 +25,7 @@ function handoffText(data) {
 }
 
 export default function Handoff({ config, incident }) {
-  const client = useMemo(() => createMcpClient(config.apiUrl), [config.apiUrl]);
+  const client = useMemo(() => createMcpClient(config), [config.apiUrl, config.clientId, config.cognitoDomain]);
   const [data, setData] = useState(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const lock = useRef(false);

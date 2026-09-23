@@ -11,7 +11,7 @@ Runtime onboarding, reliability, performance and reuse judgments remain pending 
 | AgentCore / SDK | Two hosted runtime configurations | Separates reasoner and MCP privileges; cold starts/onboarding pending |
 | Strands / Bedrock | Structured assessment with Amazon Nova | Strict output boundary implemented; inference quality/latency pending |
 | MCP Python SDK | Typed tools and Streamable HTTP | Shares tools across browser views; protocol/session reliability pending |
-| Cognito / PyJWT | PKCE login and JWT verification | Audience and scope boundaries explicit; hosted sign-in feedback pending |
+| Cognito / PyJWT | PKCE login, refresh and JWT verification | Client, token-type and scope boundaries explicit; hosted sign-in feedback pending |
 | Lambda / Boto3 | Ingress, policy, execution, MCP bridge | Narrow task-specific handlers; SDK timeout/retry observations pending |
 | EventBridge / Step Functions / SQS | Delivery, workflow, failure queue | Delivery failure and execution failure treated separately; recovery exercise pending |
 | DynamoDB | Evidence, profiles, transactions, audit | Atomic check-in/action writes implemented; concurrency verification pending |
@@ -38,5 +38,5 @@ For each row before submission: record task, observed result, onboarding experie
 ## Phase 5 integration notes — 21 September 2026
 
 - MCP Python SDK 1.30.0: source uses typed tool definitions and stateless Streamable HTTP. Hosted protocol negotiation and error behavior still require verification.
-- Cognito: source extends existing PKCE login with resource-bound access tokens and public resource metadata. Native Alexa client onboarding is not verified; no onboarding-success claim is made.
+- Cognito: the hosted access token omitted `aud` because the current custom resource-server identifier is not a URL resource indicator. Source now uses PKCE with refresh tokens and validates issuer, signature, registered client, token type and custom scopes; native Alexa client onboarding is not verified.
 - AgentCore: a separate MCP runtime invokes the private shared-tools Lambda. Documented session-ID/header forwarding is implemented; cold-start latency and usability observations remain pending.

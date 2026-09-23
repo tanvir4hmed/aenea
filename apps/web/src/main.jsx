@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { callback, login, logout, session } from './auth';
+import { accessToken, callback, expireSession, hasSession, login, logout } from './auth';
 import './style.css';
 import Coordination from './Coordination';
 import AlexaSimulator from './AlexaSimulator';
@@ -11,11 +11,13 @@ import ScenarioLab from './ScenarioLab';
 
 const pages = [['command-center','Command center'],['simulation-lab','Simulation lab'],['alexa-sim','Alexa+'],['check-in','Household'],['handoff','Handoff']];
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
+const incidentStorageKey = 'aenea-selected-incident';
 function App() {
   const [config, setConfig] = useState(null), [error, setError] = useState('');
+  const [authenticated, setAuthenticated] = useState(hasSession());
   const [page, setPage] = useState(location.pathname.split('/')[1] || 'command-center');
   const [identity, setIdentity] = useState(''), [incidents, setIncidents] = useState([]);
-  const [selected, setSelected] = useState(''), [timeline, setTimeline] = useState([]);
+  const [selected, setSelected] = useState(() => sessionStorage.getItem(incidentStorageKey) || ''), [timeline, setTimeline] = useState([]);
   const [kind, setKind] = useState('smoke'), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(''), [pending, setPending] = useState(null);
   const [scenarioBusy, setScenarioBusy] = useState(false);
@@ -23,10 +25,10 @@ function App() {
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
   const additionalPages = useRef(false);
   async function api(path, options = {}) {
-    const token = session();
-    if (!token) throw new Error('Sign in to access your household.');
+    const token = await accessToken(config);
     const result = await fetch(config.apiUrl + path, { ...options, headers: {
-      Authorization: 'Bearer ' + token.accessToken, 'Content-Type': 'application/json' } });
+      Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } });
+    if (result.status === 401) expireSession();
     const body = await result.json();
     if (!result.ok) throw new Error(body.error || 'Request failed; please retry.');
     return body;
@@ -48,18 +50,22 @@ function App() {
       const result = await fetch('/config.json', { cache: 'no-store' });
       if (!result.ok) throw new Error('Deployment configuration is not available yet.');
       const value = await result.json();
-      await callback(value); setConfig(value);
+      await callback(value); setConfig(value); setAuthenticated(hasSession());
       setPage(location.pathname.split('/')[1] || 'command-center');
     })().catch(e => setError(e.message));
     const onPop = () => setPage(location.pathname.split('/')[1] || 'command-center');
-    addEventListener('popstate', onPop); return () => removeEventListener('popstate', onPop);
+    const onExpired = () => { setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
+    addEventListener('popstate', onPop); addEventListener('aenea-auth-expired', onExpired);
+    return () => { removeEventListener('popstate', onPop); removeEventListener('aenea-auth-expired', onExpired); };
   }, []);
   useEffect(() => {
-    if (!config || !session()) return;
+    if (!config || !authenticated) return;
     loadIncidents().catch(e => setError(e.message));
-  }, [config]);
+  }, [config, authenticated]);
   useEffect(() => {
-    if (!config || !selected || !session()) return;
+    if (!selected) sessionStorage.removeItem(incidentStorageKey);
+    else sessionStorage.setItem(incidentStorageKey, selected);
+    if (!config || !selected || !authenticated) return;
     setTimeline([]); setTimelineCursor(null);
     additionalPages.current = false;
     let active = true;
@@ -73,16 +79,16 @@ function App() {
     refresh();
     const timer = setInterval(refresh, 10000);
     return () => { active = false; clearInterval(timer); };
-  }, [config, selected]);
+  }, [config, selected, authenticated]);
   function navigate(next) { history.pushState(null, '', '/' + next); setPage(next); setError(''); }
   async function copyGuest(value, label) {
     try { await navigator.clipboard.writeText(value); setCopyNotice(label + ' copied.'); }
     catch { setCopyNotice('Copy is unavailable. Select the value manually.'); }
   }
-  async function emit() {
+  async function emit(forceNew = false) {
     setBusy(true); setError(''); setNotice('');
     const camera = ['motion','doorbell','package','vehicle'].includes(kind);
-    const incidentId = selected || crypto.randomUUID();
+    const incidentId = forceNew ? crypto.randomUUID() : selected || crypto.randomUUID();
     const payload = pending || { incident_id: incidentId, adapter: camera ? 'camera-simulator' : ['smoke','carbon_monoxide','water_leak','medical_sos'].includes(kind) ? 'sensor' : 'webhook',
       event: { event_id: crypto.randomUUID(), household_id: identity, occurred_at: new Date().toISOString(),
       source: { source_id: camera ? 'simulation-camera' : 'simulation-sensor', category: camera ? 'camera' : kind === 'severe_weather' ? 'weather' : 'sensor', simulated: true },
@@ -102,11 +108,11 @@ function App() {
       <p className="side-note">A shared picture.<br/>A coordinated response.</p>
     </aside>
     <main><header><div><span className="eyebrow">YOUR HOUSEHOLD · SIMULATED SIGNALS</span><h1>{pages.find(([id])=>id===page)?.[1] || 'Command center'}</h1></div>
-      {config && <button onClick={async () => { try { if (session()) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>{session()?'Sign out':'Sign in'}</button>}</header>
+      {config && <button onClick={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>{authenticated?'Sign out':'Sign in'}</button>}</header>
       <p className="disclaimer">Prototype for incident coordination. Follow official alarms and emergency guidance.</p>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
-      {!session() && <section className="card guest-access"><h2>Connect your household</h2>
+      {!authenticated && <section className="card guest-access"><h2>Connect your household</h2>
         <p>Sign in with your authorized account, or use the shared guest account to explore this public prototype.</p>
         <div className="guest-credentials">
           <label>Guest email <span className="credential-row"><input readOnly value={guestAccess.email}/>
@@ -122,16 +128,20 @@ function App() {
         <p className="guest-warning">Shared demo account: use fictional data only. Activity may be visible to other demo visitors.</p>
         {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
       </section>}
-      {session() && config && <div hidden={page !== 'simulation-lab'}>
+      {authenticated && config && <div hidden={page !== 'simulation-lab'}>
         <ScenarioLab api={api} household={identity} disabled={busy || !!pending} onBusy={setScenarioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }} />
       </div>}
-      {session() && ['command-center','simulation-lab'].includes(page) && <>
+      {authenticated && ['command-center','simulation-lab'].includes(page) && <>
         <section className="metrics"><div className="card"><span>Loaded incidents</span><strong>{incidents.length}</strong></div><div className="card"><span>Signal provenance</span><strong className="small">Simulation</strong></div><div className="card"><span>Coordination</span><strong className="small">Assessment and policy</strong></div></section>
         {page==='simulation-lab' && <section className="card"><h2>Send a household signal</h2><p>Select an existing incident to add context, or start a new one. Camera motion does not establish occupancy.</p>
           <label>Signal type <select disabled={!!pending} value={kind} onChange={e=>setKind(e.target.value)}>{['smoke','carbon_monoxide','water_leak','medical_sos','severe_weather','motion','doorbell','package','vehicle'].map(k=><option key={k}>{k}</option>)}</select></label>
-          <div className="actions"><button disabled={busy || scenarioBusy || !!pending} onClick={()=>{setSelected('');setTimeline([]);}}>New incident</button><button className="primary" disabled={busy || scenarioBusy || !identity} onClick={emit}>{busy?'Sending…':pending?'Retry same event':'Send simulated signal'}</button>{pending && <button disabled={busy || scenarioBusy} onClick={()=>setPending(null)}>Discard pending event</button>}</div>
+          <p>{selected ? <>Target incident: <code>{selected.slice(0, 8)}</code></> : 'No incident selected. Start a new incident with this signal.'}</p>
+          <div className="actions">{pending ? <button className="primary" disabled={busy || scenarioBusy || !identity} onClick={() => emit()}>{busy?'Sending…':'Retry identical signal'}</button> : <>
+            <button className="primary" disabled={busy || scenarioBusy || !identity} onClick={() => emit(true)}>Start new incident with signal</button>
+            <button disabled={busy || scenarioBusy || !identity || !selected} onClick={() => emit(false)}>Add signal to selected incident</button></>}
+            {pending && <button disabled={busy || scenarioBusy} onClick={()=>setPending(null)}>Discard pending signal</button>}</div>
         </section>}
         <div className="columns"><section className="card"><div className="row"><h2>Incidents</h2><button onClick={()=>loadIncidents().catch(e=>setError(e.message))}>Refresh</button></div>
           {!incidents.length && <p>No incidents yet. Send a signal from the Simulation lab.</p>}
@@ -143,8 +153,8 @@ function App() {
         </section></div>
         <Coordination api={api} timeline={timeline} incident={selected} simulation={page==='simulation-lab'} onRefresh={()=>loadTimeline(selected)} />
       </>}
-      {session() && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
-      {session() && config && ['check-in','handoff'].includes(page) && <>
+      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
+      {authenticated && config && ['check-in','handoff'].includes(page) && <>
         <IncidentPicker incidents={incidents} selected={selected} onSelect={setSelected}
           onRefresh={()=>loadIncidents().catch(e=>setError(e.message))}
           onMore={incidentCursor ? ()=>loadIncidents(incidentCursor).catch(e=>setError(e.message)) : null}/>

@@ -1,6 +1,6 @@
 # Demo operations and cost boundaries
 
-Implementation review: 21 September 2026. Operational checks remain deferred. No budget amount, billing recipient, IAM change or account cleanup was silently configured in this phase.
+Implementation review: 23 September 2026. Operational checks remain deferred. No budget amount, billing recipient, IAM change or account cleanup was silently configured in this phase.
 
 ## Spend controls
 
@@ -21,7 +21,7 @@ Before opening judge access, the account owner must select a monthly budget and 
 
 ## Security review boundaries
 
-Public metadata contains identifiers only. JWT signature/issuer/audience/client/access-token checks protect MCP; tool scopes and household partition checks remain separate. Proxy SSM access is limited to this account's single runtime parameter. The reasoner cannot access household storage or execute devices; only its model output reaches policy. The private MCP tool Lambda has no API route. Application roles are limited to project resources, but shared-table tenancy is enforced in code, not by per-household IAM credentials.
+Public metadata contains identifiers only. JWT signature, issuer, registered client, access-token type and scope checks protect MCP; the current Cognito access token has no resource `aud` claim. Household partition checks remain separate. Proxy SSM access is limited to this account's single runtime parameter. The reasoner cannot access household storage or execute devices; only its model output reaches policy. The private MCP tool Lambda has no API route. Application roles are limited to project resources, but shared-table tenancy is enforced in code, not by per-household IAM credentials.
 
 The deployment role remains intentionally broader than application roles: it can manage project-prefixed roles and resources. GitHub environment protection and exact OIDC trust are critical. A full external IAM audit, dependency vulnerability review, token/session threat review and adversarial hosted tests are still release gates. Do not describe this prototype as production-hardened.
 

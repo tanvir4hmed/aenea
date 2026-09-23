@@ -1,6 +1,6 @@
 # Release gate — not yet cleared
 
-Updated 21 September 2026. Phase 7 source hardening and submission preparation are complete; runtime/security acceptance, video and final submission are not. An unchecked item must not be presented as passed.
+Updated 23 September 2026. Baseline source hardening and Phase 1 authentication improvements are complete; runtime/security acceptance, video and final submission are not. An unchecked item must not be presented as passed.
 
 ## Implementation prepared
 
@@ -25,7 +25,7 @@ Use a separate fresh cloud workspace, not the development directory. Install Git
 
 - [ ] Fresh-clone dependency installation/build and offline regressions: install `functions/requirements.txt` in an isolated Python environment, then `python -m unittest discover -s tests`. Persistence tests mock AWS; no real household credentials/data are required. Preserve logs and commit ID.
 - [ ] Capture/review dependency lockfiles from the runner; current dependency ranges are not fully reproducible locks. No vulnerability-free claim is made.
-- [ ] Signed-in MCP initialize/tools discovery and each tool; reject wrong audience, ID token, expired token and missing write scope.
+- [ ] Signed-in MCP initialize/tools discovery and each tool; refresh an expired access token, and reject a wrong client, ID token, expired token and missing write scope.
 - [ ] Two-household isolation, forged/malformed cursors and inaccessible incident/action IDs.
 - [ ] Same check-in request ID replay, conflicting payload, concurrent retry and late retry after a newer report; original response must not roll back the newer report.
 - [ ] Concurrent acknowledgment produces one audit and persistent acknowledgment.

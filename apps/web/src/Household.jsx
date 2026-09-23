@@ -4,7 +4,7 @@ import { createMcpClient } from './mcp';
 const statuses = { unknown: 'Unknown', safe: 'Reported safe', needs_help: 'Needs help', not_home: 'Reported away' };
 
 export default function Household({ config, incident }) {
-  const client = useMemo(() => createMcpClient(config.apiUrl), [config.apiUrl]);
+  const client = useMemo(() => createMcpClient(config), [config.apiUrl, config.clientId, config.cognitoDomain]);
   const [people, setPeople] = useState([]), [cursor, setCursor] = useState(null);
   const [person, setPerson] = useState('Resident A'), [status, setStatus] = useState('unknown');
   const [busy, setBusy] = useState(false), [loaded, setLoaded] = useState(false);

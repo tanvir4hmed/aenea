@@ -1,17 +1,16 @@
-import { session } from './auth';
+import { accessToken, expireSession } from './auth';
 
 const protocol = '2025-11-25';
-export function createMcpClient(apiUrl) {
+export function createMcpClient(config) {
   let initialized = false;
   let sessionId;
   const pendingReports = new Map();
   async function request(method, params = {}, notification = false) {
-    const credentials = session();
-    if (!credentials) throw new Error('Sign in to connect to your household.');
+    const token = await accessToken(config);
     const id = notification ? undefined : crypto.randomUUID();
-    const result = await fetch(apiUrl + '/mcp', {
+    const result = await fetch(config.apiUrl + '/mcp', {
       method: 'POST', headers: {
-        Authorization: 'Bearer ' + credentials.accessToken,
+        Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json', Accept: 'application/json, text/event-stream',
         'MCP-Protocol-Version': protocol,
         ...(sessionId ? { 'Mcp-Session-Id': sessionId } : {}),
@@ -19,6 +18,7 @@ export function createMcpClient(apiUrl) {
       body: JSON.stringify({ jsonrpc: '2.0', ...(notification ? {} : { id }), method, params }),
     });
     if (!result.ok) {
+      if (result.status === 401) expireSession();
       if (result.status === 404) { initialized = false; sessionId = undefined; }
       throw new Error('MCP request failed (' + result.status + '). A write may have completed; check its status before retrying.');
     }
