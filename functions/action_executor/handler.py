@@ -7,6 +7,7 @@ import uuid
 from common import household, response
 from coordination import audit, execute, get, profile, table
 from safety import DEVICES
+from catalog import read_catalog, save_catalog
 
 
 def handler(event, context):
@@ -16,14 +17,18 @@ def handler(event, context):
     try:
         owner = household(event)
         route = event["routeKey"]
+        if route == "GET /household/catalog":
+            return response(200, read_catalog(table, owner))
         if route == "GET /household/devices":
             return response(200, profile(owner))
         raw = event.get("body") or "{}"
         if event.get("isBase64Encoded"):
             raw = base64.b64decode(raw, validate=True).decode()
-        if len(raw) > 8000:
+        if len(raw.encode()) > (120000 if route == "PUT /household/catalog" else 8000):
             raise ValueError("Oversized request")
         body = json.loads(raw)
+        if route == "PUT /household/catalog":
+            return save_catalog(table, owner, body)
         if route == "PUT /household/devices":
             if set(body) != {"devices"} or not isinstance(body["devices"], dict):
                 raise ValueError("Expected devices")
@@ -52,5 +57,9 @@ def handler(event, context):
         return response(200, execute(owner, incident, identifier, confirmed=True))
     except PermissionError:
         return response(401, {"error": "Authentication required"})
-    except (ValueError, TypeError, KeyError, AttributeError):
+    except ValueError as exc:
+        if event.get("routeKey") == "PUT /household/catalog":
+            return response(400, {"error": str(exc) or "Invalid catalog settings"})
+        return response(400, {"error": "Invalid action request"})
+    except (TypeError, KeyError, AttributeError):
         return response(400, {"error": "Invalid action request"})

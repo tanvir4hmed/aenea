@@ -36,7 +36,7 @@ export default function ScenarioLab({ api, household, onAccepted, onBusy, disabl
       <h3>{s.kind.replaceAll('_', ' ')}</h3><p>{s.observation}</p><small>{s.source}</small>
       {run?.receipts[index] && <p>Accepted · event <code>{run.receipts[index].event_id}</code></p>}
     </li>)}</ol>
-    <p>First save virtual permissions below. To demonstrate failure, enable “Fail next simulated action” on an eligible device before starting a fresh incident. The reasoner may not propose that action; never label an absent action as successful.</p>
+    <p>Configure virtual action permissions in Settings before starting a run. These walkthroughs use sample sources, separate from your saved devices.</p>
     <div className="actions"><button className="primary" disabled={!household || busy || disabled || complete} onClick={send}>
       {busy ? 'Sending…' : pending ? 'Retry identical signal' : run ? 'Send next signal' : 'Start new incident and send first signal'}
     </button>{run && <button disabled={busy || !!pending} onClick={() => { setRun(null); setError(''); setNotice(''); }}>New scenario run (keeps saved history)</button>}</div>

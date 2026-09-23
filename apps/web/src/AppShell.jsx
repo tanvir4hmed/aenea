@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 
 export const pages = [
   { id: 'command-center', label: 'Command center', icon: 'grid', description: 'Review incidents, evidence and coordinated actions.' },
-  { id: 'simulation-lab', label: 'Simulation lab', icon: 'signal', description: 'Send simulated signals and explore how the response develops.' },
+  { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Compose an incident from selected device signals.' },
   { id: 'alexa-sim', label: 'Alexa+', icon: 'voice', description: 'Explore incident coordination through the Alexa+ web simulator.' },
   { id: 'check-in', label: 'Household', icon: 'people', description: 'Review incident-specific check-ins and requests for help.' },
   { id: 'handoff', label: 'Handoff', icon: 'document', description: 'Prepare a summary of the evidence and recorded response.' },
+  { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage locations, simulation devices and action permissions.' },
   { id: 'guide', label: 'User guide', icon: 'help', description: 'A quick guide to your workspace.' },
 ];
 

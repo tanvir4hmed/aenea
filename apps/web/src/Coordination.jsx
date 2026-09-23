@@ -7,7 +7,7 @@ const deviceNames = {
 const defaults = Object.fromEntries(Object.keys(deviceNames).map(id =>
   [id, { enabled: true, preauthorized: false, fail_next: false }]));
 
-export default function Coordination({ api, timeline, incident, simulation, onRefresh }) {
+export default function Coordination({ api, timeline, incident, simulation, onRefresh, settingsOnly = false }) {
   const [devices, setDevices] = useState(defaults);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -33,7 +33,8 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
   const latest = assessments[0];
   const actions = timeline.filter(i => i.sk.startsWith('ACTION#'));
   return <section className="card">
-    <h2>Assessment and coordinated actions</h2>
+    <h2>{settingsOnly ? 'Virtual action permissions' : 'Assessment and coordinated actions'}</h2>
+    {settingsOnly && <p>These four simulated outputs are separate from the input sensors and cameras in your device catalog.</p>}
     {message && <p role="status">{message}</p>}
     {simulation && <details><summary>Virtual household permissions and failure simulation</summary>
       <p>Save your choices before sending a signal. Notifications appear here; no external messages are sent. Valve closure always needs confirmation.</p>
@@ -52,7 +53,7 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
       })}>Reload saved device settings</button>
       <p>Failure flags are consumed only when an eligible virtual action executes. Reload after a run before configuring the next one; no physical device is affected.</p>
     </details>}
-    {!latest && <p>{incident ? 'Waiting for an assessment. Load additional timeline entries if needed.' : 'Select an incident to see assessments and policy decisions.'}</p>}
+    {!settingsOnly && <>{!latest && <p>{incident ? 'Waiting for an assessment. Load additional timeline entries if needed.' : 'Select an incident to see assessments and policy decisions.'}</p>}
     {latest?.status === 'assessment_failed' && <p role="alert">Assessment unavailable. No actions authorized. Send a new signal to request a new assessment.</p>}
     {latest?.assessment && <article>
       <span className="badge">AI ASSESSMENT · SIMULATED EVIDENCE</span>
@@ -73,6 +74,6 @@ export default function Coordination({ api, timeline, incident, simulation, onRe
           await onRefresh(); setMessage('Confirmation processed; see the recorded result.');
         })}>Confirm closing virtual water valve</button>}
       {action.status === 'pending_confirmation' && <small>Expires {new Date(action.expires_at * 1000).toLocaleTimeString()}</small>}
-    </article>)}
+    </article>)}</>}
   </section>;
 }

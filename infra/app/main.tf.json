@@ -71,6 +71,14 @@
       "mcp_proxy"
     ],
     "routes": {
+      "GET /household/catalog": {
+        "function": "action_executor",
+        "scope": "aenea/read"
+      },
+      "PUT /household/catalog": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
       "GET /household/devices": {
         "function": "action_executor",
         "scope": "aenea/read"
