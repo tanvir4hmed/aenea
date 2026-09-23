@@ -10,7 +10,7 @@ This sequence improves the contest application while keeping Alexa+ incident coo
 | 4 | Simulation Studio with selected devices and signal sequences | Implemented |
 | 5 | Continuous incident updates and assessment revisions | Implemented |
 | 6 | Decision verification and evidence review | Implemented |
-| 7 | Alexa+ coordination experience | Awaiting permission |
+| 7 | Alexa+ coordination experience | Implemented |
 | 8 | Cleanup and data controls | Awaiting permission |
 | 9 | Contest release preparation | Awaiting permission |
 
@@ -51,3 +51,13 @@ Decision review shows the exact evidence snapshot, summary citations, action rat
 The current reasoner limit remains 20 signals per incident. Inputs over that limit now fail explicitly instead of silently dropping older evidence. Evidence is retained; a large incident is not claimed to be fully assessed. Revising that budget/model strategy is separate work. Legacy assessments without revision metadata are historical and cannot authorize new execution. A fresh signal starts the new revision flow; no historical data is deleted or automatically reprocessed.
 
 Offline validation: frontend build, 35 Python regression tests (including stale execution, concurrent publication, review replay and transaction guards), Terraform formatting and whitespace checks passed. Hosted concurrency/UI acceptance is deferred. The selective pipeline updates web, affected app infrastructure and Lambda code; neither AgentCore runtime source changed.
+
+## Phase 7 implementation
+
+The Alexa+ browser simulator has an incident context summary, explicit command suggestions and aliases, a bounded 30-turn local conversation, incident-scoped check-in form and action cards. Refresh context/actions reads through MCP; timeline and check-in pagination have separate controls. Replies distinguish stale/rejected assessments, self-reports, incomplete handoffs and actual saved action outcomes. Clearing chat does not delete server records. Microphone input fills the command field for review, never submits automatically; playback can be stopped by disabling read-aloud. Late responses after navigation or incident changes cannot populate a different conversation.
+
+Valve confirmation now requires the assessment ID that the user reviewed, across HTTP and MCP. The executor compares it with the stored proposal before doing anything, and retains the existing transaction guards. A changed proposal needs fresh explicit approval; an old approval cannot move to the newer assessment. Old browser tabs must refresh to use the updated request contract.
+
+Native Alexa registration and physical integration remain unverified; this phase improves the browser experience over the real MCP/backend path. No native connection or free-form natural-language reasoning is claimed. Deployment includes web, Lambda consumers and the MCP runtime tool-schema update. No Terraform changes are needed.
+
+Verification: production frontend build, 36 Python regressions, six JavaScript checks, Python compilation and whitespace checks passed. Hosted and browser acceptance remain deferred.

@@ -72,7 +72,7 @@ export default function Coordination({ api, timeline, incident, incidentState, s
       {action.status === 'pending_confirmation' && <button disabled={busy || Date.now() >= action.expires_at * 1000 || action.assessment_id !== latest?.assessment_id || !incidentState?.assessment_current || incidentState?.incident?.decision_review === 'rejected'}
         onClick={() => perform(async () => {
           const outcome = await api('/incidents/' + incident + '/actions/' + action.action_id + '/confirm',
-            { method: 'POST', body: JSON.stringify({ confirm: true }) });
+            { method: 'POST', body: JSON.stringify({ confirm: true, assessment_id: action.assessment_id }) });
           await onRefresh(); setMessage(outcome.result || 'Confirmation processed; see the recorded result.');
         })}>Confirm closing virtual water valve</button>}
       {action.status === 'pending_confirmation' && <small>Expires {new Date(action.expires_at * 1000).toLocaleTimeString()}</small>}

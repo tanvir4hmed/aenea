@@ -36,7 +36,7 @@ def dispatch(owner, scopes, name, args):
         "get_incident_status": {"incident_id"}, "get_incident_timeline": {"incident_id", "cursor"},
         "get_household_status": {"incident_id", "cursor"}, "report_person_status": {"incident_id", "person", "status", "request_id"},
         "acknowledge_incident": {"incident_id"}, "request_safe_action": {"incident_id", "action_id"},
-        "confirm_action": {"incident_id", "action_id", "confirm"},
+        "confirm_action": {"incident_id", "action_id", "assessment_id", "confirm"},
         "get_action_status": {"incident_id", "action_id"}, "get_responder_summary": {"incident_id"},
     }
     if not isinstance(args, dict) or set(args) - allowed[name]:
@@ -136,11 +136,11 @@ def dispatch(owner, scopes, name, args):
             return {**action, "status": "superseded", "result": "New evidence or rejected review prevents execution", "execution_performed": False}
         return action
     if name == "confirm_action":
-        if args.get("confirm") is not True:
+        if args.get("confirm") is not True or not isinstance(args.get("assessment_id"), str) or not re.fullmatch(r"[a-f0-9]{32}", args["assessment_id"]):
             raise ValueError("Explicit confirmation is required")
         if action["status"] != "pending_confirmation":
             return action
-        audit(owner, incident, "confirmation", identifier + ":" + action["assessment_id"], {"actor": owner})
-        return execute(owner, incident, identifier, confirmed=True)
+        audit(owner, incident, "confirmation", identifier + ":" + args["assessment_id"], {"actor": owner, "assessment_id": args["assessment_id"]})
+        return execute(owner, incident, identifier, confirmed=True, expected_assessment=args["assessment_id"])
     # Only an existing assessed/policy-checked action can be requested.
     return execute(owner, incident, identifier)

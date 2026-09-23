@@ -53,6 +53,12 @@ class RevisionTests(unittest.TestCase):
         self.assertFalse(result["execution_performed"])
         self.module.evidence.assert_not_called()
 
+    def test_confirmation_cannot_move_to_a_replacement_assessment(self):
+        result = self.module.execute("owner", "incident", "action", confirmed=True, expected_assessment="older-assessment")
+        self.assertFalse(result["execution_performed"])
+        self.assertEqual(result["status"], "superseded")
+        self.module.profile.assert_not_called()
+
     def test_rejected_review_blocks_execution(self):
         self.table.get_item.return_value = {"Item": {**self.summary, "decision_review": "rejected"}}
         self.assertEqual(self.module.execute("owner", "incident", "action")["status"], "superseded")

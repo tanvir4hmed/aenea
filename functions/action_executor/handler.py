@@ -49,15 +49,16 @@ def handler(event, context):
             return review(owner, incident, params["assessment_id"], body)
         identifier = params["action_id"]
         if (not re.fullmatch(r"[a-f0-9]{32}", identifier) or not isinstance(body, dict)
-                or set(body) != {"confirm"} or body["confirm"] is not True):
+                or set(body) != {"confirm", "assessment_id"} or body["confirm"] is not True
+                or not isinstance(body["assessment_id"], str) or not re.fullmatch(r"[a-f0-9]{32}", body["assessment_id"])):
             raise ValueError("Explicit confirmation required")
         item = get(owner, incident, "ACTION#" + identifier)
         if not item:
             return response(404, {"error": "Action not found"})
         if item["status"] != "pending_confirmation":
             return response(409, {"error": "Action is not awaiting confirmation", "status": item["status"]})
-        audit(owner, incident, "confirmation", identifier, {"actor": owner, "action_id": identifier})
-        return response(200, execute(owner, incident, identifier, confirmed=True))
+        audit(owner, incident, "confirmation", identifier + ":" + body["assessment_id"], {"actor": owner, "action_id": identifier, "assessment_id": body["assessment_id"]})
+        return response(200, execute(owner, incident, identifier, confirmed=True, expected_assessment=body["assessment_id"]))
     except PermissionError:
         return response(401, {"error": "Authentication required"})
     except ValueError as exc:

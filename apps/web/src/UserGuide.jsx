@@ -7,7 +7,7 @@ export default function UserGuide({ navigate }) {
         <li><h3>Add locations and devices</h3><p>In Settings, create locations with your own names and optional addresses. Add devices with a name, room and type. Duplicate a device to create another sensor or camera. Simulation is the available connection method.</p></li>
         <li><h3>Compose and send signals</h3><p>In Simulation Studio, add device observations to the queue and select which to send. Choose a new or existing incident. Send selected signals together, or send the next signal and add more context later. The same run keeps its incident until you clear or replay the queue.</p></li>
         <li><h3>Review the response</h3><p>Open Command center to inspect evidence, the saved AI assessment and policy decisions. An accepted signal may take a moment to appear.</p></li>
-        <li><h3>Coordinate through Alexa+</h3><p>The web simulator reads the same incident records. Use its supported phrases or buttons to check status, report a person’s status and review actions.</p></li>
+        <li><h3>Coordinate through Alexa+</h3><p>Select an incident and refresh context and actions. Use suggested commands to check status, read check-ins or prepare a handoff. Valve approval is tied to the displayed assessment. If it changes, refresh and review the new proposal before confirming. Clearing local chat keeps incident history.</p></li>
         <li><h3>Check in and prepare a handoff</h3><p>Household keeps reports for the selected incident. Handoff prepares a timestamped summary for review or printing.</p></li>
       </ol><button className="primary" onClick={() => navigate('simulation-lab')}>Open Simulation lab</button>
     </section>

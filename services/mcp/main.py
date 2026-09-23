@@ -77,9 +77,9 @@ def request_safe_action(incident_id: str, action_id: str, ctx: Context) -> dict:
 
 
 @mcp.tool()
-def confirm_action(incident_id: str, action_id: str, confirm: bool, ctx: Context) -> dict:
+def confirm_action(incident_id: str, action_id: str, assessment_id: str, confirm: bool, ctx: Context) -> dict:
     """Only after explicit user approval of this action, confirm a pending virtual valve proposal."""
-    return call(ctx, "confirm_action", {"incident_id": incident_id, "action_id": action_id, "confirm": confirm})
+    return call(ctx, "confirm_action", {"incident_id": incident_id, "action_id": action_id, "assessment_id": assessment_id, "confirm": confirm})
 
 
 @mcp.tool()

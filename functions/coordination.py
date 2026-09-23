@@ -72,10 +72,12 @@ def action_id(incident, proposal):
     return hashlib.sha256(f"{incident}:{proposal['device_id']}:{proposal['action']}".encode()).hexdigest()[:32]
 
 
-def execute(owner, incident, identifier, confirmed=False):
+def execute(owner, incident, identifier, confirmed=False, expected_assessment=None):
     item = get(owner, incident, "ACTION#" + identifier)
     if not item:
         raise KeyError("Unknown action")
+    if expected_assessment is not None and item["assessment_id"] != expected_assessment:
+        return {**item, "status": "superseded", "result": "Assessment changed since approval. Read and confirm the new proposal.", "execution_performed": False}
     if item["status"] in {"succeeded", "failed", "blocked", "expired"}:
         return item
     current = profile(owner)

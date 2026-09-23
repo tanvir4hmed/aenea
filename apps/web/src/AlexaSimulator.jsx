@@ -1,102 +1,98 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createMcpClient } from './mcp';
-
-const commands = {
-  'what is happening': 'get_incident_status',
-  'show the timeline': 'get_incident_timeline',
-  'who is safe': 'get_household_status',
-  'acknowledge incident': 'acknowledge_incident',
-  'prepare a handoff': 'get_responder_summary',
-};
-function describe(name, data) {
-  if (data.assessment?.assessment) return (data.assessment_current ? '' : 'Previous assessment; newer evidence is awaiting assessment or revision tracking is unavailable. ') + (data.incident?.decision_review === 'rejected' ? 'This assessment has been rejected by a reviewer. ' : '') + data.assessment.assessment.summary;
-  if (name === 'get_incident_status') return 'Incident stage: ' + (data.incident?.status || 'unknown').replaceAll('_',' ') + '.';
-  if (name === 'get_household_status') return data.items?.length ?
-    data.items.map(p => p.person + ': ' + p.status.replaceAll('_',' ') + ' (self-reported at ' + p.reported_at + ')').join('. ') + (data.next_cursor ? '. Partial page; more check-ins exist.' : '') :
-    'No household check-ins are recorded. Everyone’s status is unknown.';
-  if (name === 'report_person_status') return data.person + ' is recorded as ' + data.status.replaceAll('_',' ') + '. This is a self-report.';
-  if (name === 'acknowledge_incident') return 'Incident acknowledged. It has not been marked resolved.';
-  if (name === 'get_responder_summary') return data.notice + (data.partial ? ' The summary is partial; additional records exist.' : '');
-  if (name === 'get_incident_timeline') return 'Loaded ' + data.items.length + ' incident records.' + (data.next_cursor ? ' More records are available.' : '');
-  return (data.status || 'recorded').replaceAll('_',' ') + ': ' + (data.result || data.policy_reason || 'See the recorded result.');
-}
+import { commands, commandFor, describe, canExecute } from './alexaConversation';
 
 export default function AlexaSimulator({ config, incidents, selected, onSelect }) {
   const client = useMemo(() => createMcpClient(config), [config.apiUrl, config.clientId, config.cognitoDomain]);
-  const [input, setInput] = useState('what is happening'), [messages, setMessages] = useState([]);
+  const [input, setInput] = useState(''), [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const [person, setPerson] = useState('Me'), [status, setStatus] = useState('unknown');
+  const [person, setPerson] = useState('Resident A'), [status, setStatus] = useState('unknown');
   const [actions, setActions] = useState([]), [readAloud, setReadAloud] = useState(false);
-  const [cursor, setCursor] = useState(null);
-  const recognition = useRef(null);
-  useEffect(() => () => { recognition.current?.abort(); window.speechSynthesis?.cancel(); }, []);
-  useEffect(() => { setActions([]); setCursor(null); setMessages([]); }, [selected]);
-  async function run(name, extra = {}, phrase = name) {
-    if (!selected) { setError('Select an incident first.'); return; }
-    setBusy(true); setError('');
-    try {
-      const data = await client.call(name, { incident_id: selected, ...extra });
-      const reply = describe(name, data);
-      setMessages(old => [...old, { phrase, reply, data }]);
-      if (name === 'get_incident_timeline') {
-        setActions(old => [...new Map([...old, ...data.items.filter(i => i.action_id && i.proposal)]
-          .map(action => [action.action_id, action])).values()]);
-        setCursor(data.next_cursor);
-      }
-      if (['confirm_action', 'request_safe_action', 'get_action_status'].includes(name))
-        setActions(old => old.map(a => a.action_id === data.action_id ? data : a));
-      if (readAloud && window.speechSynthesis) window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
-    } catch (e) { setError(e.message); }
-    finally { setBusy(false); }
+  const [context, setContext] = useState(null), [refreshedAt, setRefreshedAt] = useState(null);
+  const [cursor, setCursor] = useState(null), [peopleCursor, setPeopleCursor] = useState(null);
+  const [listening, setListening] = useState(false);
+  const recognition = useRef(null), lock = useRef(false), generation = useRef(0);
+  useEffect(() => {
+    generation.current += 1; lock.current = false; setBusy(false); setError(''); setActions([]); setCursor(null); setPeopleCursor(null); setMessages([]); setContext(null); setRefreshedAt(null);
+    recognition.current?.abort(); setListening(false); window.speechSynthesis?.cancel();
+    return () => { generation.current += 1; recognition.current?.abort(); window.speechSynthesis?.cancel(); };
+  }, [selected]);
+  function saveActions(data, append = false) {
+    const rows = data.items.filter(item => item.action_id && item.proposal);
+    setActions(old => [...new Map([...(append ? old : []), ...rows].map(action => [action.action_id, action])).values()]);
+    setCursor(data.next_cursor);
   }
-  function submit(e) {
-    e.preventDefault();
-    const phrase = input.toLowerCase().replace(/[?.!]/g, '').trim();
-    if (!commands[phrase]) { setError('Use one of the supported phrases below. This simulator uses explicit commands.'); return; }
-    run(commands[phrase], {}, input);
+  async function run(tool, extra = {}, phrase = tool) {
+    if (!selected || lock.current) return;
+    lock.current = true; setBusy(true); setError('');
+    const version = generation.current;
+    try {
+      const data = await client.call(tool, { incident_id: selected, ...extra });
+      if (version !== generation.current) return;
+      const reply = describe(tool, data);
+      setMessages(old => [...old.slice(-29), { phrase, reply, data, tool, time: new Date().toLocaleTimeString() }]);
+      if (tool === 'get_incident_status') { setContext(data); setRefreshedAt(new Date().toLocaleTimeString()); }
+      if (tool === 'get_incident_timeline') saveActions(data, !!extra.cursor);
+      if (tool === 'get_household_status') setPeopleCursor(data.next_cursor);
+      if (['confirm_action', 'request_safe_action', 'get_action_status'].includes(tool)) setActions(old => old.map(action => action.action_id === data.action_id ? data : action));
+      if (readAloud && window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply)); }
+    } catch (failure) { if (version === generation.current) setError(failure.message); }
+    finally { if (version === generation.current) { lock.current = false; setBusy(false); } }
+  }
+  async function refresh() {
+    if (!selected || lock.current) return;
+    lock.current = true; setBusy(true); setError('');
+    const version = generation.current;
+    try {
+      const state = await client.call('get_incident_status', { incident_id: selected });
+      const records = await client.call('get_incident_timeline', { incident_id: selected });
+      if (version !== generation.current) return;
+      setContext(state); saveActions(records); setRefreshedAt(new Date().toLocaleTimeString());
+    } catch (failure) { if (version === generation.current) setError(failure.message); }
+    finally { if (version === generation.current) { lock.current = false; setBusy(false); } }
+  }
+  function submit(event) {
+    event.preventDefault(); const command = commandFor(input);
+    if (!command) { setError('Choose a suggested command below. Device approvals use the explicit action buttons.'); return; }
+    run(command.tool, {}, input);
   }
   function listen() {
+    if (listening) { recognition.current?.abort(); setListening(false); return; }
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Speech) { setError('Speech recognition is unavailable here; type or use the buttons.'); return; }
-    recognition.current?.abort();
+    if (!Speech) { setError('Speech recognition is unavailable here. Type a command or use a button.'); return; }
+    const version = generation.current;
     const mic = new Speech(); recognition.current = mic;
     mic.lang = 'en-US'; mic.interimResults = false;
-    mic.onresult = e => setInput(e.results[0][0].transcript);
-    mic.onerror = () => setError('Microphone unavailable. You can type instead.');
-    mic.start();
+    mic.onresult = event => { if (version === generation.current) setInput(event.results[0][0].transcript); };
+    mic.onerror = () => { if (version === generation.current) { setError('Microphone stopped or unavailable. You can type instead.'); setListening(false); } };
+    mic.onend = () => { if (version === generation.current) setListening(false); };
+    try { mic.start(); setListening(true); } catch { setError('Unable to start microphone. Try a typed command.'); }
   }
-  return <section className="card">
-    <h2>Alexa+ experience simulation</h2>
-    <p>Explicit English commands use our hosted MCP tools and real saved incident state. This is a web simulation, not a native Alexa connection.</p>
-    <label>Incident <select value={selected} disabled={busy} onChange={e => onSelect(e.target.value)}>
-      <option value="">Choose an incident</option>
-      {incidents.map(i => <option key={i.incident_id} value={i.incident_id}>{i.incident_id.slice(0,8)}</option>)}
-    </select></label>
-    <form onSubmit={submit}><label>Say or type a supported phrase <input value={input} onChange={e => setInput(e.target.value)} disabled={busy}/></label>
-      <button disabled={busy} type="submit">{busy ? 'Working…' : 'Send'}</button>
-      <button disabled={busy} type="button" onClick={listen}>Use microphone</button>
-    </form>
-    <small>Microphone transcription may use your browser’s speech service. Review the text before sending.</small>
-    <label><input type="checkbox" checked={readAloud} onChange={e => setReadAloud(e.target.checked)}/>Read responses aloud</label>
-    <div className="actions">{Object.keys(commands).map(phrase => <button key={phrase} disabled={busy}
-      onClick={() => run(commands[phrase], {}, phrase)}>{phrase}</button>)}</div>
-    <fieldset><legend>Report a simulated household check-in</legend>
-      <label>Person <input maxLength={60} value={person} onChange={e => setPerson(e.target.value)}/></label>
-      <label>Status <select value={status} onChange={e => setStatus(e.target.value)}>
-        {['unknown','safe','needs_help','not_home'].map(s => <option key={s}>{s}</option>)}</select></label>
-      <button disabled={busy} onClick={() => run('report_person_status', { person, status }, 'Report check-in')}>Report check-in</button>
-    </fieldset>
-    <p>Show the timeline to load assessed actions. Each confirmation applies only to the displayed virtual action.</p>
-    {actions.map(a => <article key={a.action_id}><h3>{a.proposal.action.replaceAll('_',' ')} · {a.proposal.device_id}</h3>
-      <p>{a.status.replaceAll('_',' ')} — {a.result || a.policy_reason}</p>
-      <button disabled={busy} onClick={() => run('get_action_status', { action_id: a.action_id })}>Read status</button>
-      {a.status === 'allowed' && <button disabled={busy} onClick={() => run('request_safe_action', { action_id: a.action_id })}>Request virtual action</button>}
-      {a.status === 'pending_confirmation' && <button disabled={busy || Date.now() >= a.expires_at * 1000}
-        onClick={() => run('confirm_action', { action_id: a.action_id, confirm: true }, 'I confirm this virtual valve closure')}>Confirm this virtual valve closure</button>}
-    </article>)}
-    {cursor && <button disabled={busy} onClick={() => run('get_incident_timeline', { cursor }, 'Load more records')}>Load more records</button>}
-    {error && <p role="alert">{error}</p>}
-    <div aria-live="polite">{messages.map((m,i) => <article key={i}><p><b>You:</b> {m.phrase}</p><p><b>Aenea:</b> {m.reply}</p>
-      <details><summary>Recorded evidence and tool result</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(m.data,null,2)}</pre></details></article>)}</div>
-  </section>;
+  return <>
+    <section className="card"><div className="row"><div><h2>Alexa+ coordination</h2><p>Web simulator · English commands · Saved incident state</p></div><button disabled={busy || !selected} onClick={refresh}>{busy ? 'Working…' : 'Refresh context and actions'}</button></div>
+      <label>Incident<select value={selected} disabled={busy} onChange={event => onSelect(event.target.value)}><option value="">Choose an incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{selected.slice(0, 8)}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{item.incident_id.slice(0, 8)}</option>)}</select></label>
+      {!selected && <p>Select an incident, then refresh its context or ask a question.</p>}
+      {context && <div className="context-bar"><span>Evidence revision {context.incident.event_count}</span><strong>{context.assessment_current ? 'Current assessment' : 'Awaiting current assessment'}</strong><span>Review: {context.incident.decision_review || 'unreviewed'}</span><span>Read at {refreshedAt}</span></div>}
+      <form onSubmit={submit}><label>Command<input value={input} placeholder="What is happening?" onChange={event => setInput(event.target.value)} disabled={busy || !selected}/></label><div className="actions"><button className="primary" disabled={busy || !selected || !input.trim()}>Send command</button><button disabled={busy || !selected} type="button" aria-pressed={listening} onClick={listen}>{listening ? 'Stop microphone' : 'Use microphone'}</button></div></form>
+      <label><input type="checkbox" checked={readAloud} onChange={event => { setReadAloud(event.target.checked); if (!event.target.checked) window.speechSynthesis?.cancel(); }}/>Read replies aloud</label>
+      <p className="guest-warning">Microphone transcription uses your browser’s speech service. Review text before sending. This is not a native Alexa connection.</p>
+      <div className="actions">{commands.map(command => <button key={command.tool} disabled={busy || !selected} onClick={() => run(command.tool, {}, command.phrase)}>{command.phrase}</button>)}</div>
+      {error && <p className="error" role="alert">{error}</p>}
+    </section>
+    <div className="columns"><section className="card"><div className="row"><h2>Conversation</h2><button disabled={busy || !messages.length} onClick={() => { setMessages([]); window.speechSynthesis?.cancel(); }}>Clear local chat</button></div>
+      {!messages.length && <p>Ask about evidence, check-ins or the response. Replies refer only to saved records.</p>}
+      <div className="conversation" role="log" aria-label="Incident conversation" aria-relevant="additions">{messages.map((message, index) => <article className="conversation-turn" key={index}><small>{message.time}</small><p><strong>You:</strong> {message.phrase}</p><p><strong>Aenea:</strong> {message.reply}</p><details><summary>Source records</summary><pre className="evidence-json">{JSON.stringify(message.data, null, 2)}</pre></details></article>)}</div>
+      {peopleCursor && <button disabled={busy} onClick={() => run('get_household_status', { cursor: peopleCursor }, 'Read more check-ins')}>Read more check-ins</button>}
+    </section><div>
+      <section className="card"><h2>Check in</h2><form onSubmit={event => { event.preventDefault(); run('report_person_status', { person: person.trim(), status }, `Report ${person.trim()}: ${status.replaceAll('_', ' ')}`); }}><fieldset disabled={busy || !selected}><legend>Simulated self-report</legend><label>Resident<input required pattern="[A-Za-z0-9 _\-]{1,60}" maxLength={60} value={person} onChange={event => setPerson(event.target.value)}/></label><label>Status<select value={status} onChange={event => setStatus(event.target.value)}>{Object.entries({ unknown: 'Unknown', safe: 'Reported safe', needs_help: 'Needs help', not_home: 'Reported away' }).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={!person.trim()}>Record check-in</button></fieldset></form></section>
+      <section className="card"><h2>Coordinated actions</h2>{!context && <p>Refresh context and actions to see which proposals can be requested.</p>}{context && !actions.length && <p>No actions in the loaded records.</p>}
+        {actions.map(action => { const eligible = canExecute(action, context); return <article className="catalog-item" key={action.action_id}><h3>{action.proposal.action.replaceAll('_', ' ')}</h3><p>{action.status.replaceAll('_', ' ')} · Revision {action.evidence_revision ?? 'legacy'}</p><p>{action.result || action.policy_reason}</p><div className="actions"><button disabled={busy} onClick={() => run('get_action_status', { action_id: action.action_id }, 'Read action outcome')}>Read outcome</button>
+          {action.status === 'allowed' && <button disabled={busy || !eligible} onClick={() => run('request_safe_action', { action_id: action.action_id }, 'Request virtual action')}>Request virtual action</button>}
+          {action.status === 'pending_confirmation' && <button disabled={busy || !eligible} onClick={() => run('confirm_action', { action_id: action.action_id, assessment_id: action.assessment_id, confirm: true }, 'Confirm this revision’s virtual valve closure')}>Confirm virtual valve closure</button>}</div>
+          {!eligible && !['succeeded', 'failed'].includes(action.status) && <small>Refresh context. Outdated, expired or rejected proposals cannot execute.</small>}
+        </article>; })}
+        {cursor && <button disabled={busy} onClick={() => run('get_incident_timeline', { cursor }, 'Read more action records')}>Load more records</button>}
+      </section>
+    </div></div>
+  </>;
 }

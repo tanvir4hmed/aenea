@@ -24,7 +24,7 @@ All tools require `aenea/read`. Mutations additionally require `aenea/write`. Th
 | report_person_status | Save synthetic check-in and its audit atomically |
 | acknowledge_incident | Record acknowledgment, not resolution |
 | request_safe_action | Request an existing assessed action through deterministic policy |
-| confirm_action | Explicit approval for a pending action; executor rechecks evidence, expiry and permissions |
+| confirm_action | Explicit approval bound to assessment_id; executor rechecks proposal identity, evidence, expiry and permissions |
 | get_action_status | Read the saved outcome rather than infer success |
 | get_responder_summary | Bounded synthetic handoff with an explicit partial flag; sends nothing |
 
