@@ -202,7 +202,7 @@
         "filename": "${path.module}/../../.artifacts/${each.key}.zip",
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
         "timeout": "${contains([\"invoke_reasoner\", \"cleanup\"], each.key) ? 170 : 25}",
-        "reserved_concurrent_executions": "${each.key == \"cleanup\" ? 1 : -1}",
+          "reserved_concurrent_executions": -1,
         "memory_size": 256,
         "environment": {
           "variables": {

@@ -64,6 +64,25 @@ class CleanupWorkerTests(unittest.TestCase):
         self.s3.list_object_versions.assert_not_called()
         self.table.delete_item.assert_not_called()
 
+    def test_concurrent_sweeper_is_skipped(self):
+        from botocore.exceptions import ClientError
+        self.table.update_item.side_effect = ClientError(
+            {"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem")
+        with patch.object(self.module, "sweep") as sweep:
+            self.assertEqual(self.module.handler({}, self.context), {"status": "already_running"})
+        sweep.assert_not_called()
+        self.table.delete_item.assert_not_called()
+
+    def test_lease_release_is_owner_bound_even_after_failure(self):
+        with patch.object(self.module, "sweep", side_effect=RuntimeError("retry")), self.assertRaises(RuntimeError):
+            self.module.handler({}, self.context)
+        acquire = self.table.update_item.call_args.kwargs
+        release = self.table.delete_item.call_args.kwargs
+        self.assertEqual(release["Key"], {"pk": "CLEANUP", "sk": "LOCK"})
+        self.assertEqual(release["ConditionExpression"], "lease_token = :token")
+        self.assertEqual(release["ExpressionAttributeValues"][":token"], acquire["ExpressionAttributeValues"][":token"])
+        self.assertEqual(acquire["ExpressionAttributeValues"][":until"] - acquire["ExpressionAttributeValues"][":now"], 240)
+
     def test_missing_marker_never_deletes_data(self):
         self.module.deleted.return_value = None
         self.module.purge(self.job, self.context)

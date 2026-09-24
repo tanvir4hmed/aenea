@@ -85,7 +85,7 @@ def purge(job, context):
     table.delete_item(Key=job_key)
 
 
-def handler(event, context):
+def sweep(context):
     cursor = None
     while context.get_remaining_time_in_millis() > 20000:
         query = {"KeyConditionExpression": Key("pk").eq("CLEANUP") & Key("sk").begins_with("JOB#"), "Limit": 25, "ConsistentRead": True}
@@ -106,3 +106,32 @@ def handler(event, context):
         cursor = page.get("LastEvaluatedKey")
         if not cursor:
             return
+
+
+def handler(event, context):
+    # Account quotas may prohibit reserved concurrency. Serialize sweepers with
+    # a lease longer than the Lambda's 170-second hard timeout.
+    key = {"pk": "CLEANUP", "sk": "LOCK"}
+    token = str(uuid.uuid4())
+    now = int(time.time())
+    try:
+        table.update_item(
+            Key=key,
+            UpdateExpression="SET lease_token = :token, lease_until = :until",
+            ConditionExpression="attribute_not_exists(lease_until) OR lease_until < :now",
+            ExpressionAttributeValues={":token": token, ":until": now + 240, ":now": now},
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return {"status": "already_running"}
+        raise
+    try:
+        sweep(context)
+    finally:
+        # Never remove a replacement lease if this invocation lost ownership.
+        try:
+            table.delete_item(Key=key, ConditionExpression="lease_token = :token",
+                              ExpressionAttributeValues={":token": token})
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                raise
