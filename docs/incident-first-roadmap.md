@@ -29,80 +29,64 @@ These fixes need to remain in the regression suite, but are not a reason to rede
 
 ## Delivery order
 
-### Phase 0 — recoverability and trustworthy states
+There are exactly two implementation phases. **Phase 2 may not start until Phase 1 passes its hosted acceptance gate and the user gives explicit permission.**
 
-Fix this before any new dashboard work.
+### Phase 1 — Incident Experience Hardening
+
+This one phase completes every previously identified reliability, usability and coordination issue before a graphical Command Center exists.
+
+#### 1. Reliable incident lifecycle
 
 - Replace generic “Request failed” messages with an operation-specific error: affected incident, whether a write may have completed, safe retry action and support-safe diagnostic ID.
 - Add consistent loading, empty, timeout and retry states to every incident-dependent page. Never render raw configuration or authentication races.
 - Give every incident a visible lifecycle: `collecting evidence`, `assessing`, `needs confirmation`, `coordinating`, `resolved`, `failed`, `archived`, and `deletion pending`.
-- Make failed or old incidents recoverable: show the failed step/reason, refresh safely, reassess retained evidence where valid, archive/hide, or request guarded deletion. Do not silently strand an incident in `collecting evidence`.
-- Redesign deletion around the incident itself: an incident menu, clearly separate **Archive** from irreversible **Delete**, copyable ID, deliberate confirmation, progress state and immediate visible result. Keep the existing scheduled cleanup path; do not bulk-delete shared data.
-- Add pagination/filtering for incident history so old records remain manageable.
+- Make failed or old incidents recoverable: show failed step/reason, refresh safely, reassess retained evidence where valid, archive/hide, or request guarded deletion. Do not strand an incident in `collecting evidence`.
+- Add paginated, filterable incident history.
 
-**Acceptance gate:** a fresh synthetic incident can be created, assessed, updated, archived and deletion-requested without a vague error; an intentionally failed fixture explains how it can be recovered.
+#### 2. Clear settings and data control
 
-### Phase 1 — information architecture and pre-incident setup
+- Rework navigation to **Incident workspace**, **Incident history**, **Settings** and **Guide**; existing pages become focused views inside the workspace rather than a page-hopping requirement.
+- Split Settings into Locations, Device inventory, Response policy and Data controls.
+- Support user-named locations such as home, office, building or unit, with optional address and rooms/zones.
+- Replace the long device list with searchable/filterable inventory grouped by location and room. Use a details drawer or dedicated detail page for edit, disable, duplicate and delete.
+- Keep response permissions separate from device inventory.
+- Redesign deletion at the incident level: clearly separate **Archive** from irreversible **Delete**, provide a copyable ID and deliberate confirmation, show cleanup progress and update history immediately. Never use global/shared-data deletion as a reset.
 
-Move setup away from active-incident operations.
+#### 3. Alexa-led incident coordination
 
-- Navigation: **Command Center**, **Incident history**, **Settings**, **Guide**. Alexa coordination becomes a Command Center panel, not a disconnected workflow users need to find.
-- Settings sections: Locations, Device inventory, Response policy and Data controls.
-- Locations are user-named and may represent a home, office, building, unit or other site; each has optional address and rooms/zones.
-- Replace the long device list with a searchable/filterable inventory grouped by location and room. Use a details drawer or dedicated detail page for edit, disable, duplicate and delete.
-- Device records gain validated display metadata needed by the map: location, room/zone, device type, enabled state and a simple layout position/template. Keep simulated source explicit.
-- Keep response permissions separate from a device's basic inventory information.
-- Treat capacity as a usability boundary, not a one-device-per-room model. The prototype supports up to **50 locations per household**, **40 rooms/zones per location**, **200 devices per location** and **30 devices per room/zone**. This comfortably permits several smoke detectors, cameras and other sensors in one home or office. Validation prevents a room from becoming unreadable; the inventory remains the source of truth.
-- The floor view shows individual devices up to 12 per room. Above that, it groups normal devices by type and expands them on selection; affected and reporting devices always remain individually visible.
+- Put an **Alexa+ coordination** panel in the incident workspace: current briefing, what changed, recommendation, open question and next action. Fix the existing spacing/alignment issue between incident selection and command controls.
+- Persist concise incident update records so refresh/reload does not lose material changes. Client refresh/polling is sufficient for this prototype.
+- Surface new evidence, escalation/de-escalation, policy-blocked actions, check-in changes and handoff readiness without noisy duplicates.
+- Keep typed commands as a secondary demo path, with supported prompts and a user-initiated read-aloud action. State honestly that it is an Alexa+ simulation, not native Alexa messaging or emergency dispatch.
 
-**Acceptance gate:** a user can set up two named locations, including a room with several same-type sensors, manage devices without scrolling through an add form, and find data controls without passing through device inventory.
+#### 4. Decision, household and handoff flow
 
-### Phase 2 — focused incident Command Center
+- Add one **Needs your decision** queue for confirmation-required actions, showing evidence/revision, policy rationale, choices, expiry/staleness and consequence.
+- Bind approval to the current assessment revision. Later evidence invalidates stale approval and produces a new briefing.
+- Keep synthetic, incident-specific household reports available from Alexa-requested tasks with a web fallback.
+- Make handoff states legible: preparing, ready, retryable failure and last-updated revision.
 
-Build the graphical dashboard only after Phases 0–1 are accepted.
+#### 5. Quality and proof
 
-- Show one selected active incident with severity, current lifecycle state, latest evidence, affected location, people/check-in summary, assessment revision, policy outcome and next required human step.
-- Render an accessible, semantic device map/floor-plan from location and device metadata. It must also work as a keyboard-operable list; colour or icons cannot be the sole status signal.
-- A location or room click focuses that zone and opens its device tray. A device click opens a compact detail panel, rather than immediately generating an event.
-- In **Simulation mode** only, the device detail panel offers only signal types that device can produce—for example, a smoke detector can create smoke/CO and a leak sensor can create water-leak evidence. The user then chooses **Start new incident** or **Add to selected incident**. Both commands send the existing simulated-ingest event; they never create display-only data.
-- A room-level **Build test scenario** action can stage several selected device signals, then send them together or release the next signal later. This retains the existing Simulation Studio capability while making it accessible from the floor view.
-- Once an event is accepted, the map immediately marks it `reporting`; the incident timeline, assessment and Alexa+ panel update as the real pipeline completes. The UI shows processing instead of pretending an agent decision already exists.
-- The map displays only useful incident states: normal, reporting, affected, unavailable and action-pending. It must not imply a live physical-device connection.
-- Keep the timeline compact and progressive: new evidence and decision revisions appear as concise updates, with full audit detail available on demand.
+- Make layouts responsive and accessible: keyboard navigation, visible focus, labels, headings and screen-reader status announcements.
+- Prevent duplicate submits, distinguish saved from processing, preserve selected incident on refresh and offer safe transient-error retries.
+- Provide a resettable, isolated demo household/seed scenario instead of mixing shared guest records.
+- Add end-to-end coverage for login return, configuration loading, device CRUD, single/multi-signal correlation, reassessment after new evidence, check-in, decisions, handoff, archive and guarded deletion.
 
-**Acceptance gate:** click Kitchen, select a named smoke detector, create a smoke signal, then create a later camera or leak signal for the same incident. Both map/timeline/Alexa updates must result from the actual event path without changing pages. A staged multi-device scenario must use the same path.
+**Phase 1 acceptance gate:** a clean demo user can configure devices, run one single and one multi-signal simulation, receive understandable Alexa-led updates, handle a decision, prepare a handoff, and recover/archive/delete an old incident in one browser session—with no unexplained error, UUID hunt or required page hopping.
 
-### Phase 3 — Alexa+ coordination surface
+### Phase 2 — Interactive graphical Command Center
 
-Make Alexa's role clear and useful without claiming a native integration.
+Start only after Phase 1 is accepted and permission is granted.
 
-- Add an in-app **Alexa+ coordination** panel beside the active incident: concise proactive briefing, what changed, immediate safe recommendation, open question and the next action.
-- Persist incident notification records so a refresh/reload does not lose material updates. For the prototype, client refresh/polling is sufficient; do not add WebSockets unless a later need proves it.
-- Surface new-evidence updates, escalation/de-escalation, policy-blocked actions, check-in changes and handoff readiness. Avoid noisy duplicate alerts.
-- Keep typed commands as a secondary demonstration method. Provide supported prompts and a user-initiated “Read briefing aloud” control; do not auto-play browser audio.
-- State the boundary in product language: this is an Alexa+ simulation; no native Alexa messaging, real alarm action or emergency dispatch occurs.
+- Add location/room/layout metadata, supported signal types and capacity validation to simulated-device records.
+- Support up to **50 locations per household**, **40 rooms/zones per location**, **200 devices per location** and **30 devices per room/zone**. This supports several smoke detectors, cameras and other sensors at one site.
+- Render an accessible, semantic device map/floor-plan; it also has an equivalent keyboard-operable list. Individual devices show up to 12 per room; above that, normal devices group by type while reporting/affected devices remain visible.
+- Click location/room → focus zone and open device tray. Click device → detail panel. In Simulation mode, choose only a signal that device supports, then **Start new incident** or **Add to selected incident**.
+- Add a room-level **Build test scenario** option to stage selected signals and send them together or later. It reuses the existing ingestion contract with a `command_center` source marker—never a parallel mock-event store.
+- After event acceptance, show `reporting`; then let the actual pipeline update timeline, decision state and the Alexa+ panel.
 
-**Acceptance gate:** after a new signal is processed, the selected incident displays a fresh briefing and any changed decision without the user opening Household, Handoff or a separate Alexa page.
-
-### Phase 4 — accountable decision and household coordination
-
-- Add a single **Needs your decision** queue for confirmation-required actions.
-- For each decision, show evidence and assessment revision, policy reason, allowed choices, expiry/staleness state and what approving/rejecting will do.
-- Bind approval to the current assessment revision; an incoming signal invalidates stale approval and produces a new briefing rather than executing an old decision.
-- Keep household self-reports incident-specific and synthetic. Make them available as an Alexa-requested task with web fallback.
-- Make handoff asynchronous but legible: preparing, ready, retryable failure and last-updated revision. A handoff remains a bounded synthetic brief, never a responder dispatch.
-
-**Acceptance gate:** a new signal after a proposed action creates a new revision and blocks stale approval; the user can understand why without reading raw agent output.
-
-### Phase 5 — accessibility, resilience and demo readiness
-
-- Responsive layouts for laptop, tablet and narrow mobile views; keyboard navigation, visible focus, labelled controls, logical heading order and screen-reader status announcements.
-- Prevent duplicate submissions, distinguish “saved” from “processing”, preserve selected incident on refresh, and offer a safe retry path for transient failures.
-- Provide a resettable, isolated demo household/seed scenario. Do not delete shared guest data as a reset mechanism.
-- Add end-to-end UI coverage for authentication return, configuration loading, device CRUD, map-triggered signal, single/multi-signal correlation, new-evidence reassessment, check-in, decision review, handoff, archive and guarded deletion.
-- Run an explicit hosted verification checklist with a clean demo account and document all remaining simulation limits.
-
-**Acceptance gate:** a judge can complete the main story in one browser session with no unexplained failure, no manual UUID hunt and no required page hopping during the incident flow.
+**Phase 2 acceptance gate:** click Kitchen, select a named smoke detector and generate a smoke signal; later add camera or leak evidence to the same incident. The real pipeline updates map, timeline and Alexa briefing without page changes. A staged multi-device scenario follows the same path.
 
 ## Required data and API additions
 
@@ -136,4 +120,4 @@ Existing Terraform, DynamoDB, Lambda/API, Step Functions, AgentCore reasoner, Co
 
 ## Build sequence for the next implementation session
 
-Start with **Phase 0 only**. First inventory existing incident APIs, lifecycle fields, UI error paths and cleanup state; write tests for the old failed-incident and guarded-deletion journeys before altering the interface. Do not begin the map or Alexa panel until the Phase 0 acceptance gate is met.
+Start and complete **Phase 1 only**. First inventory existing incident APIs, lifecycle fields, UI error paths and cleanup state; write tests for the old failed-incident and guarded-deletion journeys before altering the interface. Do not begin any graphical map/floor-plan work until Phase 1 is hosted-verified and explicit permission for Phase 2 is given.
