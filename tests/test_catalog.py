@@ -66,6 +66,11 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(table.put_item.call_args.kwargs["Item"]["devices"], [])
 
     def test_limit_rejected(self):
-        self.body["devices"] = [self.device] * 101
+        self.body["devices"] = [self.device] * 201
         with self.assertRaises(ValueError):
+            validate_catalog(self.body)
+
+    def test_room_limit_rejected(self):
+        self.body["devices"] = [{**self.device, "id": str(uuid.uuid4())} for _ in range(31)]
+        with self.assertRaisesRegex(ValueError, "30 devices"):
             validate_catalog(self.body)

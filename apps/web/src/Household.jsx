@@ -18,7 +18,7 @@ export default function Household({ config, incident }) {
   async function perform(task) {
     if (lock.current || !incident) return;
     lock.current = true; setBusy(true); setError(''); setNotice('');
-    try { await task(); } catch (e) { setError(e.message); }
+    try { await task(); } catch (e) { setError(`Household update could not complete: ${e.message}`); }
     finally { lock.current = false; setBusy(false); }
   }
   useEffect(() => { if (incident) perform(() => load()); }, [incident]);
@@ -51,6 +51,6 @@ export default function Household({ config, incident }) {
     </>}
     {busy && <p role="status">Updating shared household state…</p>}
     {notice && <p role="status">{notice}</p>}
-    {error && <p role="alert" className="error">{error} Refresh reports before retrying a write.</p>}
+    {error && <p role="alert" className="error">{error} The current household status is not changed unless a saved report appears below. Refresh reports before retrying a write.</p>}
   </section>;
 }

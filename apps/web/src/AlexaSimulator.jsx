@@ -36,7 +36,7 @@ export default function AlexaSimulator({ config, incidents, selected, onSelect }
       if (tool === 'get_household_status') setPeopleCursor(data.next_cursor);
       if (['confirm_action', 'request_safe_action', 'get_action_status'].includes(tool)) setActions(old => old.map(action => action.action_id === data.action_id ? data : action));
       if (readAloud && window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply)); }
-    } catch (failure) { if (version === generation.current) setError(failure.message); }
+    } catch (failure) { if (version === generation.current) setError(`Alexa+ could not complete that request: ${failure.message} Refresh context before trying another command.`); }
     finally { if (version === generation.current) { lock.current = false; setBusy(false); } }
   }
   async function refresh() {
@@ -48,7 +48,7 @@ export default function AlexaSimulator({ config, incidents, selected, onSelect }
       const records = await client.call('get_incident_timeline', { incident_id: selected });
       if (version !== generation.current) return;
       setContext(state); saveActions(records); setRefreshedAt(new Date().toLocaleTimeString());
-    } catch (failure) { if (version === generation.current) setError(failure.message); }
+    } catch (failure) { if (version === generation.current) setError(`Alexa+ could not refresh this incident: ${failure.message} No action has been taken.`); }
     finally { if (version === generation.current) { lock.current = false; setBusy(false); } }
   }
   function submit(event) {
@@ -70,10 +70,10 @@ export default function AlexaSimulator({ config, incidents, selected, onSelect }
   }
   return <>
     <section className="card"><div className="row"><div><h2>Alexa+ coordination</h2><p>Web simulator · English commands · Saved incident state</p></div><button disabled={busy || !selected} onClick={refresh}>{busy ? 'Working…' : 'Refresh context and actions'}</button></div>
-      <label>Incident<select value={selected} disabled={busy} onChange={event => onSelect(event.target.value)}><option value="">Choose an incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{selected.slice(0, 8)}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{item.incident_id.slice(0, 8)}</option>)}</select></label>
+      <div className="alexa-controls"><label>Incident<select value={selected} disabled={busy} onChange={event => onSelect(event.target.value)}><option value="">Choose an incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{selected.slice(0, 8)}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{item.incident_id.slice(0, 8)}</option>)}</select></label></div>
       {!selected && <p>Select an incident, then refresh its context or ask a question.</p>}
       {context && <div className="context-bar"><span>Evidence revision {context.incident.event_count}</span><strong>{context.assessment_current ? 'Current assessment' : 'Awaiting current assessment'}</strong><span>Review: {context.incident.decision_review || 'unreviewed'}</span><span>Read at {refreshedAt}</span></div>}
-      <form onSubmit={submit}><label>Command<input value={input} placeholder="What is happening?" onChange={event => setInput(event.target.value)} disabled={busy || !selected}/></label><div className="actions"><button className="primary" disabled={busy || !selected || !input.trim()}>Send command</button><button disabled={busy || !selected} type="button" aria-pressed={listening} onClick={listen}>{listening ? 'Stop microphone' : 'Use microphone'}</button></div></form>
+      <form className="alexa-command" onSubmit={submit}><label>Command<input value={input} placeholder="What is happening?" onChange={event => setInput(event.target.value)} disabled={busy || !selected}/></label><div className="actions"><button className="primary" disabled={busy || !selected || !input.trim()}>Send command</button><button disabled={busy || !selected} type="button" aria-pressed={listening} onClick={listen}>{listening ? 'Stop microphone' : 'Use microphone'}</button></div></form>
       <label><input type="checkbox" checked={readAloud} onChange={event => { setReadAloud(event.target.checked); if (!event.target.checked) window.speechSynthesis?.cancel(); }}/>Read replies aloud</label>
       <p className="guest-warning">Microphone transcription uses your browser’s speech service. Review text before sending. This is not a native Alexa connection.</p>
       <div className="actions">{commands.map(command => <button key={command.tool} disabled={busy || !selected} onClick={() => run(command.tool, {}, command.phrase)}>{command.phrase}</button>)}</div>

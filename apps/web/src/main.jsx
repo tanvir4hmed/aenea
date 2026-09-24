@@ -45,8 +45,15 @@ function App() {
     const result = await fetch(config.apiUrl + path, { ...options, headers: {
       Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } });
     if (result.status === 401) expireSession();
-    const body = await result.json();
-    if (!result.ok) throw new Error(body.error || 'Request failed; please retry.');
+    let body = {};
+    try { body = await result.json(); } catch { body = {}; }
+    if (!result.ok) {
+      const operation = options.method && options.method !== 'GET' ? 'Your change' : 'This request';
+      const detail = body.error || 'The service did not return a usable response.';
+      const recovery = result.status >= 500 ? ' Nothing was confirmed; wait briefly, then retry.' :
+        options.method && options.method !== 'GET' ? ' Check the current incident before retrying so the action is not duplicated.' : ' Refresh the current view and try again.';
+      throw new Error(`${operation} could not complete (${result.status}): ${detail}.${recovery}`);
+    }
     return body;
   }
   async function loadIncidents(cursor = null) {

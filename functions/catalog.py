@@ -11,6 +11,10 @@ DEVICE_KINDS = {
     "medical_button": ["medical_sos"], "weather_feed": ["severe_weather"],
 }
 
+MAX_LOCATIONS = 50
+MAX_DEVICES = 200
+MAX_DEVICES_PER_ROOM = 30
+
 
 def text(value, maximum, required=True):
     if not isinstance(value, str) or len(value) > maximum or (required and not value.strip()):
@@ -24,8 +28,8 @@ def validate_catalog(body):
     if body["revision"] is not None:
         uuid.UUID(body["revision"])
     locations, devices = body["locations"], body["devices"]
-    if not isinstance(locations, list) or not isinstance(devices, list) or len(locations) > 30 or len(devices) > 100:
-        raise ValueError("Limit: 30 locations and 100 devices")
+    if not isinstance(locations, list) or not isinstance(devices, list) or len(locations) > MAX_LOCATIONS or len(devices) > MAX_DEVICES:
+        raise ValueError(f"Limit: {MAX_LOCATIONS} locations and {MAX_DEVICES} devices")
     seen = set()
     for location in locations:
         if not isinstance(location, dict) or set(location) != {"id", "name", "address"}:
@@ -37,6 +41,7 @@ def validate_catalog(body):
         location["name"] = text(location["name"], 80)
         location["address"] = text(location["address"], 240, False)
     device_ids = set()
+    rooms = {}
     for device in devices:
         if not isinstance(device, dict) or set(device) != {"id", "location_id", "name", "room", "type", "connection", "enabled"}:
             raise ValueError("Invalid device")
@@ -46,6 +51,10 @@ def validate_catalog(body):
         device_ids.add(device["id"])
         device["name"] = text(device["name"], 80)
         device["room"] = text(device["room"], 80, False)
+        room_key = (device["location_id"], device["room"].casefold())
+        rooms[room_key] = rooms.get(room_key, 0) + 1
+        if rooms[room_key] > MAX_DEVICES_PER_ROOM:
+            raise ValueError(f"Limit: {MAX_DEVICES_PER_ROOM} devices in one room or zone")
         if device["type"] not in DEVICE_KINDS or device["connection"] != "simulation" or type(device["enabled"]) is not bool:
             raise ValueError("Unsupported device configuration")
     return locations, devices

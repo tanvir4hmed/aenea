@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { deviceTypes } from './devices';
 
 const emptyLocation = () => ({ id: crypto.randomUUID(), name: '', address: '' });
@@ -9,6 +9,13 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
   const [device, setDevice] = useState(() => emptyDevice(catalog.locations[0]?.id));
   const [message, setMessage] = useState('');
   const [deletion, setDeletion] = useState(null);
+  const [query, setQuery] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const visibleDevices = useMemo(() => catalog.devices.filter(item => {
+    const locationName = catalog.locations.find(location => location.id === item.location_id)?.name || '';
+    const haystack = `${item.name} ${item.room} ${item.type} ${locationName}`.toLowerCase();
+    return (!locationFilter || item.location_id === locationFilter) && haystack.includes(query.trim().toLowerCase());
+  }), [catalog.devices, catalog.locations, locationFilter, query]);
   async function persist(next, done) {
     setMessage('');
     try { await save(next); done?.(); setMessage('Settings saved.'); }
@@ -16,8 +23,8 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
   }
   const field = (setter, key) => event => setter(old => ({ ...old, [key]: event.target.value }));
   return <>
-    <section className="card"><div className="row"><div><h2>Locations and devices</h2><p>{catalog.locations.length} / 30 locations · {catalog.devices.length} / 100 devices</p></div><button disabled={busy} onClick={() => reload().catch(e => setMessage(e.message))}>Reload settings</button></div>
-      <p>Choose your own location names. Saved devices are available in Simulation Studio. Use fictional addresses in this shared prototype.</p>
+    <section className="card"><div className="row"><div><h2>Settings</h2><p>{catalog.locations.length} / 50 locations · {catalog.devices.length} / 200 devices</p></div><button disabled={busy} onClick={() => reload().catch(e => setMessage(e.message))}>Reload settings</button></div>
+      <p>Set up locations and simulated devices before an incident. Saved devices are available in Simulation Studio. Use fictional addresses in this shared prototype.</p>
       {message && <p role="status" className="notice">{message}</p>}
       {!ready && <p>Settings are not loaded yet. Reload before making changes.</p>}
     </section>
@@ -33,7 +40,11 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
           </fieldset>
         </form>
       </section>
-      <section className="card"><h2>Devices</h2>
+      <section className="card"><div className="row"><div><h2>Device inventory</h2><p>{visibleDevices.length} of {catalog.devices.length} devices shown</p></div></div>
+        <div className="form-grid"><label>Find a device<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, room or type"/></label><label>Location<select value={locationFilter} onChange={event => setLocationFilter(event.target.value)}><option value="">All locations</option>{catalog.locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label></div>
+        {!visibleDevices.length && <p>No devices match this view. Clear the filters or add a simulated device.</p>}
+        {visibleDevices.map(item => <article className="catalog-item" key={item.id}><h3>{item.name} <span className="badge">{item.enabled ? 'Enabled' : 'Disabled'}</span></h3><p>{catalog.locations.find(x => x.id === item.location_id)?.name} · {item.room || 'Unspecified room'} · {deviceTypes[item.type]?.label}</p><div className="actions"><button disabled={busy} onClick={() => setDevice({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => persist({ ...catalog, devices: [...catalog.devices, { ...item, id: crypto.randomUUID(), name: (item.name.slice(0, 70) + ' (copy)') }] })}>Duplicate <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'device', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        <details open={catalog.devices.some(x => x.id === device.id)} className="device-editor"><summary>{catalog.devices.some(x => x.id === device.id) ? `Editing ${device.name || 'device'}` : 'Add a simulated device'}</summary>
         <form onSubmit={event => { event.preventDefault(); persist({ ...catalog, devices: [...catalog.devices.filter(x => x.id !== device.id), device] }, () => setDevice(emptyDevice(device.location_id))); }}>
           <fieldset disabled={busy || !ready || !catalog.locations.length}><legend>{catalog.devices.some(x => x.id === device.id) ? 'Edit device' : 'Add device'}</legend>
             <label>Location<select required value={device.location_id} onChange={field(setDevice, 'location_id')}><option value="">Choose a location</option>{catalog.locations.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
@@ -44,8 +55,7 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
             <label><input type="checkbox" checked={device.enabled} onChange={event => setDevice(old => ({ ...old, enabled: event.target.checked }))}/>Enabled for simulation</label>
             <div className="actions"><button className="primary">Save device</button><button type="button" onClick={() => setDevice(emptyDevice(device.location_id))}>Clear form</button></div>
           </fieldset>
-        </form>
-        {catalog.devices.map(item => <article className="catalog-item" key={item.id}><h3>{item.name} <span className="badge">{item.enabled ? 'Enabled' : 'Disabled'}</span></h3><p>{catalog.locations.find(x => x.id === item.location_id)?.name} · {item.room || 'Unspecified room'} · {deviceTypes[item.type]?.label}</p><div className="actions"><button disabled={busy} onClick={() => setDevice({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => persist({ ...catalog, devices: [...catalog.devices, { ...item, id: crypto.randomUUID(), name: (item.name.slice(0, 70) + ' (copy)') }] })}>Duplicate <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'device', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        </form></details>
       </section>
     </div>
     {deletion && <section className="card" role="region" aria-label="Confirm deletion"><h2>Delete {deletion.item.name}?</h2><p>Removes this saved {deletion.type}. Historical incident evidence remains. A location must have no devices before deletion.</p><div className="actions"><button disabled={busy || (deletion.type === 'location' && catalog.devices.some(x => x.location_id === deletion.item.id))} onClick={() => persist({ ...catalog, [deletion.type === 'location' ? 'locations' : 'devices']: catalog[deletion.type === 'location' ? 'locations' : 'devices'].filter(x => x.id !== deletion.item.id) }, () => { setDeletion(null); setLocation(emptyLocation()); setDevice(emptyDevice()); })}>Confirm deletion</button><button disabled={busy} onClick={() => setDeletion(null)}>Cancel</button></div></section>}

@@ -35,7 +35,7 @@ export default function Handoff({ config, incident }) {
     if (!incident || lock.current) return;
     lock.current = true; setBusy(true); setError(''); setNotice(''); setData(null);
     try { setData(await client.call('get_responder_summary', { incident_id: incident })); }
-    catch (e) { setError(e.message); }
+    catch (e) { setError(`Handoff could not be prepared: ${e.message} No summary was sent or saved. Refresh the incident and try again.`); }
     finally { lock.current = false; setBusy(false); }
   }
   return <section className="card handoff-sheet">

@@ -116,6 +116,10 @@ code { font-size: .85em; }
 .conversation { max-height: 650px; overflow-y: auto; }
 .conversation-turn { padding: 18px 0; border-bottom: 1px solid var(--line); }
 .conversation-turn > small { color: var(--muted); }
+.alexa-controls { margin: 24px 0; }
+.alexa-controls label, .alexa-command label { display: block; margin: 0; max-width: 680px; }
+.alexa-controls select, .alexa-command input { display: block; width: 100%; margin: 8px 0 0; }
+.alexa-command { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
 @media (max-width: 1100px) { .settings-columns { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) {
