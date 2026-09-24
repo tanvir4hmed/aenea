@@ -4,11 +4,12 @@ import json
 import uuid
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 
 from common import household, response, table_name
 from cursors import decode_cursor
 from revisions import current_assessment
+from lifecycle import deleted
 
 table = boto3.resource("dynamodb").Table(table_name())
 
@@ -21,15 +22,19 @@ def handler(request, context):
         params = request.get("queryStringParameters") or {}
         incident_id = (request.get("pathParameters") or {}).get("incident_id")
         partition = f"H#{owner}"
-        prefix = "INCIDENT#"
+        prefix = "DELETED#" if request["routeKey"] == "GET /household/deletions" else "INCIDENT#"
         if incident_id:
             incident_id = str(uuid.UUID(incident_id))
+            if deleted(table, owner, incident_id):
+                return response(410, {"error": "Incident is being deleted or has been deleted"})
             partition += f"#I#{incident_id}"
             prefix = ""  # Evidence, assessments, policy decisions and action results share this partition.
         query = {
             "KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with(prefix),
             "Limit": 50, "ConsistentRead": True,
         }
+        if prefix == "INCIDENT#":
+            query["FilterExpression"] = Attr("deletion_started_at").not_exists()
         if params.get("cursor"):
             query["ExclusiveStartKey"] = decode_cursor(params["cursor"], partition, prefix)
         result = table.query(**query)

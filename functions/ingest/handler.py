@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 from incidentbridge import InvalidEvent, idempotency_key, normalize_event, payload_digest
 
 from common import household, response, table_name
+from lifecycle import deleted
 
 table = boto3.resource("dynamodb").Table(table_name())
 s3 = boto3.client("s3")
@@ -29,6 +30,8 @@ def handler(request, context):
         if not isinstance(payload, dict) or set(payload) - {"incident_id", "event", "adapter"}:
             return response(400, {"error": "Expected incident_id, event and optional adapter"})
         incident_id = str(uuid.UUID(payload["incident_id"]))
+        if deleted(table, owner, incident_id):
+            return response(410, {"error": "Incident was deleted. Start a new incident instead."})
         event = normalize_event(payload["event"], payload.get("adapter", "webhook"))
         if event.household_id != owner:
             return response(403, {"error": "Household does not belong to this identity"})

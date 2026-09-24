@@ -20,7 +20,12 @@
           "BackoffRate": 2
         }
       ],
-      "Next": "Assess"
+      "Next": "CheckDeletion"
+    },
+    "CheckDeletion": {
+      "Type": "Choice",
+      "Choices": [{"Variable": "$.deleted", "BooleanEquals": true, "Next": "AssessmentUnavailable"}],
+      "Default": "Assess"
     },
     "Assess": {
       "Type": "Task",

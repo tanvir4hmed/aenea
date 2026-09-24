@@ -14,6 +14,7 @@ from botocore.exceptions import ClientError
 from common import table_name
 from safety import decision
 from revisions import actionable
+from lifecycle import deleted
 
 table = boto3.resource("dynamodb").Table(table_name())
 serializer = TypeSerializer()
@@ -73,6 +74,8 @@ def action_id(incident, proposal):
 
 
 def execute(owner, incident, identifier, confirmed=False, expected_assessment=None):
+    if deleted(table, owner, incident):
+        return {"action_id": identifier, "status": "deleted", "result": "Incident deleted; no execution performed", "execution_performed": False}
     item = get(owner, incident, "ACTION#" + identifier)
     if not item:
         raise KeyError("Unknown action")
@@ -100,7 +103,7 @@ def execute(owner, incident, identifier, confirmed=False, expected_assessment=No
         updated["alternate_plan"] = "Device unavailable; request a household check-in and review the incident. No physical action was taken."
     operations = [
         {"ConditionCheck": {"TableName": table_name(), "Key": attrs(summary_key),
-            "ConditionExpression": "event_count = :revision AND latest_assessment = :assessment AND (attribute_not_exists(decision_review) OR decision_review <> :rejected)",
+            "ConditionExpression": "attribute_not_exists(deletion_started_at) AND event_count = :revision AND latest_assessment = :assessment AND (attribute_not_exists(decision_review) OR decision_review <> :rejected)",
             "ExpressionAttributeValues": attrs({":revision": revision, ":assessment": item["assessment_id"], ":rejected": "rejected"})}},
         {"ConditionCheck": {"TableName": table_name(),
             "Key": attrs({"pk": f"H#{owner}", "sk": "PROFILE"}),

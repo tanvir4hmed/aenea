@@ -7,10 +7,13 @@ from assessment import IncidentAssessment
 from coordination import action_id, audit, evidence, get, native, partition, profile, table
 from safety import decision
 from revisions import actionable
+from lifecycle import deleted
 
 
 def handler(event, context):
     owner, incident = event["household_id"], event["incident_id"]
+    if deleted(table, owner, incident):
+        return {**event, "action_ids": []}
     saved = get(owner, incident, "ASSESSMENT#" + event["assessment_id"])
     summary = table.get_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"}, ConsistentRead=True)["Item"]
     if not actionable(summary, saved):

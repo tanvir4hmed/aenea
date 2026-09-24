@@ -29,6 +29,11 @@ def handler(detail, context):
     summary_key = {"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}
     try:
         client.transact_write_items(TransactItems=[
+            {"ConditionCheck": {
+                "TableName": os.environ["STATE_TABLE"],
+                "Key": attributes({"pk": f"H#{owner}", "sk": "DELETED#" + incident_id}),
+                "ConditionExpression": "attribute_not_exists(pk)",
+            }},
             {"Put": {
                 "TableName": os.environ["STATE_TABLE"],
                 "Item": attributes({**timeline_key, "event": event.model_dump(mode="json"),
@@ -54,10 +59,12 @@ def handler(detail, context):
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "TransactionCanceledException":
             raise
+        if "Item" in client.get_item(TableName=os.environ["STATE_TABLE"], Key=attributes({"pk": f"H#{owner}", "sk": "DELETED#" + incident_id}), ConsistentRead=True):
+            return {"household_id": owner, "incident_id": incident_id, "deleted": True}
         existing = client.get_item(TableName=os.environ["STATE_TABLE"],
                                    Key=attributes(timeline_key), ConsistentRead=True)
         if "Item" not in existing:
             raise
         # A retry after a successful transaction must not increment the aggregate twice.
     return {"household_id": owner, "incident_id": incident_id, "event_id": event.event_id,
-            "status": "collecting_evidence"}
+            "status": "collecting_evidence", "deleted": False}

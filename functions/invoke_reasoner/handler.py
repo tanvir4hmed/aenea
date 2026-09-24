@@ -12,12 +12,15 @@ from botocore.exceptions import ClientError
 from assessment import IncidentAssessment
 from coordination import audit, evidence, get, native, partition, table
 from revisions import actionable
+from lifecycle import deleted
 
 runtime = boto3.client("bedrock-agentcore", config=Config(connect_timeout=5, read_timeout=150, retries={"total_max_attempts": 1}))
 
 
 def handler(event, context):
     owner, incident = event["household_id"], event["incident_id"]
+    if deleted(table, owner, incident):
+        return {**event, "reasoner_ok": False}
     identifier = hashlib.sha256(str(event["event_id"]).encode()).hexdigest()[:32]
     saved = get(owner, incident, "ASSESSMENT#" + identifier)
     from safety import DEVICES

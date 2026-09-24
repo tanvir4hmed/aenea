@@ -12,6 +12,16 @@ Before opening judge access, the account owner must select a monthly budget and 
 
 ## Failure and retry
 
+### Incident cleanup
+
+Before the first Phase 8 rollout in an existing account, reconcile the updated bootstrap deployment policy with an authorized administrator session using `python scripts/reconcile_bootstrap.py`. The policy adds the exact default-bus EventBridge rule ARN for `aenea-cleanup`; an older custom-bus-only rule pattern does not cover scheduled rules. Re-run the app deployment after reconciliation if necessary. No new secret is required. Live IAM synchronization is not performed by a source push.
+
+User-requested deletion blocks new work and queues cleanup after a 15-minute drain window. The worker runs every five minutes with concurrency one. Monitor pending/retrying jobs and the cleanup Lambda log/error metrics if a request stays incomplete. Failure to invoke the worker leaves requests pending; it must not be described as successful physical deletion. Inspect IAM and rule/target configuration before retrying deployment. Deletion never removes Terraform state or shared resources.
+
+The worker removes active DynamoDB incident data, associated receipts, applicable virtual output state and every version/delete marker of the incident's S3 evidence. It retains a minimal permanent deletion marker. PITR backups, workflow execution history, service logs and exported copies are outside this API's purge boundary; retention must be managed separately. No operator cleanup or user-data deletion was executed as part of Phase 8 implementation.
+
+### Event and action retries
+
 - Signal ingress uses a stable event ID and payload; an identical retry is accepted without another correlated event. Changed payload with the same identity is rejected.
 - Check-in tool requires a UUID `request_id`. Its audit and latest person state commit atomically. Reusing the ID with identical person/status returns the recorded original result without overwriting a newer check-in; differing content is rejected. The browser retains the ID for uncertain retries in the current MCP client instance only. After navigation/reload, read current reports before writing again.
 - Acknowledgment and its unique audit commit together. Repeated acknowledgment does not resolve the incident or duplicate the audit.

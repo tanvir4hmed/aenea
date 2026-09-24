@@ -12,6 +12,7 @@ import AppShell from './AppShell';
 import UserGuide from './UserGuide';
 import Settings from './Settings';
 import SimulationStudio from './SimulationStudio';
+import DataControls from './DataControls';
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
@@ -23,6 +24,7 @@ function App() {
   const [selected, setSelected] = useState(() => sessionStorage.getItem(incidentStorageKey) || ''), [timeline, setTimeline] = useState([]);
   const [notice, setNotice] = useState('');
   const [studioBusy, setStudioBusy] = useState(false);
+  const [studioEpoch, setStudioEpoch] = useState(0);
   const [catalog, setCatalog] = useState({ revision: null, locations: [], devices: [] });
   const [catalogReady, setCatalogReady] = useState(false), [catalogBusy, setCatalogBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState(false);
@@ -65,6 +67,19 @@ function App() {
     setCatalogBusy(true);
     try { const data = await api('/household/catalog', { method: 'PUT', body: JSON.stringify(next) }); setCatalog(data); }
     finally { setCatalogBusy(false); }
+  }
+  function clearDrafts() {
+    sessionStorage.removeItem('aenea-studio-' + identity);
+    setStudioEpoch(value => value + 1);
+  }
+  function incidentDeleted(id) {
+    setIncidents(old => old.filter(item => item.incident_id !== id));
+    if (selected === id) { setSelected(''); setTimeline([]); setIncidentState(null); }
+    try {
+      const drafts = JSON.parse(sessionStorage.getItem('aenea-studio-' + identity) || '[]');
+      if (drafts.some(row => row.payload?.incident_id === id)) clearDrafts();
+      else setStudioEpoch(value => value + 1);
+    } catch { clearDrafts(); }
   }
   async function loadTimeline(id, cursor = null) {
     additionalPages.current = !!cursor;
@@ -138,7 +153,7 @@ function App() {
         <p className="guest-warning">Shared demo account: use fictional data only. Activity may be visible to other demo visitors.</p>
         {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
       </section>}
-      {authenticated && config && identity && <div hidden={page !== 'simulation-lab'}>
+      {authenticated && config && identity && <div key={studioEpoch} hidden={page !== 'simulation-lab'}>
         <SimulationStudio key={identity} api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
@@ -147,7 +162,7 @@ function App() {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }} /></details>
       </div>}
-      {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><Coordination key="settings" api={api} timeline={[]} simulation settingsOnly /></>}
+      {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><Coordination key="settings" api={api} timeline={[]} simulation settingsOnly /><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy || scenarioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}
       {authenticated && ['command-center','simulation-lab'].includes(page) && <>
         {page === 'command-center' && <><section className="metrics" aria-label="Workspace summary"><div className="card"><span>Loaded incidents</span><strong>{loadingIncidents ? '…' : incidents.length}</strong><small>{incidentCursor ? 'More incidents available below' : 'Your incident list'}</small></div><div className="card"><span>Selected incident</span><strong className="small">{selected ? selected.slice(0, 8) : 'Choose an incident'}</strong><small>Shared across workspace pages</small></div><div className="card"><span>Pending confirmations</span><strong>{selected ? timeline.filter(item => item.sk?.startsWith('ACTION#') && item.status === 'pending_confirmation').length : '—'}</strong><small>In the loaded incident timeline</small></div></section>
           <section className="quick-actions" aria-label="Quick actions"><button onClick={() => navigate('simulation-lab')}>Send simulated signals</button><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('handoff')}>Prepare handoff</button></section></>}

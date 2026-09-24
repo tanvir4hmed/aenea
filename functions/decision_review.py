@@ -27,7 +27,7 @@ def review(owner, incident, identifier, body):
         boto3.client("dynamodb").transact_write_items(TransactItems=[
             {"Update": {"TableName": table_name(), "Key": attrs({"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"}),
                 "UpdateExpression": "SET decision_review = :verdict, reviewed_at = :time",
-                "ConditionExpression": "latest_assessment = :id AND event_count = :revision",
+                "ConditionExpression": "attribute_not_exists(deletion_started_at) AND latest_assessment = :id AND event_count = :revision",
                 "ExpressionAttributeValues": attrs({":verdict": body["verdict"], ":time": entry["recorded_at"],
                     ":id": identifier, ":revision": assessment["evidence_revision"]})}},
             {"Put": {"TableName": table_name(), "Item": attrs(entry), "ConditionExpression": "attribute_not_exists(pk)"}},

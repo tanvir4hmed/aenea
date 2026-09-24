@@ -81,6 +81,7 @@ class PublicationTests(unittest.TestCase):
                                        partition=lambda owner, incident: "partition", table=Mock())
         with patch.dict(sys.modules, {"coordination": self.storage}), patch("boto3.client"):
             self.module = load("isolated_reasoner", "functions/invoke_reasoner/handler.py")
+        self.module.deleted = Mock(return_value=None)
 
     def test_out_of_order_result_is_saved_but_not_actionable(self):
         self.storage.table.update_item.side_effect = ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem")

@@ -9,6 +9,7 @@ from coordination import audit, execute, get, profile, table
 from safety import DEVICES
 from catalog import read_catalog, save_catalog
 from decision_review import review
+from lifecycle import require_active, request_deletion
 
 
 def handler(event, context):
@@ -45,6 +46,9 @@ def handler(event, context):
             return response(200, item)
         params = event["pathParameters"]
         incident = str(uuid.UUID(params["incident_id"]))
+        if route == "POST /incidents/{incident_id}/delete":
+            return request_deletion(table, owner, incident, body)
+        require_active(table, owner, incident)
         if route == "POST /incidents/{incident_id}/assessments/{assessment_id}/review":
             return review(owner, incident, params["assessment_id"], body)
         identifier = params["action_id"]

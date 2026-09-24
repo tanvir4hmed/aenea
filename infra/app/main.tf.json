@@ -61,6 +61,7 @@
   },
   "locals": {
     "functions": [
+      "cleanup",
       "ingest",
       "correlate",
       "incident_api",
@@ -71,6 +72,14 @@
       "mcp_proxy"
     ],
     "routes": {
+      "POST /incidents/{incident_id}/delete": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "GET /household/deletions": {
+        "function": "incident_api",
+        "scope": "aenea/read"
+      },
       "POST /incidents/{incident_id}/assessments/{assessment_id}/review": {
         "function": "action_executor",
         "scope": "aenea/write"
@@ -192,7 +201,8 @@
         "handler": "handler.handler",
         "filename": "${path.module}/../../.artifacts/${each.key}.zip",
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
-        "timeout": "${each.key == \"invoke_reasoner\" ? 170 : 25}",
+        "timeout": "${contains([\"invoke_reasoner\", \"cleanup\"], each.key) ? 170 : 25}",
+        "reserved_concurrent_executions": "${each.key == \"cleanup\" ? 1 : -1}",
         "memory_size": 256,
         "environment": {
           "variables": {

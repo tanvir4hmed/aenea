@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts"
-FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor", "mcp_tools", "mcp_proxy"}
+FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor", "mcp_tools", "mcp_proxy", "cleanup"}
 
 
 def run(*args, cwd=ROOT):
@@ -106,7 +106,8 @@ def main():
     selected = os.environ.get("DEPLOY_COMPONENT", "")
     deployment_changed = any(
         p.startswith("scripts/") or p == ".github/workflows/deploy.yml" for p in paths
-    )
+    ) and not any(p.startswith(("apps/web/", "functions/", "shared/", "infra/",
+                                "services/mcp/", "agent/reasoner/", "workflows/")) for p in paths)
     all_components = selected == "all" or (not paths and not selected)
     web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
     infra_all = all_components or selected == "infrastructure" or deployment_changed

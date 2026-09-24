@@ -11,7 +11,7 @@ This sequence improves the contest application while keeping Alexa+ incident coo
 | 5 | Continuous incident updates and assessment revisions | Implemented |
 | 6 | Decision verification and evidence review | Implemented |
 | 7 | Alexa+ coordination experience | Implemented |
-| 8 | Cleanup and data controls | Awaiting permission |
+| 8 | Cleanup and data controls | Implemented |
 | 9 | Contest release preparation | Awaiting permission |
 
 ## Phase 2 implementation
@@ -61,3 +61,17 @@ Valve confirmation now requires the assessment ID that the user reviewed, across
 Native Alexa registration and physical integration remain unverified; this phase improves the browser experience over the real MCP/backend path. No native connection or free-form natural-language reasoning is claimed. Deployment includes web, Lambda consumers and the MCP runtime tool-schema update. No Terraform changes are needed.
 
 Verification: production frontend build, 36 Python regressions, six JavaScript checks, Python compilation and whitespace checks passed. Hosted and browser acceptance remain deferred.
+
+## Phase 8 implementation
+
+Settings → Data controls accepts an explicit full-incident-ID confirmation and shows per-incident cleanup status. `POST /incidents/{incident_id}/delete` atomically creates a tenant-bound deletion marker and background job and marks an existing owned summary as deleting. Duplicate requests return the existing marker without resetting the drain window. `GET /household/deletions` is a paginated read-scoped status endpoint. No bulk account or infrastructure destroy is performed.
+
+Ingress, correlation, reasoner, policy, action execution, review and MCP entry points reject deleted targets. Correlation condition-checks the marker transactionally; execution/review transactions check the summary deletion field. The worker starts at least 900 seconds after the request, exceeding the maximum application Lambda lifetime of 170 seconds and workflow timeout of 420 seconds. This lets writes already in progress drain. Later workflow stages and delayed event replays recheck the marker. The marker is deliberately retained indefinitely so old retries cannot recreate an incident.
+
+The single-concurrency `aenea-cleanup` Lambda runs every five minutes, queries the dedicated cleanup-job partition and only processes marked targets. It removes all evidence object versions and delete markers under the exact owner/incident S3 prefix, the incident partition, associated ingress receipts, incident summary and virtual output states still owned by that incident. Unrelated incident receipts, newer output states, catalog and permissions are retained. Failed work remains queued and is retried by the next scheduled invocation; no partial failure is reported as completion. Progress cursors prevent large household receipt lists from restarting at the first page each time.
+
+This is active-store deletion, not a promise to erase PITR backups, Step Functions history, diagnostic logs or copied/exported files. Those follow separate service retention policies. Local simulation drafts may be cleared separately and are reset when deleting a referenced incident. No real incident data was deleted during implementation.
+
+The existing deployment-policy template now includes the exact default-bus rule ARN `rule/aenea-cleanup`. Existing accounts whose live GitHub role only allows custom-bus rule ARNs must reconcile bootstrap before deploying this rule (see operations). This phase adds no GitHub secret. The pipeline targets web, app infrastructure and shared Lambda consumers; deployment-script edits accompanied by concrete component changes no longer force unrelated AgentCore rebuilds.
+
+Offline checks: frontend production build, 44 Python regression tests, Terraform formatting and whitespace checks passed. Scheduled cleanup, live IAM and hosted deletion acceptance remain unverified.

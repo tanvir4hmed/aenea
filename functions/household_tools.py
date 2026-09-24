@@ -11,6 +11,7 @@ from botocore.exceptions import ClientError
 from coordination import audit, audit_item, attrs, execute, get, profile, table
 from cursors import decode_cursor
 from revisions import current_assessment
+from lifecycle import require_active
 
 WRITE_TOOLS = {"report_person_status", "acknowledge_incident", "request_safe_action", "confirm_action"}
 TOOLS = WRITE_TOOLS | {"get_incident_status", "get_incident_timeline", "get_household_status",
@@ -42,6 +43,7 @@ def dispatch(owner, scopes, name, args):
     if not isinstance(args, dict) or set(args) - allowed[name]:
         raise ValueError("Unsupported arguments")
     incident = str(uuid.UUID(args["incident_id"]))
+    require_active(table, owner, incident)
     summary = table.get_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident}"},
                              ConsistentRead=True).get("Item")
     if not summary:
