@@ -24,7 +24,7 @@
     },
     "CheckDeletion": {
       "Type": "Choice",
-      "Choices": [{"Variable": "$.deleted", "BooleanEquals": true, "Next": "AssessmentUnavailable"}],
+      "Choices": [{"And": [{"Variable": "$.deleted", "IsPresent": true}, {"Variable": "$.deleted", "BooleanEquals": true}], "Next": "AssessmentUnavailable"}],
       "Default": "Assess"
     },
     "Assess": {
