@@ -18,8 +18,14 @@ TOOLS = WRITE_TOOLS | {"get_incident_status", "get_incident_timeline", "get_hous
                        "get_action_status", "get_responder_summary"}
 
 
+def key_condition(partition, prefix):
+    """DynamoDB forbids an empty begins_with key value."""
+    condition = Key("pk").eq(partition)
+    return condition & Key("sk").begins_with(prefix) if prefix else condition
+
+
 def page(partition, prefix="", cursor=None):
-    query = {"KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with(prefix),
+    query = {"KeyConditionExpression": key_condition(partition, prefix),
              "Limit": 50, "ConsistentRead": True}
     if cursor:
         query["ExclusiveStartKey"] = decode_cursor(cursor, partition, prefix)

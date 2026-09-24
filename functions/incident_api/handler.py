@@ -14,6 +14,12 @@ from lifecycle import deleted
 table = boto3.resource("dynamodb").Table(table_name())
 
 
+def key_condition(partition, prefix):
+    """DynamoDB forbids an empty begins_with key value."""
+    condition = Key("pk").eq(partition)
+    return condition & Key("sk").begins_with(prefix) if prefix else condition
+
+
 def handler(request, context):
     if request["routeKey"] == "GET /health":
         return response(200, {"service": "aenea", "status": "handler-responsive", "dependency_checks": False})
@@ -30,7 +36,7 @@ def handler(request, context):
             partition += f"#I#{incident_id}"
             prefix = ""  # Evidence, assessments, policy decisions and action results share this partition.
         query = {
-            "KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with(prefix),
+            "KeyConditionExpression": key_condition(partition, prefix),
             "Limit": 50, "ConsistentRead": True,
         }
         if prefix == "INCIDENT#":
