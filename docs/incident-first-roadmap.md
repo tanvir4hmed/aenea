@@ -1,6 +1,6 @@
 # Incident-first remediation and Command Center roadmap
 
-**Status:** approved implementation plan — no Command Center feature work has started.  
+**Status:** approved implementation plan — no Command Center feature work has started.
 **Last reviewed:** 2026-09-24
 
 ## Product boundary
