@@ -12,7 +12,7 @@ This sequence improves the contest application while keeping Alexa+ incident coo
 | 6 | Decision verification and evidence review | Implemented |
 | 7 | Alexa+ coordination experience | Implemented |
 | 8 | Cleanup and data controls | Implemented |
-| 9 | Contest release preparation | Awaiting permission |
+| 9 | Contest release preparation | Implemented; release acceptance pending |
 
 ## Phase 2 implementation
 
@@ -75,3 +75,11 @@ This is active-store deletion, not a promise to erase PITR backups, Step Functio
 The existing deployment-policy template now includes the exact default-bus rule ARN `rule/aenea-cleanup`. Existing accounts whose live GitHub role only allows custom-bus rule ARNs must reconcile bootstrap before deploying this rule (see operations). This phase adds no GitHub secret. The pipeline targets web, app infrastructure and shared Lambda consumers; deployment-script edits accompanied by concrete component changes no longer force unrelated AgentCore rebuilds.
 
 Offline checks: frontend production build, 44 Python regression tests, Terraform formatting and whitespace checks passed. Scheduled cleanup, live IAM and hosted deletion acceptance remain unverified.
+
+## Phase 9 implementation
+
+Updated the README, submission draft, judge guide, timed demo narrative, build evidence and release gates against the current source and official contest requirements. Retained the owner-selected architecture image unchanged. Corrected stale resource-bound-token, old phase status and private-only guest-access statements.
+
+Primary scope remains the Alexa+ alternate simulation, with AWS Builder integration documentation and optional separate IncidentBridge Open Source evidence. Public repositories and the contribution's Apache-2.0 license/date were checked. No new mini-project, native integration or SaaS scope was added.
+
+This phase is documentation-only: no IAM reconciliation, cloud resource mutation, hosted test, video upload or Devpost submission. Remaining release gates are explicitly tracked in release-checklist.md. Documentation checks and push are the completion boundary; docs-only paths do not trigger the application deploy workflow.

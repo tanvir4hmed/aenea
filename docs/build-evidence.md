@@ -1,16 +1,26 @@
-# Build Evidence
+# Build evidence and limits
 
-Record evidence when it is created. Do not backfill planned work as completed work.
+Updated 24 September 2026. Source, offline tests, workflow triggers and hosted acceptance are different evidence classes.
 
-Phases 2–3 deployment succeeded in the run below. End-to-end runtime acceptance remains deferred. Phase 4 source is implemented; no successful model inference or passing-test claim is made.
+## Workspace refresh
 
-| Date | Commit, run or URL | Verified result | Track or judging relevance |
-|---|---|---|---|
-| 2026-09-16 | https://github.com/tanvir4hmed/aenea | Public repository created during the challenge window | Alexa+ primary / project eligibility |
-| 2026-09-17 | https://github.com/tanvir4hmed/aenea/actions/runs/35198485841 | Phase 2–3 deployment workflow succeeded | Cloud foundation |
-| 2026-09-17 | docs/phase-4.md and Phase 4 source commit | Reasoner, contract, policy, confirmation and virtual action implementation; runtime checks deferred | AWS Builder integration source |
-| 2026-09-21 | docs/alexa-mcp.md and Phase 5 source commit | MCP runtime, OAuth resource binding, household tools and browser MCP client implemented; hosted verification deferred | Alexa+ simulation source |
-| 2026-09-21 | docs/phase-6.md and Phase 6 source commit | Guided input scenarios, dedicated household/handoff views, bounded summary and demo runbook implemented; runtime/visual verification and rehearsal deferred | Demo experience source |
-| 2026-09-21 | docs/phase-7.md and Phase 7 source commit | Retry/audit/cursor hardening, ingress pause, operational guides and submission draft prepared; release gate remains uncleared | Hardening/submission preparation, not runtime proof |
+| Commit | Source delivered | Recorded bounded checks |
+| --- | --- | --- |
+| d492f5b | Authentication refresh and MCP token validation | See authentication implementation notes |
+| 334f3dd | Workspace shell and guide | Frontend build and whitespace |
+| 3b61877 | Location/device catalog and Simulation Studio | Frontend build, 25 Python regressions, three JavaScript checks, Terraform formatting |
+| f760f62 | Evidence revisions and human review | Frontend build, 35 Python regressions, Terraform formatting |
+| 1ddb0d8 | Alexa coordination and assessment-bound approval | Frontend build, 36 Python regressions, six JavaScript checks, Python compilation |
+| f186c70 | Guarded cleanup and data controls | Frontend build, 44 Python regressions, Terraform formatting |
 
-Future entries should include the first working hosted event flow, MCP invocation, Strands/Bedrock trace, policy decision, failure recovery, clean setup test, deployment URL and final video. Synthetic inputs must be identified as synthetic.
+Counts are snapshots of each phase, not additive totals. These are recorded local implementation checks; AWS persistence tests use mocks. They do not establish hosted concurrency, real model quality, accessibility certification or fresh-install reproducibility.
+
+[Phase 8 workflow](https://github.com/tanvir4hmed/aenea/actions/runs/35946633648) was observed triggered/in progress. Completion was not checked. The earlier [foundation run](https://github.com/tanvir4hmed/aenea/actions/runs/35198485841) is historical, not evidence that the current release works.
+
+Phase 9 is documentation-only. It reviews official entry requirements, current source/UI labels, public repository/license metadata and contribution dates. No application deployment or hosted test is implied by its push.
+
+## Still to capture
+
+Final deployed commit/run; clean-browser guest access; actual MCP call; signal-to-model-to-policy trace; revision/race refusal; permitted virtual action and failure outcomes; account isolation; complete scheduled deletion; final public video. Keep credentials and real personal information out of evidence.
+
+Use [release gates](release-checklist.md) to record actual acceptance, and [phase notes](workspace-refresh.md) for implementation detail.

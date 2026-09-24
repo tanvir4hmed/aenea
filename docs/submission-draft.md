@@ -1,48 +1,56 @@
-# Devpost preparation — DRAFT, NOT SUBMITTED
+# Aenea — submission draft, not submitted
 
-Only use the final text after hosted acceptance and video review. Prepared 21 September 2026 against the [official rules](https://amazonappdev2026.devpost.com/rules) and [overview](https://amazonappdev2026.devpost.com/). The Alexa+ path must demonstrate working MCP/experience code, and the public English video must stay below three minutes. Source preparation alone is not eligibility or functionality proof.
-
-## Project
-
-**Name:** Aenea
+Updated 24 September 2026. Release acceptance is [still open](release-checklist.md). Review these claims against the actual recording before submitting.
 
 **Tagline:** Shared household context, accountable incident coordination.
 
-**Primary:** Alexa+
+**Primary:** Alexa+ alternate experience simulation.
 
-**Proposed minis:** AWS Builder; Open Source alongside the separate IncidentBridge contribution. Final entry selection is the owner's decision.
+**Proposed minis:** AWS Builder and the separate IncidentBridge Open Source contribution. Owner confirms final selections.
 
-## Description draft
+## Inspiration
 
-Aenea explores how a household can coordinate around one incident instead of managing disconnected alerts. Synthetic sensor and camera observations enter a real cloud event pipeline. A Strands/Bedrock reasoner proposes an assessment, while deterministic policy checks evidence and saved permissions before any virtual action. Camera motion never establishes occupancy or safety.
+An alarm identifies a signal, but a household still needs to understand what changed, who has reported in and which responses actually happened. Aenea explores one shared incident context instead of disconnected alerts.
 
-A clearly labeled Alexa+ web simulation calls an authenticated MCP server to read incident status, record household self-reports, acknowledge alerts and explicitly confirm eligible pending actions. The command center, household view and reviewable handoff use the same saved state. Failures and uncertainty remain visible; the system does not invent a successful device action or an all-clear.
+## What it does
 
-The project is a prototype, not a certified alarm, medical device, professional monitoring service or replacement for emergency services. Devices and effects are simulated. It does not automatically dispatch responders, connect to Ring, or claim a verified native Alexa+ connection.
+Users configure fictional locations and simulated devices, then send selected observations one at a time or as a sequence. A cloud agent assesses the accumulated evidence. Later signals create a new evidence revision: an outdated assessment cannot authorize a new action.
+
+The Alexa+ browser simulation reads that same incident through authenticated MCP tools, records synthetic household check-ins and offers eligible virtual responses. Decision review exposes citations, uncertainty, policy reasons and human feedback. Rejection blocks future execution from that assessment; agreement alone is not action approval.
+
+A reviewable handoff collects evidence, reports and saved outcomes without contacting responders. Settings also provides guarded incident cleanup. Motion never proves occupancy or safety.
 
 ## How it is built
 
-React web client; Cognito authorization-code/PKCE login with resource-bound tokens; AgentCore MCP server using Streamable HTTP and MCP 2025-11-25; private Lambda household tools; EventBridge/Step Functions incident processing; Strands plus Amazon Bedrock assessment; deterministic Lambda policy; DynamoDB state/audits; S3 evidence and static assets; CloudFront/Terraform/GitHub Actions deployment. IncidentBridge is imported from a pinned public commit to normalize and validate signals. See [AWS integrations](aws-builder.md).
+React; Cognito authorization code with PKCE and refresh; MCP 2025-11-25 Streamable HTTP on AgentCore; private Lambda tools; IncidentBridge normalization; EventBridge and Step Functions orchestration; Strands and Amazon Bedrock assessments; deterministic Lambda policy/execution; DynamoDB transactions and S3 evidence; CloudFront, Terraform and component-selective GitHub Actions. See [AWS service responsibilities](aws-builder.md).
 
-## Links and missing evidence
+Access tokens are checked against issuer, signature, expiry, registered client, token type and scopes. The implementation does not require an absent Cognito access-token audience claim.
 
-- Source: https://github.com/tanvir4hmed/aenea
-- Intended hosted entry: https://aenea.qleam.com — final availability/access not verified here.
-- Public video: **not recorded/published yet; required before submission**.
-- Judge credentials/access instructions: **not provisioned/verified here; supply privately if required**.
-- Successful MCP/inference/action trace: **pending hosted verification**.
-- New-project disclosure: project source was created during the challenge window; verify repository history and account/team details before final submission.
+## Honest boundaries
 
-## Optional Open Source contribution
+This is a prototype, not an emergency service, medical device or certified alarm. Device inputs/effects and the Alexa interface are simulated. No Ring API, native Alexa connection or physical-device control is claimed. The browser understands explicit supported commands, not unrestricted natural-language requests. One Cognito identity owns a workspace; the shared guest is not private multi-user tenancy. Current assessment capacity is 20 signals per incident.
 
-- Additional project: https://github.com/tanvir4hmed/incidentbridge
-- Contribution used by Aenea: https://github.com/tanvir4hmed/incidentbridge/tree/53ab20a35e9f7b9b87504862228b7ace090dee68
+## Entry links
+
+- [Source](https://github.com/tanvir4hmed/aenea)
+- [Hosted application](https://aenea.qleam.com) — final clean-browser acceptance pending.
+- [Testing instructions](judge-guide.md) — shared guest access is implemented; current credentials/access must be verified for submission.
+- Public video: **MISSING — record and publish after hosted rehearsal.**
+- Hosted model/MCP/action evidence: **MISSING — capture actual results, not source screenshots as proof.**
+- New-project disclosure: Aenea repository created 16 September 2026; owner confirms authorship, eligibility and any reused components.
+
+## Optional Open Source entry
+
+- Project repository: [IncidentBridge](https://github.com/tanvir4hmed/incidentbridge)
+- Contribution: [pinned source tree](https://github.com/tanvir4hmed/incidentbridge/tree/53ab20a35e9f7b9b87504862228b7ace090dee68)
 - GitHub username: `tanvir4hmed`
-- What: a separate Apache-2.0 Python library for normalized incident events, adapters and stable event identity.
-- How: Aenea installs the pinned commit and calls its validation/normalization and idempotency helpers during actual ingress.
-- Why: common event semantics and explicit simulation provenance make different household sources easier to compose and audit.
-- Remaining gate: verify public visibility, license/tag/date and runtime consumption evidence. No new contribution/release was created in Phase 7.
+- What: a separate Apache-2.0 Python event toolkit with canonical contracts, adapters and stable event identity.
+- How: Aenea pins and invokes the library during ingress validation/normalization and retry identity handling.
+- Why: consistent event semantics and simulation provenance make mixed household sources easier to compose and audit.
+- Checked 24 September: public repository, Apache-2.0 metadata and pinned commit dated 17 September. Hosted runtime consumption evidence remains pending. This phase did not create another contribution or release.
 
-## Feedback and evidence
+## Feedback attachment
 
-Use [product feedback](product-feedback.md), [friction log](friction-log.md), [build evidence](build-evidence.md) and [demo runbook](demo-runbook.md). Complete observed onboarding/reliability/reuse answers after the deferred run; do not submit source-only notes as fabricated hands-on feedback. The final checklist is [release-checklist.md](release-checklist.md).
+Finish [product feedback](product-feedback.md) using actual observations; attach relevant [friction entries](friction-log.md). The [demo runbook](demo-runbook.md) provides the recording sequence.
+
+Rules reference: [official rules](https://amazonappdev2026.devpost.com/rules). Alternate Alexa+ simulation is allowed; supply simulation source and demonstration. Video must be publicly hosted on YouTube/Vimeo and under three minutes. Submission materials must be English or translated. AWS usage belongs in product feedback; Open Source needs contribution/repository URLs, username and explanation. Submission closes 23 October 2026 at noon Pacific; free judge access is required through judging, ending 20 November at noon Pacific. Recheck these dates before submission.

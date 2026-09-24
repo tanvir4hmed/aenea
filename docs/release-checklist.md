@@ -1,47 +1,45 @@
-# Release gate — not yet cleared
+# Release gates — not yet cleared
 
-Updated 23 September 2026. Baseline source hardening and Phase 1 authentication improvements are complete; runtime/security acceptance, video and final submission are not. An unchecked item must not be presented as passed.
+Updated 24 September 2026. Phase 9 completes release preparation, not live acceptance, a video or a Devpost submission.
 
-## Implementation prepared
+## Prepared
 
-- [x] Apache-2.0 license, source, architecture baseline, notices and cloud instructions.
-- [x] MCP runtime/client, simulation, policy executor, household/handoff source.
-- [x] Stable check-in retries, atomic acknowledgment audit and bounded tenant-bound cursors.
-- [x] Operator ingress pause and cost/security limitations documented.
-- [x] Pure regression source and release/demo procedures prepared (not executed).
-- [x] Devpost draft, mini-challenge references and feedback inventory prepared.
+- [x] Current README, unchanged architecture baseline, license and third-party notices.
+- [x] Nine workspace phases documented, including revisions, decision review and cleanup.
+- [x] Offline checks recorded separately from hosted evidence.
+- [x] Judge instructions, timed narrative, submission draft and feedback inventory.
+- [x] Aenea and IncidentBridge public visibility checked; IncidentBridge Apache-2.0 license and pinned contribution date checked.
 
-## Account and deployment
+## Deployment and access — authorized verification still needed
 
-- [ ] Refresh administrator login and reconcile Phase 4–7 IAM templates in the intended AWS account.
-- [ ] Record a successful pipeline commit/run for the final build; no hidden local-state dependency.
-- [ ] Confirm DNS/TLS at `https://aenea.qleam.com`, Cognito demo user and resource-bound login.
-- [ ] Set an owner-approved billing budget/recipient; verify notifications and ingress pause/resume.
-- [ ] Verify exact GitHub OIDC subject/environment protection and public repository/license visibility.
+- [ ] Reconcile the current bootstrap deployment policy with an authorized AWS administrator session. The Phase 8 scheduled cleanup requires the exact default-bus rule ARN for `aenea-cleanup`; an older live role may lack it. See [operations](operations.md).
+- [ ] Record the successful final-code pipeline run, deployed commit and DNS/TLS result. A push or workflow trigger alone is not proof.
+- [ ] Verify Cognito PKCE sign-in, access-token refresh, MCP discovery and every tool. Verify wrong-client, ID-token, expired-token and insufficient-scope rejection.
+- [ ] Verify the shared guest sign-in from a clean browser. Public guest credentials are intentionally displayed by the application; they are not private tenant credentials. Use fictional data only.
+- [ ] Confirm owner account isolation from guest and another account, including forged IDs/cursors.
+- [ ] Verify billing alerts, OIDC/environment restrictions, ingress pause/resume and dependency review.
 
-## Authorized verification session (deferred)
+## Product acceptance
 
-Use a separate fresh cloud workspace, not the development directory. Install Git, Python 3.12, Node 22, Terraform 1.14 and AWS CLI, clone the public source and follow the bootstrap/deployment guide. In an existing account, read/import existing state correctly; never create an independent state stack over live resources. In a new account, review the fixed GitHub trust and domain defaults before provisioning. This is an owner-operated deployment recipe, not a self-service judge install into an arbitrary account.
+- [ ] Fresh-clone dependency installation and offline checks; retain logs with the commit. Existing local results are not a clean-install guarantee.
+- [ ] Catalog edits/conflicts, duplicate devices, selected one-at-a-time sends, stable uncertain retries and new-incident replay.
+- [ ] Hosted signal → evidence → model assessment → policy → saved virtual outcome.
+- [ ] Later evidence supersedes an old assessment; out-of-order model completions cannot replace the current revision.
+- [ ] Rejection blocks future actions; agreement does not approve them. Confirmation is tied to the exact assessment, expires, and cannot cross revisions.
+- [ ] Duplicate/concurrent ingress, reviews, acknowledgments and check-ins; failures and partial handoffs remain visible.
+- [ ] Evidence budget failure beyond 20 signals is explicit, not a silently incomplete assessment.
+- [ ] Authorized incident deletion: hidden immediately, drain at least 15 minutes, scheduled retry, all S3 evidence versions and active incident records removed; unrelated data retained.
+- [ ] Keyboard/mobile/browser-speech fallback, clipboard/print and understandable errors. No WCAG certification is asserted.
 
-- [ ] Fresh-clone dependency installation/build and offline regressions: install `functions/requirements.txt` in an isolated Python environment, then `python -m unittest discover -s tests`. Persistence tests mock AWS; no real household credentials/data are required. Preserve logs and commit ID.
-- [ ] Capture/review dependency lockfiles from the runner; current dependency ranges are not fully reproducible locks. No vulnerability-free claim is made.
-- [ ] Signed-in MCP initialize/tools discovery and each tool; refresh an expired access token, and reject a wrong client, ID token, expired token and missing write scope.
-- [ ] Two-household isolation, forged/malformed cursors and inaccessible incident/action IDs.
-- [ ] Same check-in request ID replay, conflicting payload, concurrent retry and late retry after a newer report; original response must not roll back the newer report.
-- [ ] Concurrent acknowledgment produces one audit and persistent acknowledgment.
-- [ ] Duplicate ingress, stale/future evidence, model/schema failure, action expiry, smoke/CO valve exclusion, concurrent permission edits and virtual failure.
-- [ ] SDK timeout/read-before-retry behavior and paginated/partial handoff behavior.
-- [ ] Keyboard/mobile layout, microphone fallback, clipboard fallback and print safety wording.
-- [ ] Clean browser access as a judge; provide restricted synthetic demo credentials privately, never in Git.
+Do not perform destructive acceptance on another visitor's records. The public guest is a shared identity; its data is not private. Cleanup retains a minimal replay-blocking marker; backups, workflow history, exported copies and logs have separate retention.
 
-## Submission gate
+## Submission assets and owner decisions
 
-- [ ] Re-read current [rules](https://amazonappdev2026.devpost.com/rules) and [overview](https://amazonappdev2026.devpost.com/) on submission day; verify team eligibility personally.
-- [ ] Actual hosted English demo repeatedly rehearsed under three minutes, uploaded publicly to YouTube/Vimeo, reviewed logged out.
-- [ ] Replace missing video/runtime-evidence/judge-access fields in the draft; claims match the actual recording.
-- [ ] Complete experiential feedback for every used service/SDK; pending observations are not final feedback.
-- [ ] Verify optional IncidentBridge contribution URL, license, dates, username and what/how/why text.
-- [ ] Confirm service availability/free judge access through the required judging period.
-- [ ] Owner approves and submits the final Devpost entry. No submission has been made by this work.
+- [ ] Recheck [official rules](https://amazonappdev2026.devpost.com/rules) on submission day; owner confirms eligibility, rights and team representation.
+- [ ] Record and publish the actual English demo; insert its URL into the draft.
+- [ ] Complete observed task/onboarding/strengths/problems/reuse feedback for every tool used. Include AWS integration details.
+- [ ] Confirm optional Open Source entry links and what/how/why description against the final pinned contribution.
+- [ ] Include working testing instructions and current login credentials where needed in the entry; maintain free judge access for the required period.
+- [ ] Owner reviews and submits the final Devpost entry. No submission was made by this phase.
 
-No Phase 8 is planned. Remaining work is these explicit release gates, not another completed coding phase.
+The source plan ends at Phase 9. Remaining items are release/verification gates, not an implied extra coding phase.

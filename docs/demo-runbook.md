@@ -1,44 +1,39 @@
-# Aenea demo runbook — target 2:50
+# Demo runbook — target 2:50
 
-Prepared 21 September 2026. **Not yet rehearsed or recorded.** This is the planned English narrative; use only behavior actually observed in the deployed build. Do not replace failed/missing results with fabricated overlays.
+Updated 24 September 2026. **Planned, not rehearsed or recorded.** Keep the Alexa+ coordination story central. Show genuine saved results; never replace a failed request with fabricated responses.
 
-The [challenge overview](https://amazonappdev2026.devpost.com/) and [official rules](https://amazonappdev2026.devpost.com/rules) require a working demonstration with the submitted source. Prepare a public English YouTube/Vimeo video under three minutes. Clearly label the Alexa experience and device inputs as simulations. Do not include unlicensed music, footage or third-party branding. Submission-day verification remains Phase 7.
+## Prepare
 
-## Before recording (deferred hosted work)
+1. Clear the account/deployment gates in the [release checklist](release-checklist.md), then verify sign-in and MCP.
+2. In Settings create a fictional location with a smoke detector and camera. Configure only the virtual permissions intended for the recording.
+3. In Simulation Studio queue smoke and camera motion; select both. Start a new run but send only the first selected signal.
+4. Rehearse waiting for the saved assessment, adding the second signal to that same incident, and inspecting the new revision. Receipt acceptance is not assessment completion.
+5. Use synthetic names. An absent report stays unknown. Do not expose private credentials, tokens or account details.
+6. Verify actual action proposals beforehand: model output varies. Never narrate an action that was not proposed/executed.
+7. Prepare source and redacted runtime evidence only after capturing them. Keep inputs fresh and stay below the 20-signal assessment budget.
 
-1. Synchronize Phase 4–5 IAM permissions with a refreshed AWS administrator login, complete pipeline rollout and confirm the signed-in web/MCP path works. Do not show credentials or access tokens in a recording.
-2. In Simulation lab, expand virtual permissions: enable virtual lights/siren and explicitly preauthorize the automatic simulated commands desired for this scenario. Enable `fail_next` on virtual lights, then save. Enable notification only if it will be shown as an in-app record. Nothing is delivered to a phone or responder.
-3. Choose **Smoke + camera context**. Start a fresh incident. Wait for the first actual assessment before sending the second signal, then inspect the updated saved assessment. Scenario receipts prove ingress acceptance, not model/action success.
-4. Verify a genuine eligible action failure and alternate coordination plan exist. Model proposals vary: if the lights action was not proposed, the failure flag has not been exercised. Adjust the scenario/recording after review; never claim a failure test passed without its saved record.
-5. Use fictional names only. Check-in controls can explicitly save `unknown` for Resident B; lack of a full household roster never means everyone is safe. Report Resident A only when narrating that synthetic self-report.
-6. Prepare a separate **Water leak + explicit approval** incident for supplementary verification. Do not mix valve closure into the smoke demonstration. Pending proposals expire after five minutes; an old proposal is not a valid fresh recording.
-7. Open the source/IncidentBridge reference and a real redacted runtime trace only after those artifacts actually exist. Clear unrelated sensitive tabs. Keep all inputs fresh for the 15-minute evidence window.
+## Recording
 
-## Proposed 2:50 English narration
+| Time | Show | English narration cue |
+| --- | --- | --- |
+| 0:00–0:15 | Dashboard, simulation labels | “Aenea brings separate alerts, household reports and permitted responses into one incident.” |
+| 0:15–0:35 | Studio: Send next selected signal; saved smoke assessment | “The smoke signal is synthetic; the cloud processing and saved evidence are real.” |
+| 0:35–1:05 | Alexa+ status and synthetic check-in | “This Alexa experience uses MCP to read and update the same incident. A check-in is a self-report, not verified safety.” |
+| 1:05–1:30 | Studio: send the next camera signal; updated revision | “New evidence can arrive later. The old assessment no longer authorizes new actions. Motion does not identify a person.” |
+| 1:30–1:55 | Decision review, citations, policy and actual action state | “The agent proposes; policy checks. We can inspect evidence and reject a decision. Human agreement does not bypass action approval.” |
+| 1:55–2:20 | Alexa: Prepare a handoff | “A reviewable snapshot shows evidence, unknowns and saved outcomes. It is not an emergency dispatch.” |
+| 2:20–2:43 | Actual runtime evidence and source | “AgentCore hosts MCP and the Strands/Bedrock reasoner. IncidentBridge normalizes events; deterministic execution keeps effects virtual.” |
+| 2:43–2:50 | Incident context | “Shared context and accountable coordination—not a replacement for alarms or emergency services.” |
 
-| Time | Screen/action | Narration cue |
-|---|---|---|
-| 0:00–0:15 | Command center and simulation labels | “Separate alarms tell a household different things. Aenea brings signals, check-ins and permitted responses into one auditable incident.” |
-| 0:15–0:35 | Send smoke, then camera context using scenario cards | “These inputs are synthetic. They enter our real hosted backend. Camera motion is context—not proof that someone is inside or safe.” |
-| 0:35–0:55 | Saved assessment/evidence | “The agent assesses the evidence and records uncertainty. A deterministic policy, not the model alone, controls every virtual action.” |
-| 0:55–1:20 | Alexa+ web simulation, status command and Resident A check-in | “This labeled Alexa experience calls our MCP server. Its report and check-in use the same incident state as the rest of the app.” |
-| 1:20–1:40 | Household page, refresh reports | “Resident A has self-reported. Resident B is unknown. Missing information is never converted into an all-clear.” |
-| 1:40–2:00 | Recorded virtual failure/alternate plan | “This virtual device failed. Aenea records that failure and an alternate coordination step; it does not pretend the device worked.” |
-| 2:00–2:25 | Prepare Handoff | “Here is the saved evidence, uncertainty, household reports and action outcomes. This is a reviewable synthetic handoff, not an emergency dispatch.” |
-| 2:25–2:43 | Actual MCP/source/runtime evidence and IncidentBridge | “The shared tools run on AgentCore with Cognito authorization. Strands and Bedrock assess normalized IncidentBridge events; policy gates execution.” |
-| 2:43–2:50 | Incident view | “One incident, shared household context, and accountable coordination. A prototype—not a replacement for alarms or emergency services.” |
+Use concise cuts for genuine waiting; keep the input-to-result relationship and incident identity intact. If a result is missing, fix/rehearse before recording or state the limitation. Do not splice unrelated incident outcomes into one run.
 
-For the optional Open Source mini, show the additional IncidentBridge contribution and use its verified URL. AWS Builder evidence must demonstrate the implemented integrations, not just logos. These are planned entries; no submission or video publication is performed in Phase 6.
+## Supplementary acceptance, not required in the short story
 
-## If a prerequisite fails
+- Water-only scenario with a fresh assessment-bound explicit valve approval; no smoke/CO conflict.
+- Rejected/stale proposal refusal and a genuine saved virtual failure if proposed.
+- Guarded cleanup after its drain/scheduler delay; it cannot be demonstrated end-to-end in three minutes.
+- Partial handoff, speech/clipboard fallback, retries and cross-account isolation.
 
-- MCP/auth unavailable: do not substitute browser-local fake responses. Resolve onboarding/deployment before recording.
-- Assessment fails: show that recorded failure when relevant; do not narrate an absent assessment or action.
-- Device failure not proposed/executed: do not claim the flag itself proves execution. Use a later real run after review.
-- Handoff is partial: keep the warning visible and review remaining timeline/household pages. Do not describe it as exhaustive.
-- Write times out: read saved state before retrying. Ingestion scenario retries reuse the identical payload.
-- Timing exceeds three minutes: trim narration and idle footage transparently, retaining the actual input-to-result connection. Never splice different incident results as though they were one run.
+## Evidence record
 
-## Evidence record (fill only after running)
-
-Record date, source commit, hosted URL, incident IDs, scenario settings, observed outcomes, runtime trace reference, measured video length and any deviation. Do not put passwords, tokens or real household details in the public repository. No completed rehearsal or recording is asserted yet.
+After rehearsal record commit, deployment run, date, incident IDs, actual outcomes, redacted trace reference, video URL and measured duration. Use the [judge guide](judge-guide.md) for clean-browser replay. No publication or successful rehearsal is asserted by this document.

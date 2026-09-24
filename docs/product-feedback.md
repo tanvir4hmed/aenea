@@ -25,7 +25,17 @@ Runtime onboarding, reliability, performance and reuse judgments remain pending 
 | Terraform / AWS provider / AWS CLI | Infrastructure and bootstrap | Import inputs/state errors hardened after reported bootstrap friction |
 | GitHub Actions | Selective build/deploy | Source paths select deployment targets; final run not reviewed |
 
-For each row before submission: record task, observed result, onboarding experience, improvement request, whether to reuse and why, and supporting trace/screenshot. Do not fabricate feedback before hands-on use.
+For each row before submission: record task, observed result, onboarding experience, improvement request, whether to reuse and why, and supporting trace/screenshot. Do not fabricate feedback before hands-on use. Include any additional developer tools actually used in the final process rather than treating this inventory as exhaustive.
+
+## Workspace refresh observations — 24 September 2026
+
+- React/Vite: production builds passed during the workspace phases. Browser, screen-reader and hosted usability acceptance remains pending.
+- Python contracts/persistence boundaries: the Phase 8 offline suite passed 44 regressions; mocked persistence is not AWS integration proof. Phase 7 also passed six JavaScript checks.
+- Cognito: the reported missing-audience error led to registered-client/scope validation and refresh handling. The fix is source-complete, not a claim of successful fresh hosted acceptance.
+- GitHub Actions: path filters exclude documentation-only updates. Phase 8 deployment was triggered; its final result was not reviewed.
+- Terraform/IAM: the scheduled cleanup rule needs a default-bus ARN permission absent from older live policies. The source template is updated; operator reconciliation is still a gate.
+
+These observations supplement the inventory, not final answers about runtime reliability or willingness to reuse. Attach actual traces and owner experience during release verification.
 
 ## Phase 4 integration notes — 17 September 2026
 

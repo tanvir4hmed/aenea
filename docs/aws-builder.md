@@ -1,6 +1,6 @@
 # AWS Builder integration
 
-Aenea's implemented Phase 4 path uses real AWS SDK calls. Household observations and device effects remain explicitly simulated.
+Aenea's implemented runtime paths use AWS SDK calls. Household observations and device effects remain explicitly simulated. This service map also supplies the AWS usage portion of [product feedback](product-feedback.md); observed onboarding/reliability feedback still needs completion.
 
 | Service / SDK | Runtime responsibility |
 |---|---|
@@ -8,10 +8,15 @@ Aenea's implemented Phase 4 path uses real AWS SDK calls. Household observations
 | Strands Agents SDK | Request-local agent and structured assessment generation |
 | Amazon Bedrock | Amazon Nova inference, selected by BEDROCK_MODEL_ID |
 | Step Functions | Evidence → assessment → policy → execution ordering |
-| EventBridge | Normalized incident delivery |
+| EventBridge | Normalized incident delivery and the scheduled cleanup trigger |
 | Lambda | Trusted ingestion, AgentCore invocation, deterministic authorization and virtual execution |
 | DynamoDB | Household profiles, evidence index, assessments, action state and atomic audit/device updates |
 | S3 | Source evidence, versioned-by-hash runtime ZIP artifacts and frontend |
+| Cognito / API Gateway | PKCE account access, scoped HTTP APIs and MCP proxy entry |
+| CloudFront / ACM | HTTPS static application and custom-domain delivery |
+| SSM | MCP runtime discovery without a circular Terraform dependency |
+| IAM / GitHub OIDC | Federated deployment and scoped workload permissions |
+| CloudWatch / SNS / SQS | Operational logs, alarm topic and failed-delivery queue |
 
 The reasoner runtime has no household storage or execution authority. The separate MCP runtime may invoke only the private tools Lambda, which reuses the deterministic executor. The policy/executor uses saved household permissions and rechecks evidence independently of the model's proposed severity or confidence. All effects remain virtual.
 

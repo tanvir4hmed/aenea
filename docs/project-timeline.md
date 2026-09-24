@@ -7,7 +7,7 @@ Aenea is a new project created for the Amazon App Dev Challenge 2026.
 | 2026-09-16 | [Public repository](https://github.com/tanvir4hmed/aenea) created | Repository created during the challenge window |
 | 2026-09-17 | Phase 0 baseline prepared | License, safety boundary, repository policy, architecture baseline and evidence templates established before implementation |
 
-Implementation commits, deployments, releases, and immutable evidence links will be appended as they occur.
+The entries below describe the original implementation at its date. The later workspace refresh supersedes its authentication, UI and test-status notes; see [current evidence](build-evidence.md).
 
 17 September 2026: Phases 2–3 source implementation added for Terraform/cloud hosting/authentication, React shell, IncidentBridge ingress, EventBridge/Step Functions and DynamoDB evidence timelines. Deployment run 35198485841 succeeded. Runtime acceptance remains deferred.
 
@@ -18,3 +18,5 @@ Implementation commits, deployments, releases, and immutable evidence links will
 21 September 2026: Authorized Phase 6 source added: authored multi-source scenario inputs with stable retry payloads, dedicated paginated household check-ins, bounded evidence-backed handoff with copy/print, device-setting reload and a timed English demo runbook. No hosted rehearsal, visual QA, model outcome or deployment success is asserted.
 
 21 September 2026: Authorized Phase 7 source hardening and submission preparation added. Replay-safe check-ins, atomic acknowledgment audit, bounded cursors/timeouts, narrower SSM access and operator ingress pause are implemented. Regression cases are written but not run. Submission draft and explicit release gates are documented; no deployment/runtime success, video or actual submission is claimed.
+
+24 September 2026: Workspace refresh Phases 1–8 source is recorded through commit f186c70: token refresh/client validation, workspace navigation, catalogs, device signal sequencing, evidence revisions, decision review, Alexa coordination and guarded cleanup. Offline checks are recorded separately in build-evidence.md. Phase 9 updates release preparation and judge documentation; hosted acceptance, video and actual submission remain open.

@@ -1,58 +1,57 @@
 # Aenea
 
-Aenea is an Alexa+-centered prototype for household incident coordination. Implemented source combines simulated household signals, authenticated ingestion, auditable evidence timelines, AI assessment, MCP household check-ins, policy-gated virtual actions and a reviewable synthetic handoff. Hosted acceptance remains separate from source implementation.
+Shared household context, accountable incident coordination.
 
-> **Safety notice:** Aenea is a hackathon prototype for coordination and decision support. It is not a certified alarm, monitoring service, medical device, or replacement for emergency services. It does not automatically contact emergency responders.
+Aenea explores an Alexa+-centered response to disconnected household alerts. Simulated device signals enter a cloud incident pipeline; a Strands/Bedrock agent assesses the evidence, while deterministic policy controls virtual actions. An Alexa+ browser experience uses MCP tools to coordinate the same saved incident, household reports and handoff.
 
-## Status
+> Hackathon prototype, not a certified alarm, medical device or monitoring service. Follow official alarms and emergency guidance. Devices and actions are simulated; Aenea does not dispatch responders or provide a verified native Alexa/Ring integration.
 
-Phases 2–3 infrastructure and web deployment completed in [the recorded deployment run](https://github.com/tanvir4hmed/aenea/actions/runs/35198485841). This establishes deployment success, not end-to-end scenario verification. Pushes trigger component-specific GitHub build/deployment.
+## Explore the experience
 
-Phase 4 source adds the AgentCore-hosted Strands/Bedrock reasoner, strict assessments, deterministic policy, expiring valve confirmations and atomic virtual-device actions. The command center shows their shared audit state. See [Phase 4 setup and acceptance procedure](docs/phase-4.md) and [AWS Builder integration](docs/aws-builder.md). Phase 4 runtime verification remains deferred.
+Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
 
-Phase 5 source adds an AgentCore MCP runtime, nine authenticated household tools and an Alexa+ web simulator using those tools and shared state. See [MCP setup, OAuth and deferred acceptance](docs/alexa-mcp.md). Native Alexa+ connection and hosted MCP acceptance are not yet verified.
+- **Settings:** name locations, manage simulated devices and set virtual action permissions.
+- **Simulation Studio:** select device observations, send one or a sequence, and add evidence later.
+- **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
+- **Alexa+ coordination:** ask supported commands, record synthetic check-ins and approve eligible actions.
+- **Handoff:** review and copy/print a bounded incident summary; nothing is sent to responders.
+- **Data controls:** request guarded incident cleanup and track its status.
 
-Phase 6 source adds guided synthetic scenarios, dedicated household check-ins, a reviewable copy/print handoff and virtual-failure visibility. [Phase 6 status](docs/phase-6.md) and the [demo runbook](docs/demo-runbook.md) distinguish implementation from the still-deferred hosted rehearsal.
+New evidence makes an older assessment ineligible for new actions. Human agreement does not bypass policy or replace explicit action approval. Camera motion does not establish occupancy or safety.
 
-Phase 7 hardening source and submission preparation are complete, but **release acceptance is not cleared**. See the [remaining verification/submission gates](docs/release-checklist.md). No native Alexa connection, final hosted success, recorded video or completed submission is claimed.
+## Architecture
 
-## Planned proof path
+![Selected Aenea architecture baseline](docs/architecture/01_aenea_architecture_overview_final.png)
 
-- Primary track: Alexa+
-- Judge-visible Alexa+ web simulation using the same state and tools as the backend
-- MCP 2025-11-25 Streamable HTTP endpoint
-- Strands + Amazon Bedrock workload hosted on Amazon Bedrock AgentCore Runtime
-- Hosted camera, sensor, check-in and virtual-device simulations that enter the real backend
-- `incidentbridge` imported and executed at runtime
+This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are simulated categories, not connected products. [Architecture notes](docs/architecture.md) describe current implementation and limits.
 
-No Ring API, Ring account, physical Alexa or physical smart-home device is required for the planned Alexa+ submission. Native Alexa+ connectivity will be claimed only if it is later implemented and verified; the required demo path is a clearly labeled Alexa+ web simulation backed by the same hosted MCP/domain state.
+| Source | Responsibility |
+| --- | --- |
+| `apps/web` | React workspace and Alexa+ browser simulator |
+| `functions`, `shared` | Ingestion, evidence revisions, policy, review, tools and cleanup |
+| `agent/reasoner` | AgentCore-hosted Strands/Bedrock assessment |
+| `services/mcp` | Authenticated MCP 2025-11-25 Streamable HTTP server |
+| `infra`, `workflows` | Terraform infrastructure and event orchestration |
+| `tests` | Offline regression coverage |
+
+[IncidentBridge](https://github.com/tanvir4hmed/incidentbridge) is a separately licensed event toolkit consumed by the ingress path.
+
+## Build and release status
+
+The nine [workspace improvement phases](docs/workspace-refresh.md) have source/release-documentation implementation. This does **not** mean hosted acceptance or contest submission is complete. Recorded offline checks include 44 Python regressions, six JavaScript checks and frontend builds across the relevant phases; see [evidence and its limits](docs/build-evidence.md).
+
+Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Pushes select affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 
 ## Documentation
 
-- [Project timeline](docs/project-timeline.md)
-- [Safety and claims](docs/safety.md)
-- [Architecture status](docs/architecture.md)
-- [Final architecture](docs/architecture/01_aenea_architecture_overview_final.png)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Build evidence](docs/build-evidence.md)
-- [Product feedback](docs/product-feedback.md)
-- [Friction log](docs/friction-log.md)
-- [Cloud deployment and required account configuration](docs/deployment.md)
-- [One-time CloudShell bootstrap](docs/cloudshell-bootstrap.md)
-- [Event pipeline and API semantics](docs/event-pipeline.md)
-- [Reasoner, policy and virtual actions](docs/phase-4.md)
-- [Alexa+ simulator, MCP tools and OAuth](docs/alexa-mcp.md)
-- [Household simulation and handoff](docs/phase-6.md)
-- [Timed demo runbook](docs/demo-runbook.md)
-- [Phase 7 status](docs/phase-7.md)
-- [Operations and cost boundaries](docs/operations.md)
-- [Submission draft](docs/submission-draft.md)
-- [Uncleared release checklist](docs/release-checklist.md)
-- [Resource naming and clean-stack migration](docs/naming-and-migration.md)
-
-Use the deployment guide to bootstrap AWS access in a cloud workspace, configure the GitHub `dev` environment, and dispatch the initial all-components deploy. Future pushes deploy only affected components; docs-only changes do not deploy. No local application build is required.
+- [User/judge walkthrough](docs/judge-guide.md) · [in-app guide](https://aenea.qleam.com/guide)
+- [Current phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
+- [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
+- [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)
+- [Demo runbook](docs/demo-runbook.md) · [product feedback](docs/product-feedback.md) · [friction log](docs/friction-log.md)
+- [Operations](docs/operations.md) · [safety](docs/safety.md) · [security](SECURITY.md)
+- [Contributing](CONTRIBUTING.md) · [third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## License
 
-Apache License 2.0. See `LICENSE`.
+[Apache License 2.0](LICENSE).
