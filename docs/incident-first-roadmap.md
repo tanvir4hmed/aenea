@@ -52,8 +52,10 @@ Move setup away from active-incident operations.
 - Replace the long device list with a searchable/filterable inventory grouped by location and room. Use a details drawer or dedicated detail page for edit, disable, duplicate and delete.
 - Device records gain validated display metadata needed by the map: location, room/zone, device type, enabled state and a simple layout position/template. Keep simulated source explicit.
 - Keep response permissions separate from a device's basic inventory information.
+- Treat capacity as a usability boundary, not a one-device-per-room model. The prototype supports up to **50 locations per household**, **40 rooms/zones per location**, **200 devices per location** and **30 devices per room/zone**. This comfortably permits several smoke detectors, cameras and other sensors in one home or office. Validation prevents a room from becoming unreadable; the inventory remains the source of truth.
+- The floor view shows individual devices up to 12 per room. Above that, it groups normal devices by type and expands them on selection; affected and reporting devices always remain individually visible.
 
-**Acceptance gate:** a user can set up two named locations, manage devices without scrolling through an add form, and find data controls without passing through device inventory.
+**Acceptance gate:** a user can set up two named locations, including a room with several same-type sensors, manage devices without scrolling through an add form, and find data controls without passing through device inventory.
 
 ### Phase 2 — focused incident Command Center
 
@@ -61,11 +63,14 @@ Build the graphical dashboard only after Phases 0–1 are accepted.
 
 - Show one selected active incident with severity, current lifecycle state, latest evidence, affected location, people/check-in summary, assessment revision, policy outcome and next required human step.
 - Render an accessible, semantic device map/floor-plan from location and device metadata. It must also work as a keyboard-operable list; colour or icons cannot be the sole status signal.
-- In **Simulation mode** only, selecting a device offers a clearly labelled test alert. It sends the same simulated event path as Simulation Studio, then visibly shows the created/updated incident.
+- A location or room click focuses that zone and opens its device tray. A device click opens a compact detail panel, rather than immediately generating an event.
+- In **Simulation mode** only, the device detail panel offers only signal types that device can produce—for example, a smoke detector can create smoke/CO and a leak sensor can create water-leak evidence. The user then chooses **Start new incident** or **Add to selected incident**. Both commands send the existing simulated-ingest event; they never create display-only data.
+- A room-level **Build test scenario** action can stage several selected device signals, then send them together or release the next signal later. This retains the existing Simulation Studio capability while making it accessible from the floor view.
+- Once an event is accepted, the map immediately marks it `reporting`; the incident timeline, assessment and Alexa+ panel update as the real pipeline completes. The UI shows processing instead of pretending an agent decision already exists.
 - The map displays only useful incident states: normal, reporting, affected, unavailable and action-pending. It must not imply a live physical-device connection.
 - Keep the timeline compact and progressive: new evidence and decision revisions appear as concise updates, with full audit detail available on demand.
 
-**Acceptance gate:** create one single-device event and one multi-device event from the map; both produce an identifiable incident and map/timeline update without changing pages.
+**Acceptance gate:** click Kitchen, select a named smoke detector, create a smoke signal, then create a later camera or leak signal for the same incident. Both map/timeline/Alexa updates must result from the actual event path without changing pages. A staged multi-device scenario must use the same path.
 
 ### Phase 3 — Alexa+ coordination surface
 
@@ -105,7 +110,8 @@ No physical devices, Ring simulator, WebSocket service or new AWS product is req
 
 | Need | Minimal change |
 | --- | --- |
-| Device map | Add location/room/layout metadata to existing simulated-device records and validate it in device APIs. |
+| Device map | Add location/room/layout metadata, supported signal types and capacity validation to existing simulated-device records; validate it in device APIs. |
+| Map-triggered simulation | Reuse the existing ingest/event contract with a source marker such as `command_center`; add no parallel mock-event store. |
 | Incident lifecycle | Store a typed incident status, processing detail, transition time and recoverable failure reason. |
 | Proactive Alexa panel | Persist concise incident notification/update records and expose them through the existing authenticated API/MCP boundary. |
 | Decision queue | Query pending actions by incident/current assessment revision; expose expiry and policy rationale. |
