@@ -5,6 +5,10 @@
 
 ## Implementation record
 
+Command Center refinement: the room map now sits beside a compact alert composer. **Send alert now** submits only the chosen device signal; **Add to scenario** stages it for batch/step delivery. Optional device text is labelled **Additional details**, and an empty queue explains why scenario sending is unavailable. Incident names are stored at first correlation, preserved across later evidence, and can be renamed through an authenticated, owner-scoped endpoint. Named dropdowns include date/status; legacy incidents retain a reference until renamed. The continuing incident is shown explicitly instead of leaving the target labelled new.
+
+The repeated metrics and shortcut row were removed. Full timeline and decision review are under Incident history; Command Center has compact decision, eligible-confirmation and virtual-output cards plus a collapsed recent-activity feed. Alexa buttons have explicit foreground/background colours. Verification: 53 Python tests, 12 JavaScript tests and production frontend build. Hosted UI/deployment verification is not implied by those checks.
+
 Phase 2 was explicitly authorized after the Phase 1 source commit. The earlier claim that Phase 1 was complete was too broad: `7f43943` delivered catalog search/filtering, capacity validation, copy-ID deletion confirmation, error wording and Alexa form spacing. It did not deliver archive/recovery APIs, persisted proactive notifications, isolated demo accounts, consolidated settings sections or hosted end-to-end acceptance. These remain open; existing unit tests do not establish their completion.
 
 The graphical Command Center now derives a schematic room layout directly from saved location, room and device fields. Clicking a room expands its devices; clicking a device selects it in the shared alert composer. That composer stages valid signal types and sends selected events through the existing `/events` API, preserving uncertain payloads for retry. Simulation Studio and Command Center share the same mounted queue. Users can send the next signal, send all selected signals, or start a separate incident.

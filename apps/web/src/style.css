@@ -136,6 +136,19 @@ code { font-size: .85em; }
 .map-caption { font-size: 12px; }
 .alexa-briefing { background: #102f3d; color: white; }
 .alexa-briefing p, .alexa-briefing small { color: #d2e3eb; }
+.alexa-briefing button { color: #153745; background: #f4fcff; border-color: #b2dce8; }
+.alexa-briefing button:hover:not(:disabled) { color: #102631; background: #d5f3f7; }
+.alexa-briefing button:focus-visible { outline-color: #f4c361; }
+.command-workbench { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.alert-composer { position: sticky; top: 16px; }
+.alert-composer label { display: block; margin-right: 0; }
+.alert-composer select, .alert-composer input:not([type=checkbox]) { display: block; width: 100%; margin: 8px 0 0; }
+.alert-composer small { display: block; color: var(--muted); line-height: 1.5; }
+.alert-composer fieldset { padding: 14px; }
+.decision-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.action-reason { display: block; font-size: 12px; }
+.rename-incident { margin: 12px 0 24px; }
+@media (max-width: 1100px) { .command-workbench, .decision-cards { grid-template-columns: 1fr; } .alert-composer { position: static; } }
 .alexa-orb { display: grid; place-items: center; width: 72px; height: 72px; margin: 28px 0; border: 3px solid #7ee1e5; border-radius: 50%; box-shadow: 0 0 28px #52c8dd55; color: #b9f4f7; font-size: 42px; }
 @media (max-width: 1100px) { .command-layout { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .room-map { grid-template-columns: 1fr; } }

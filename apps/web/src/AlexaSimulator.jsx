@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createMcpClient } from './mcp';
 import { commands, commandFor, describe, canExecute } from './alexaConversation';
+import { incidentLabel } from './incidentNames';
 
 export default function AlexaSimulator({ config, incidents, selected, onSelect }) {
   const client = useMemo(() => createMcpClient(config), [config.apiUrl, config.clientId, config.cognitoDomain]);
@@ -70,7 +71,7 @@ export default function AlexaSimulator({ config, incidents, selected, onSelect }
   }
   return <>
     <section className="card"><div className="row"><div><h2>Alexa+ coordination</h2><p>Web simulator · English commands · Saved incident state</p></div><button disabled={busy || !selected} onClick={refresh}>{busy ? 'Working…' : 'Refresh context and actions'}</button></div>
-      <div className="alexa-controls"><label>Incident<select value={selected} disabled={busy} onChange={event => onSelect(event.target.value)}><option value="">Choose an incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{selected.slice(0, 8)}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{item.incident_id.slice(0, 8)}</option>)}</select></label></div>
+      <div className="alexa-controls"><label>Incident<select value={selected} disabled={busy} onChange={event => onSelect(event.target.value)}><option value="">Choose an incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{incidentLabel({ incident_id: selected })}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label></div>
       {!selected && <p>Select an incident, then refresh its context or ask a question.</p>}
       {context && <div className="context-bar"><span>Evidence revision {context.incident.event_count}</span><strong>{context.assessment_current ? 'Current assessment' : 'Awaiting current assessment'}</strong><span>Review: {context.incident.decision_review || 'unreviewed'}</span><span>Read at {refreshedAt}</span></div>}
       <form className="alexa-command" onSubmit={submit}><label>Command<input value={input} placeholder="What is happening?" onChange={event => setInput(event.target.value)} disabled={busy || !selected}/></label><div className="actions"><button className="primary" disabled={busy || !selected || !input.trim()}>Send command</button><button disabled={busy || !selected} type="button" aria-pressed={listening} onClick={listen}>{listening ? 'Stop microphone' : 'Use microphone'}</button></div></form>

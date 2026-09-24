@@ -10,6 +10,7 @@ from safety import DEVICES
 from catalog import read_catalog, save_catalog
 from decision_review import review
 from lifecycle import require_active, request_deletion
+from incident_names import rename_incident
 
 
 def handler(event, context):
@@ -49,6 +50,8 @@ def handler(event, context):
         if route == "POST /incidents/{incident_id}/delete":
             return request_deletion(table, owner, incident, body)
         require_active(table, owner, incident)
+        if route == "PUT /incidents/{incident_id}/name":
+            return rename_incident(table, owner, incident, body)
         if route == "POST /incidents/{incident_id}/assessments/{assessment_id}/review":
             return review(owner, incident, params["assessment_id"], body)
         identifier = params["action_id"]

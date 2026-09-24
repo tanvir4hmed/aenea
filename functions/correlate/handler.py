@@ -7,6 +7,7 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 from incidentbridge import idempotency_key, validate_event
+from incident_names import validate_name
 
 client = boto3.client("dynamodb")
 serializer = TypeSerializer()
@@ -44,13 +45,14 @@ def handler(detail, context):
                 "TableName": os.environ["STATE_TABLE"],
                 "Key": attributes(summary_key),
                 "UpdateExpression": (
-                    "SET incident_id = :id, #status = :status, updated_at = :now, "
+                    "SET incident_id = :id, #status = :status, updated_at = :now, #name = if_not_exists(#name, :name), "
                     "created_at = if_not_exists(created_at, :time), "
                     "event_count = if_not_exists(event_count, :zero) + :one"
                 ),
-                "ExpressionAttributeNames": {"#status": "status"},
+                "ExpressionAttributeNames": {"#status": "status", "#name": "name"},
                 "ExpressionAttributeValues": attributes({
                     ":id": incident_id, ":status": "collecting_evidence",
+                    ":name": validate_name(detail.get("incident_name", "Simulated " + event.kind.replace("_", " "))),
                     ":time": event.occurred_at.isoformat(), ":zero": 0, ":one": 1,
                     ":now": datetime.now(timezone.utc).isoformat(),
                 }),

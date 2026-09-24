@@ -1,4 +1,5 @@
 import React from 'react';
+import { incidentLabel } from './incidentNames';
 
 export default function IncidentPicker({ incidents, selected, onSelect, onRefresh, onMore, busy = false }) {
   return <section className="card no-print">
@@ -6,7 +7,7 @@ export default function IncidentPicker({ incidents, selected, onSelect, onRefres
       <select value={selected} onChange={e => onSelect(e.target.value)} disabled={busy}>
         <option value="">Choose an incident</option>
         {selected && !incidents.some(i => i.incident_id === selected) && <option value={selected}>{selected.slice(0, 8)} · awaiting list refresh</option>}
-        {incidents.map(i => <option key={i.incident_id} value={i.incident_id}>{i.incident_id.slice(0, 8)} · {i.status.replaceAll('_', ' ')}</option>)}
+        {incidents.map(i => <option key={i.incident_id} value={i.incident_id}>{incidentLabel(i)}</option>)}
       </select>
     </label><div className="actions"><button disabled={busy} onClick={onRefresh}>Refresh incidents</button>
       {onMore && <button disabled={busy} onClick={onMore}>Load more incidents</button>}</div></div>

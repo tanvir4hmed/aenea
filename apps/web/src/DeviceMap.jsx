@@ -13,7 +13,7 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
   const rooms = [...new Set(devices.map(item => item.room || 'Unassigned area'))];
   const reporting = reportingDevices(timeline, state);
   return <section className="card device-map" aria-busy={!ready}>
-    <div className="row"><div><span className="eyebrow">HOUSEHOLD OVERVIEW</span><h2>Your connected picture</h2></div><span className="mode-label">Simulation</span></div>
+    <div className="row"><h2>Household Overview</h2><span className="mode-label">Simulation</span></div>
     <div className="map-toolbar"><label>Location<select value={site?.id || ''} onChange={event => { setLocationId(event.target.value); setRoom(''); }}><option value="" disabled>Choose location</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button onClick={() => navigate('settings')}>Manage devices</button></div>
     {!ready ? <p role="status">Loading saved devices…</p> : !devices.length ? <div className="empty-state"><h3>{site ? 'No devices at this location' : 'Set up your first location'}</h3><p>Add named rooms and devices in Settings to populate this view.</p></div> : <>
       <p className="map-caption">Room layout · select a room or device to create a simulated alert.</p>
@@ -35,14 +35,15 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
   </section>;
 }
 
-export function IncidentBriefing({ state, selected, timeline }) {
+export function IncidentBriefing({ state, selected, timeline, navigate }) {
   const assessment = state?.latest_assessment;
   const summary = assessment?.assessment;
   const pending = timeline.filter(item => item.status === 'pending_confirmation' && item.assessment_id === assessment?.assessment_id);
   const text = incidentBriefing(state, selected);
   return <aside className="card alexa-briefing"><span className="mode-label">Alexa+ simulation</span><div className="alexa-orb" aria-hidden="true">a</div><h2>Incident briefing</h2><div role="status" aria-live="polite" aria-atomic="true"><p>{text}</p><p>{summary && <span className="badge">{humanize(summary.severity)}</span>} {state?.incident && `Evidence revision ${state.incident.event_count || 0}`}</p></div>
     <button disabled={!selected} onClick={() => { if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } }}>Read briefing aloud</button>
+    <div className="actions"><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('handoff')}>Prepare handoff</button></div>
     <h3>Needs your attention</h3><p>{pending.length && state?.assessment_current ? `${pending.length} proposed action(s) need confirmation. Review the current decisions below.` : 'No current confirmation shown in loaded records.'}</p>
-    <small>Updates as saved incident evidence is processed. Review uncertainties and policy outcomes below.</small>
+    <small>Updates as saved incident evidence is processed. Full reasoning is available in Incident history.</small>
   </aside>;
 }

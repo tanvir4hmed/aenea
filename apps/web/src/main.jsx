@@ -14,6 +14,8 @@ import Settings from './Settings';
 import SimulationStudio from './SimulationStudio';
 import DataControls from './DataControls';
 import DeviceMap, { IncidentBriefing } from './DeviceMap';
+import { incidentName } from './incidentNames';
+import IncidentSummary from './IncidentSummary';
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
@@ -141,7 +143,7 @@ function App() {
     try { await navigator.clipboard.writeText(value); setCopyNotice(label + ' copied.'); }
     catch { setCopyNotice('Copy is unavailable. Select the value manually.'); }
   }
-  return <AppShell page={page} navigate={navigate} authenticated={authenticated} config={config} selected={selected}
+  return <AppShell page={page} navigate={navigate} authenticated={authenticated} config={config} selected={selected} selectedName={incidentName(incidents.find(item => item.incident_id === selected) || { incident_id: selected })}
     onAuth={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
@@ -165,13 +167,12 @@ function App() {
       {authenticated && config && page === 'command-center' && <>
         <IncidentPicker incidents={incidents} selected={selected} onSelect={setSelected} busy={loadingIncidents}
           onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
-        <div className="command-layout"><DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={value => {
-          setDeviceSelection(value);
-          requestAnimationFrame(() => document.getElementById('device-alert-composer')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-        }}/><IncidentBriefing selected={selected} state={incidentState} timeline={timeline}/></div>
       </>}
       {authenticated && config && identity && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
-        <SimulationStudio key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'} api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
+        <SimulationStudio key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
+          map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
+          briefing={<IncidentBriefing selected={selected} state={incidentState} timeline={timeline} navigate={navigate}/>}
+          api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
         <details className="card" hidden={page !== 'simulation-lab'}><summary>Built-in walkthroughs with sample devices</summary>
@@ -180,18 +181,18 @@ function App() {
         }} /></details>
       </div>}
       {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><Coordination key="settings" api={api} timeline={[]} simulation settingsOnly /><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy || scenarioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}
-      {authenticated && config && ['command-center','simulation-lab'].includes(page) && <>
-        {page === 'command-center' && <><section className="metrics" aria-label="Workspace summary"><div className="card"><span>Loaded incidents</span><strong>{loadingIncidents ? '…' : incidents.length}</strong><small>{incidentCursor ? 'More incidents available below' : 'Your incident list'}</small></div><div className="card"><span>Selected incident</span><strong className="small">{selected ? selected.slice(0, 8) : 'Choose an incident'}</strong><small>Shared across workspace pages</small></div><div className="card"><span>Pending confirmations</span><strong>{selected ? timeline.filter(item => item.sk?.startsWith('ACTION#') && item.status === 'pending_confirmation').length : '—'}</strong><small>In the loaded incident timeline</small></div></section>
-          <section className="quick-actions" aria-label="Quick actions"><button onClick={() => navigate('simulation-lab')}>Send simulated signals</button><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('handoff')}>Prepare handoff</button></section></>}
+      {authenticated && config && page === 'command-center' && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
+      {authenticated && config && page === 'incident-history' && <>
         <div className="columns"><section className="card" aria-busy={loadingIncidents}><div className="row"><h2>Incidents</h2><button disabled={loadingIncidents} onClick={()=>loadIncidents().catch(e=>setError(e.message))}>{loadingIncidents ? 'Refreshing…' : 'Refresh'}</button></div>
           {!incidents.length && <div className="empty-state"><h3>{loadingIncidents ? 'Loading incidents…' : 'No incidents yet'}</h3><p>Start with a simulated signal to see the coordinated response.</p>{!loadingIncidents && page === 'command-center' && <button onClick={() => navigate('simulation-lab')}>Open Simulation lab</button>}</div>}
-          {incidents.map(i=><button aria-pressed={selected===i.incident_id} className={'incident '+(selected===i.incident_id?'selected':'')} key={i.incident_id} onClick={()=>setSelected(i.incident_id)}><b>{i.incident_id.slice(0,8)}</b><span>{i.event_count} signals · {i.status.replaceAll('_',' ')}</span></button>)}
+          {incidents.map(i=><button aria-pressed={selected===i.incident_id} className={'incident '+(selected===i.incident_id?'selected':'')} key={i.incident_id} onClick={()=>setSelected(i.incident_id)}><b>{incidentName(i)}</b><span>{i.event_count} signals · {i.status.replaceAll('_',' ')} · {i.created_at ? new Date(i.created_at).toLocaleString() : ''}</span></button>)}
           {incidentCursor && <button onClick={()=>loadIncidents(incidentCursor).catch(e=>setError(e.message))}>Load more</button>}
         </section><section className="card"><h2>Evidence timeline</h2>{!selected && <p>Select an incident to see its evidence.</p>}{selected && !timeline.length && <p>Waiting for processed evidence…</p>}
           <ol className="timeline">{timeline.filter(item=>item.event || item.kind).map(item=><li key={item.sk}><span className="badge">SIMULATED</span><h3>{(item.event?.kind || item.kind).replaceAll('_',' ')}</h3><p>{item.event?.observation || item.data?.result || item.data?.policy_reason || item.data?.message || item.data?.assessment?.summary || 'Coordination decision recorded'}</p><time>{new Date(item.event?.occurred_at || item.recorded_at).toLocaleString()}</time><small>{item.event?.source.source_id}</small></li>)}</ol>
           {timelineCursor && <button onClick={()=>loadTimeline(selected,timelineCursor).catch(e=>setError(e.message))}>Earlier / additional events</button>}
         </section></div>
-        <Coordination key={selected} api={api} timeline={timeline} incident={selected} incidentState={incidentState} simulation={false} onRefresh={()=>loadTimeline(selected)} />
+        {selected && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
+        <details className="card"><summary>Assessment details and decision review</summary><Coordination key={selected} api={api} timeline={timeline} incident={selected} incidentState={incidentState} simulation={false} onRefresh={()=>loadTimeline(selected)} /></details>
       </>}
       {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} incidents={incidents} selected={selected} onSelect={setSelected}/>}
       {authenticated && config && ['check-in','handoff'].includes(page) && <>

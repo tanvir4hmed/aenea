@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { incidentLabel } from './incidentNames';
 
 export default function DataControls({ api, incidents, onDeleted, onClearDrafts, disabled }) {
   const [target, setTarget] = useState(''), [confirmation, setConfirmation] = useState('');
@@ -28,7 +29,7 @@ export default function DataControls({ api, incidents, onDeleted, onClearDrafts,
       setNotice(result.cleanup_status === 'completed' ? 'Incident cleanup is complete.' : 'Deletion requested. Background cleanup starts after at least 15 minutes.');
       await load();
     }); }}><fieldset disabled={busy || disabled}><legend>Delete one incident</legend>
-      <label>Incident<select required value={target} onChange={event => { setTarget(event.target.value); setConfirmation(''); }}><option value="">Choose an incident</option>{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{item.incident_id.slice(0, 8)} · {item.event_count} signals</option>)}</select></label>
+      <label>Incident<select required value={target} onChange={event => { setTarget(event.target.value); setConfirmation(''); }}><option value="">Choose an incident</option>{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
       {target && <><p>Type this ID to confirm: <code>{target}</code> <button type="button" onClick={copyId}>Copy ID</button></p><label>Incident ID<input required value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="off"/></label><p>This also clears this tab’s simulation queue when it contains signals for this incident. Deletion cannot be undone in the app.</p></>}
       <div className="actions"><button disabled={!target || confirmation !== target}>Delete incident and stored evidence</button></div>
     </fieldset></form>

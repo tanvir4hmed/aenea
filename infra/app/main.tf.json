@@ -72,6 +72,10 @@
       "mcp_proxy"
     ],
     "routes": {
+      "PUT /incidents/{incident_id}/name": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
       "POST /incidents/{incident_id}/delete": {
         "function": "action_executor",
         "scope": "aenea/write"
