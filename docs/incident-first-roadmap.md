@@ -3,6 +3,18 @@
 **Status:** approved implementation plan — no Command Center feature work has started.
 **Last reviewed:** 2026-09-24
 
+## Implementation record
+
+Phase 2 was explicitly authorized after the Phase 1 source commit. The earlier claim that Phase 1 was complete was too broad: `7f43943` delivered catalog search/filtering, capacity validation, copy-ID deletion confirmation, error wording and Alexa form spacing. It did not deliver archive/recovery APIs, persisted proactive notifications, isolated demo accounts, consolidated settings sections or hosted end-to-end acceptance. These remain open; existing unit tests do not establish their completion.
+
+The graphical Command Center now derives a schematic room layout directly from saved location, room and device fields. Clicking a room expands its devices; clicking a device selects it in the shared alert composer. That composer stages valid signal types and sends selected events through the existing `/events` API, preserving uncertain payloads for retry. Simulation Studio and Command Center share the same mounted queue. Users can send the next signal, send all selected signals, or start a separate incident.
+
+An adjacent Alexa simulation briefing updates from the polled saved assessment, distinguishes stale/rejected assessments, and supports user-initiated read-aloud. Evidence indicators use loaded timeline records plus the saved assessment snapshot. They are not device-health indicators. Large rooms collapse unaffected device counts by type until expanded. Layout is automatic, with no manual coordinates or physical floor-plan claim.
+
+Verified locally: frontend production build and nine JavaScript tests covering signal identity/compatibility, action eligibility, and briefing freshness. Hosted click-through, mobile and screen-reader acceptance remain pending. The frontend-only push uses existing scoped deployment; no deployment wait is required.
+
+Actual backend capacity remains **50 locations and 200 total devices per household**, with 30 devices per room/zone. The earlier 200-per-location figure is a future design target, not implemented capacity. The reasoner still limits automatic assessment to 20 incident signals. No new payload source field was added because the existing ingestion contract does not accept it.
+
 ## Product boundary
 
 Aenea is an Alexa+-centered, simulated household incident-coordination prototype. It is not a certified alarm, native Alexa/Ring integration, physical-device controller, emergency-dispatch service, or production multi-tenant SaaS.
@@ -29,7 +41,7 @@ These fixes need to remain in the regression suite, but are not a reason to rede
 
 ## Delivery order
 
-There are exactly two implementation phases. **Phase 2 may not start until Phase 1 passes its hosted acceptance gate and the user gives explicit permission.**
+There are exactly two implementation phases. The user subsequently authorized Phase 2; outstanding Phase 1 acceptance gaps are recorded above.
 
 ### Phase 1 — Incident Experience Hardening
 

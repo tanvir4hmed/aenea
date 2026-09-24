@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { deviceTypes, humanize, signalPayload } from './devices';
 
-export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled }) {
+export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false }) {
   const storageKey = 'aenea-studio-' + household;
   const [drafts, setDrafts] = useState(() => {
     try { const saved = JSON.parse(sessionStorage.getItem(storageKey)); return Array.isArray(saved) ? saved : []; }
@@ -18,6 +18,15 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const eligible = catalog.devices.filter(item => item.enabled && (!locationId || item.location_id === locationId));
   const pending = drafts.some(row => row.payload && row.status !== 'accepted');
   const unsent = drafts.filter(row => row.checked && row.status !== 'accepted');
+  useEffect(() => {
+    if (!deviceSelection) return;
+    if (pending || busy) { setNotice('Finish or retry the pending delivery before selecting another device.'); return; }
+    const chosen = catalog.devices.find(item => item.id === deviceSelection.id);
+    if (!chosen) return;
+    setLocationId(chosen.location_id); setDeviceId(chosen.id);
+    setKind(deviceTypes[chosen.type]?.kinds[0] || '');
+    setNotice(chosen.enabled ? `${chosen.name} selected. Choose an observation, add it to the queue, then send.` : `${chosen.name} is disabled. Enable it in Settings before creating an alert.`);
+  }, [deviceSelection]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stop.current = true; }; }, []);
   function update(next) {
     currentDrafts.current = next;
@@ -64,7 +73,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     setRunIncident(''); setTarget('new'); setError(''); setNotice('Ready to replay as a new incident.');
   }
   return <section className="card">
-    <div className="row"><div><h2>Simulation Studio</h2><p>Build a signal queue from your devices. Send selected signals together or one at a time.</p></div><button disabled={busy} onClick={() => navigate('settings')}>Manage devices</button></div>
+    <div className="row"><div><h2>{embedded ? 'Create device alerts' : 'Simulation Studio'}</h2><p>Stage device signals, then send selected alerts together or one at a time.</p></div><button disabled={busy} onClick={() => navigate('settings')}>Manage devices</button></div>
     {!catalog.devices.length && <div className="empty-state"><h3>Add devices to begin</h3><p>Create locations and simulation devices in Settings, then compose an incident here.</p></div>}
     <p>Automatic assessment currently supports up to 20 signals per incident. Larger incidents retain their evidence but require review; automatic actions stop.</p>
     <form onSubmit={add}><fieldset disabled={busy || !ready || pending}><legend>Add a signal</legend><div className="form-grid">
@@ -85,6 +94,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     {(runIncident || drafts.some(row => row.payload)) && <p>Run incident: <code>{runIncident || drafts.find(row => row.payload)?.payload.incident_id}</code></p>}
     <div className="actions"><button className="primary" disabled={disabled || busy || !ready || !unsent.length} onClick={() => send(false)}>{pending ? 'Retry pending and continue selected' : 'Send selected signals'}</button><button disabled={disabled || busy || !ready || !unsent.length} onClick={() => send(true)}>Send next selected signal</button>{busy && <button onClick={() => { stop.current = true; setNotice('Pausing after the current request…'); }}>Pause after current signal</button>}
       <button disabled={busy || pending || !drafts.length} onClick={replay}>Replay queue as new incident</button>
+      <button disabled={busy || pending || !runIncident} onClick={() => { update(currentDrafts.current.filter(row => row.status !== 'accepted')); setRunIncident(''); setTarget('new'); setNotice('Next unsent signals will start a new incident. Previously accepted signals remain saved.'); }}>Start a separate incident</button>
       <button disabled={busy || pending || !drafts.length} onClick={() => { update([]); setRunIncident(''); setNotice('Draft queue cleared. Saved incident evidence is unchanged.'); }}>Clear queue</button>
     </div>
     {pending && <><p>Delivery is pending or uncertain. Retry preserves the original event ID; accepted signals are not resent.</p><button disabled={busy} onClick={() => {

@@ -13,6 +13,7 @@ import UserGuide from './UserGuide';
 import Settings from './Settings';
 import SimulationStudio from './SimulationStudio';
 import DataControls from './DataControls';
+import DeviceMap, { IncidentBriefing } from './DeviceMap';
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
@@ -24,6 +25,7 @@ function App() {
   const [selected, setSelected] = useState(() => sessionStorage.getItem(incidentStorageKey) || ''), [timeline, setTimeline] = useState([]);
   const [notice, setNotice] = useState('');
   const [studioBusy, setStudioBusy] = useState(false);
+  const [deviceSelection, setDeviceSelection] = useState(null);
   const [studioEpoch, setStudioEpoch] = useState(0);
   const [catalog, setCatalog] = useState({ revision: null, locations: [], devices: [] });
   const [catalogReady, setCatalogReady] = useState(false), [catalogBusy, setCatalogBusy] = useState(false);
@@ -160,11 +162,19 @@ function App() {
         <p className="guest-warning">Shared demo account: use fictional data only. Activity may be visible to other demo visitors.</p>
         {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
       </section>}
-      {authenticated && config && identity && <div key={studioEpoch} hidden={page !== 'simulation-lab'}>
-        <SimulationStudio key={identity} api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
+      {authenticated && config && page === 'command-center' && <>
+        <IncidentPicker incidents={incidents} selected={selected} onSelect={setSelected} busy={loadingIncidents}
+          onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
+        <div className="command-layout"><DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={value => {
+          setDeviceSelection(value);
+          requestAnimationFrame(() => document.getElementById('device-alert-composer')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        }}/><IncidentBriefing selected={selected} state={incidentState} timeline={timeline}/></div>
+      </>}
+      {authenticated && config && identity && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
+        <SimulationStudio key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'} api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
-        <details className="card"><summary>Built-in walkthroughs with sample devices</summary>
+        <details className="card" hidden={page !== 'simulation-lab'}><summary>Built-in walkthroughs with sample devices</summary>
         <ScenarioLab api={api} household={identity} disabled={studioBusy} onBusy={setScenarioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }} /></details>

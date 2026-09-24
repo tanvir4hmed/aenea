@@ -120,6 +120,25 @@ code { font-size: .85em; }
 .alexa-controls label, .alexa-command label { display: block; margin: 0; max-width: 680px; }
 .alexa-controls select, .alexa-command input { display: block; width: 100%; margin: 8px 0 0; }
 .alexa-command { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+.command-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 24px; align-items: start; }
+.map-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+.room-map { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; background: #e6edef; border: 2px solid #cad8dc; border-radius: 16px; }
+.map-room { background: #fbfcfd; border: 2px solid #c8d5db; border-radius: 6px; padding: 12px; min-width: 0; }
+.map-room.focused { outline: 3px solid #298b89; outline-offset: 1px; }
+.map-room.reporting { border-color: #b9772a; background: #fff8ed; }
+.room-title { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px; }
+.room-title small { display: block; margin-top: 6px; color: var(--muted); }
+.map-devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin-top: 16px; }
+.map-device { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; font-size: 12px; overflow-wrap: anywhere; }
+.map-device small { font-weight: 400; color: var(--muted); }
+.device-symbol { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #e2efed; color: #155f61; font-size: 23px; }
+.has-evidence .device-symbol { background: #ffdeb2; color: #6e410e; }
+.map-caption { font-size: 12px; }
+.alexa-briefing { background: #102f3d; color: white; }
+.alexa-briefing p, .alexa-briefing small { color: #d2e3eb; }
+.alexa-orb { display: grid; place-items: center; width: 72px; height: 72px; margin: 28px 0; border: 3px solid #7ee1e5; border-radius: 50%; box-shadow: 0 0 28px #52c8dd55; color: #b9f4f7; font-size: 42px; }
+@media (max-width: 1100px) { .command-layout { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .room-map { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) { .settings-columns { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) {
