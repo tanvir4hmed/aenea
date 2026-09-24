@@ -1,5 +1,6 @@
 """Regression coverage for DynamoDB key conditions used by incident reads."""
 import importlib.util
+import os
 from pathlib import Path
 import sys
 import unittest
@@ -35,7 +36,7 @@ def load(name, path, modules=None):
     module = importlib.util.module_from_spec(spec)
     resource = Mock()
     resource.Table.return_value = Mock()
-    with patch.dict(sys.modules, modules or {}), patch("boto3.resource", return_value=resource):
+    with patch.dict(sys.modules, modules or {}), patch.dict(os.environ, {"STATE_TABLE": "offline"}), patch("boto3.resource", return_value=resource):
         spec.loader.exec_module(module)
     return module
 
