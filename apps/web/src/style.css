@@ -27,7 +27,7 @@ h1:focus, main:focus { outline: none; }
 .sidebar-footer p { color: #bccdd5; font-size: 13px; }
 .sidebar-footer .mode-label { color: #bcece3; background: #25414b; border-color: #3b5e67; }
 .menu-toggle { display: none; }
-main { width: 100%; min-width: 0; max-width: 1600px; padding: 36px clamp(20px, 4vw, 64px); }
+main { flex: 1; width: 100%; min-width: 0; max-width: none; padding: 28px clamp(20px, 2vw, 36px); }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 28px; }
 .header-actions { display: flex; gap: 12px; align-items: center; }
 .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; color: var(--muted); }
@@ -139,7 +139,17 @@ code { font-size: .85em; }
 .alexa-briefing button { color: #153745; background: #f4fcff; border-color: #b2dce8; }
 .alexa-briefing button:hover:not(:disabled) { color: #102631; background: #d5f3f7; }
 .alexa-briefing button:focus-visible { outline-color: #f4c361; }
-.command-workbench { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.command-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 340px); gap: 20px; align-items: start; }
+.command-rail { min-width: 0; }
+.command-rail .alexa-briefing { padding: 20px; font-size: 14px; }
+.command-rail .alexa-orb { width: 44px; height: 44px; margin: 14px 0; font-size: 27px; }
+.command-rail .actions { gap: 8px; }
+.trigger-selection { list-style: none; padding: 0; }
+.trigger-selection li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.red-alert { border: 2px solid #b82929; background: #fff0ef; }
+.red-alert .device-symbol { background: #b82929; color: white; }
+.red-alert small { color: #a51d1d; font-weight: 700; }
+.map-room.urgent-room { border-color: #b82929; }
 .alert-composer { position: sticky; top: 16px; }
 .alert-composer label { display: block; margin-right: 0; }
 .alert-composer select, .alert-composer input:not([type=checkbox]) { display: block; width: 100%; margin: 8px 0 0; }

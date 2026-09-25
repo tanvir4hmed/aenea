@@ -11,6 +11,7 @@ from catalog import read_catalog, save_catalog
 from decision_review import review
 from lifecycle import require_active, request_deletion
 from incident_names import rename_incident
+from simulation_library import read_library, save_library
 
 
 def handler(event, context):
@@ -20,6 +21,8 @@ def handler(event, context):
     try:
         owner = household(event)
         route = event["routeKey"]
+        if route == "GET /household/simulations":
+            return response(200, read_library(table, owner))
         if route == "GET /household/catalog":
             return response(200, read_catalog(table, owner))
         if route == "GET /household/devices":
@@ -27,9 +30,11 @@ def handler(event, context):
         raw = event.get("body") or "{}"
         if event.get("isBase64Encoded"):
             raw = base64.b64decode(raw, validate=True).decode()
-        if len(raw.encode()) > (120000 if route == "PUT /household/catalog" else 8000):
+        if len(raw.encode()) > (120000 if route in {"PUT /household/catalog", "PUT /household/simulations"} else 8000):
             raise ValueError("Oversized request")
         body = json.loads(raw)
+        if route == "PUT /household/simulations":
+            return save_library(table, owner, body)
         if route == "PUT /household/catalog":
             return save_catalog(table, owner, body)
         if route == "PUT /household/devices":
@@ -69,7 +74,7 @@ def handler(event, context):
     except PermissionError:
         return response(401, {"error": "Authentication required"})
     except ValueError as exc:
-        if event.get("routeKey") == "PUT /household/catalog":
+        if event.get("routeKey") in {"PUT /household/catalog", "PUT /household/simulations"}:
             return response(400, {"error": str(exc) or "Invalid catalog settings"})
         return response(400, {"error": "Invalid action request"})
     except (TypeError, KeyError, AttributeError):

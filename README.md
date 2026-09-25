@@ -11,7 +11,8 @@ Aenea explores an Alexa+-centered response to disconnected household alerts. Sim
 Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
 
 - **Settings:** name locations, manage simulated devices and set virtual action permissions.
-- **Simulation Studio:** select device observations, send one or a sequence, and add evidence later.
+- **Simulation Studio:** save named single alerts and multi-device scenarios; edit or delete reusable definitions.
+- **Command Center:** select saved simulations, combine non-overlapping devices and trigger alerts beside the live briefing and map.
 - **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
 - **Alexa+ coordination:** ask supported commands, record synthetic check-ins and approve eligible actions.
 - **Handoff:** review and copy/print a bounded incident summary; nothing is sent to responders.

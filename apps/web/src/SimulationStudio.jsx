@@ -1,108 +1,116 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { deviceTypes, humanize, signalPayload } from './devices';
-import { incidentLabel, incidentName } from './incidentNames';
-import { deliveryRows } from './signalQueue';
+import { incidentLabel } from './incidentNames';
+import { selectedSignals } from './simulations';
+
+const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [] });
 
 export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing }) {
-  const storageKey = 'aenea-studio-' + household;
-  const [drafts, setDrafts] = useState(() => {
-    try { const saved = JSON.parse(sessionStorage.getItem(storageKey)); return Array.isArray(saved) ? saved : []; }
-    catch { return []; }
-  });
-  const [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
-  const [target, setTarget] = useState('new'), [name, setName] = useState('');
-  const [runIncident, setRunIncident] = useState(() => drafts.find(row => row.payload)?.payload.incident_id || '');
+  const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
+  const [draft, setDraft] = useState(blank), [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
+  const [selection, setSelection] = useState([]), [target, setTarget] = useState('new'), [name, setName] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
-  const [scenarioOpen, setScenarioOpen] = useState(false);
-  const lock = useRef(false), stop = useRef(false), mounted = useRef(true), currentDrafts = useRef(drafts);
+  const runKey = 'aenea-trigger-' + household;
+  const [run, setRun] = useState(() => { try { return JSON.parse(sessionStorage.getItem(runKey)) || null; } catch { return null; } });
+  const [legacy] = useState(() => { try { const value = JSON.parse(sessionStorage.getItem('aenea-studio-' + household)); return Array.isArray(value) ? value : []; } catch { return []; } });
+  const lock = useRef(false);
+  const pending = run?.rows.some(row => !row.accepted);
   const device = catalog.devices.find(item => item.id === deviceId);
-  const pending = drafts.some(row => row.payload && row.status !== 'accepted');
-  const unsent = drafts.filter(row => row.checked && row.status !== 'accepted');
-  const defaultName = device ? `${device.room || catalog.locations.find(site => site.id === device.location_id)?.name || 'Household'} · ${humanize(kind || 'alert')}`.slice(0, 120) : 'Simulated incident';
+  async function reload() {
+    const value = await api('/household/simulations'); setLibrary(value); setLoaded(true);
+  }
+  useEffect(() => { reload().catch(e => setError(e.message)); }, [household]);
   useEffect(() => {
     if (!deviceSelection) return;
-    if (pending || lock.current) { setNotice('Retry the pending delivery before selecting another device.'); return; }
-    const chosen = catalog.devices.find(item => item.id === deviceSelection.id);
-    if (!chosen) return;
-    setDeviceId(chosen.id); setKind(deviceTypes[chosen.type]?.kinds[0] || ''); setObservation(''); setNotice('');
+    const item = catalog.devices.find(item => item.id === deviceSelection.id);
+    if (item) setNotice(`${item.name} selected on the map. Choose a saved alert containing it below, or create one in Simulation Studio.`);
   }, [deviceSelection]);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; stop.current = true; }; }, []);
-  function update(next) {
-    // Persist before delivery so an uncertain retry retains its exact event identity.
-    sessionStorage.setItem(storageKey, JSON.stringify(next));
-    currentDrafts.current = next;
-    if (mounted.current) setDrafts(next);
+  async function perform(task) {
+    if (lock.current) return;
+    lock.current = true; setBusy(true); onBusy(true); setError(''); setNotice('');
+    try { await task(); } catch (e) { setError(e.message); }
+    finally { lock.current = false; setBusy(false); onBusy(false); }
   }
-  function patch(id, fields) { update(currentDrafts.current.map(row => row.id === id ? { ...row, ...fields } : row)); }
-  function stage() {
-    if (lock.current || pending || disabled || !ready || !device?.enabled || !deviceTypes[device.type]?.kinds.includes(kind)) return null;
-    if (currentDrafts.current.length >= 50) throw new Error('Clear completed scenario entries before adding more (50 maximum).');
-    const row = { id: crypto.randomUUID(), deviceId, kind, observation: observation.trim() || `Synthetic ${humanize(kind)} detected. Cause and occupancy unverified.`, checked: true, status: 'draft' };
-    update([...currentDrafts.current, row]); setObservation(''); return row;
+  async function saveItems(items) {
+    const result = await api('/household/simulations', { method: 'PUT', body: JSON.stringify({ revision: library.revision, items }) });
+    setLibrary(result); return result;
   }
-  async function send(nextOnly = false, onlyId = null) {
-    if (lock.current || disabled || !ready || !household) return;
-    const rows = deliveryRows(currentDrafts.current, onlyId, nextOnly);
-    if (!rows.length) return;
-    lock.current = true; stop.current = false; setBusy(true); onBusy(true); setError(''); setNotice('');
-    const uncertain = currentDrafts.current.find(row => row.payload && row.status !== 'accepted');
-    const incident = uncertain?.payload.incident_id || runIncident || (target === 'new' ? crypto.randomUUID() : target);
-    setRunIncident(incident);
-    try {
-      for (const row of rows) {
-        if (stop.current) break;
-        const currentDevice = catalog.devices.find(item => item.id === row.deviceId);
-        const location = catalog.locations.find(item => item.id === currentDevice?.location_id);
-        if (!row.payload && (!currentDevice || !location)) throw new Error('A queued device was removed. Remove its draft or restore the device.');
-        const generatedName = `${currentDevice?.room || location?.name || 'Household'} · ${humanize(row.kind)}`.slice(0, 120);
-        const payload = row.payload || { ...signalPayload(row, currentDevice, location, household, incident), incident_name: name.trim() || generatedName };
-        patch(row.id, { payload, status: 'sending' });
-        try {
-          const receipt = await api('/events', { method: 'POST', body: JSON.stringify(payload) });
-          patch(row.id, { status: 'accepted', receipt, checked: false });
-          if (mounted.current) onAccepted(receipt.incident_id);
-        } catch (failure) { patch(row.id, { status: 'retry' }); throw failure; }
-      }
-      if (mounted.current) setNotice(stop.current ? 'Paused after the current alert.' : 'Alert accepted. The incident briefing updates as processing completes.');
-    } catch (failure) { if (mounted.current) { setError(failure.message); setScenarioOpen(true); } }
-    finally { lock.current = false; if (mounted.current) setBusy(false); onBusy(false); }
-  }
-  function add(sendNow = false) {
+  function addSignal() {
     setError('');
-    try {
-      const row = stage();
-      if (!row) return;
-      if (sendNow) void send(false, row.id);
-      else { setScenarioOpen(true); setNotice('Added to scenario. Send the selected alerts together or send the next one.'); }
-    } catch (failure) { setError(failure.message); }
+    if (!device?.enabled || !deviceTypes[device.type]?.kinds.includes(kind)) return;
+    if (draft.signals.some(row => row.deviceId === deviceId)) { setError('This device is already included. Each device can appear once.'); return; }
+    if (draft.signals.length >= (draft.type === 'single' ? 1 : 20)) { setError(draft.type === 'single' ? 'Single alert contains one device. Choose Scenario for several devices.' : 'Use up to 20 devices per scenario.'); return; }
+    setDraft(old => ({ ...old, signals: [...old.signals, { deviceId, kind, observation: observation.trim() }] })); setObservation('');
   }
-  const composer = <section className="card alert-composer" aria-label="Device alert composer">
-    <h2>{embedded ? 'Create an alert' : 'Simulation Studio'}</h2>
-    {!catalog.devices.length && <p>Add a device in Settings to begin. <button onClick={() => navigate('settings')}>Open Settings</button></p>}
-    <form onSubmit={event => { event.preventDefault(); add(true); }}><fieldset disabled={busy || !ready || pending || disabled}>
-      <legend>{device ? device.name : 'Select a device'}</legend>
-      <label>Device<select required value={deviceId} onChange={event => { const chosen = catalog.devices.find(item => item.id === event.target.value); setDeviceId(chosen?.id || ''); setKind(deviceTypes[chosen?.type]?.kinds[0] || ''); setObservation(''); }}><option value="">Choose a device or click the map</option>{catalog.devices.map(item => <option key={item.id} value={item.id}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
-      <label>Signal type<select required value={kind} onChange={event => setKind(event.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
-      <label>Additional details (optional)<input maxLength={600} value={observation} onChange={event => setObservation(event.target.value)} placeholder="E.g. water detected near the doorway"/></label>
-      <small>Extra information reported by this simulated device. Leave blank to use a default description.</small>
-      <label>Send to<select disabled={!!runIncident} value={runIncident || target} onChange={event => setTarget(event.target.value)}><option value="new">Start new incident</option>{runIncident && !incidents.some(item => item.incident_id === runIncident) && <option value={runIncident}>{drafts.find(row => row.payload?.incident_id === runIncident)?.payload.incident_name || 'Current scenario incident'} · processing</option>}{selected && selected !== runIncident && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{incidentLabel({ incident_id: selected })}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
-      {target === 'new' && !runIncident && <label>Incident name (optional)<input maxLength={120} value={name} onChange={event => setName(event.target.value)} placeholder={defaultName}/></label>}
-      {runIncident && <p>Continuing: <strong>{incidentName(incidents.find(item => item.incident_id === runIncident) || { name: drafts.find(row => row.payload?.incident_id === runIncident)?.payload.incident_name, incident_id: runIncident })}</strong></p>}
-      {device && !device.enabled && <p>Enable this device in Settings before sending an alert.</p>}
-      <div className="actions"><button className="primary" disabled={!device?.enabled || !kind}>Send alert now</button><button type="button" disabled={!device?.enabled || !kind} onClick={() => add(false)}>Add to scenario</button></div>
-    </fieldset></form>
-    {runIncident && <button disabled={busy || pending} onClick={() => { update(currentDrafts.current.filter(row => row.status !== 'accepted')); setRunIncident(''); setTarget('new'); setName(''); setNotice('Next alert starts a new incident. Saved evidence is unchanged.'); }}>Start a separate incident</button>}
-    <details open={scenarioOpen || pending} onToggle={event => setScenarioOpen(event.currentTarget.open)}><summary>Scenario · {drafts.filter(row => row.status !== 'accepted').length} unsent alerts</summary>
-      <p>Add device alerts to the scenario first, then send selected alerts together or one at a time.</p>
-      <ol className="signal-queue">{drafts.map(row => <li key={row.id}><label><input type="checkbox" checked={row.checked} disabled={busy || pending || row.status === 'accepted'} onChange={event => patch(row.id, { checked: event.target.checked })}/>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'} · {humanize(row.kind)}</label><small>{row.status === 'sending' && !busy ? 'Delivery uncertain — retry' : row.status}</small>{row.status === 'draft' && <button disabled={busy || pending} onClick={() => update(currentDrafts.current.filter(item => item.id !== row.id))}>Remove</button>}</li>)}</ol>
-      {!unsent.length && <p>Add at least one alert to send a scenario.</p>}
-      <div className="actions"><button disabled={busy || disabled || !ready || !unsent.length} onClick={() => send()}>{pending ? 'Retry pending alerts' : 'Send scenario'}</button><button disabled={busy || disabled || !ready || !unsent.length} onClick={() => send(true)}>Send next</button>{busy && <button onClick={() => { stop.current = true; }}>Pause</button>}
-        <button disabled={busy || pending || !drafts.length} onClick={() => { update(drafts.map(row => ({ id: crypto.randomUUID(), deviceId: row.deviceId, kind: row.kind, observation: row.observation, checked: true, status: 'draft' }))); setRunIncident(''); setTarget('new'); setName(''); }}>Replay as new incident</button>
-        <button disabled={busy || pending || !drafts.length} onClick={() => { update([]); setRunIncident(''); }}>Clear scenario</button></div>
-      {pending && <p>Delivery may already have succeeded. Retry uses the same event identity and does not duplicate accepted alerts.</p>}
-      <small>Automatic assessment supports 20 signals per incident.</small>
-    </details>
-    {notice && <p role="status" className="notice">{notice}</p>}{error && <p role="alert" className="error">{error}</p>}
+  function persistRun(value) {
+    sessionStorage.setItem(runKey, JSON.stringify(value)); setRun(value);
+  }
+  let rows = [], selectionError = '';
+  try { rows = selectedSignals(library.items, selection, catalog); } catch (e) { selectionError = e.message; }
+  const chosen = library.items.filter(item => selection.includes(item.id));
+  const single = chosen.length === 1 && chosen[0].type === 'single';
+  const title = name.trim() || chosen.map(item => item.name).join(' + ').slice(0, 120);
+  const currentIncident = incidents.find(item => item.incident_id === target);
+  const overBudget = target !== 'new' && (Number(currentIncident?.event_count || 0) + rows.length > 20);
+  async function trigger() {
+    await perform(async () => {
+      let batch = pending ? run : null;
+      if (!batch) {
+        const signals = selectedSignals(library.items, selection, catalog);
+        if (!signals.length || overBudget) throw new Error('Choose 1–20 device alerts within the incident assessment limit.');
+        const incident = target === 'new' ? crypto.randomUUID() : target;
+        batch = { incident, name: title, rows: signals.map(row => {
+          const source = catalog.devices.find(item => item.id === row.deviceId);
+          const location = catalog.locations.find(item => item.id === source.location_id);
+          if (!location) throw new Error('Device location was removed. Edit the saved simulation.');
+          return { accepted: false, payload: { ...signalPayload({ ...row, observation: row.observation || `Synthetic ${humanize(row.kind)} detected. Cause and occupancy unverified.` }, source, location, household, incident), incident_name: title } };
+        }) };
+        persistRun(batch);
+      }
+      for (let index = 0; index < batch.rows.length; index++) {
+        if (batch.rows[index].accepted) continue;
+        const receipt = await api('/events', { method: 'POST', body: JSON.stringify(batch.rows[index].payload) });
+        batch = { ...batch, rows: batch.rows.map((row, i) => i === index ? { ...row, accepted: true } : row) };
+        persistRun(batch); onAccepted(receipt.incident_id);
+      }
+      setNotice(`${batch.rows.length} device alerts accepted. The briefing will update as they are assessed.`);
+      setSelection([]); setName('');
+    });
+  }
+  const feedback = <>{error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}</>;
+  const triggerPanel = <section className="card alert-composer"><h2>Trigger saved alerts</h2>
+    <p>Select one or several saved alerts/scenarios. Each device sends once in this batch.</p>
+    <fieldset disabled={!loaded || busy || pending || !ready || disabled}><legend>Saved simulations</legend>
+      <label>Add to selection<select value="" onChange={e => { if (e.target.value) setSelection(old => [...old, e.target.value]); }}><option value="">Choose a single alert or scenario</option>{library.items.filter(item => !selection.includes(item.id)).map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single alert' : `Scenario · ${item.signals.length} devices`}</option>)}</select></label>
+      {!library.items.length && <p>No saved simulations yet. Create one in Simulation Studio.</p>}
+      <ul className="trigger-selection">{chosen.map(item => <li key={item.id}><strong>{item.name}</strong><button type="button" aria-label={`Remove ${item.name} from selection`} onClick={() => setSelection(old => old.filter(id => id !== item.id))}>Remove</button></li>)}</ul>
+      <label>Send to<select value={target} onChange={e => setTarget(e.target.value)}><option value="new">New incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{incidentLabel({ incident_id: selected })}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
+      {target === 'new' && <label>Incident name (optional)<input maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder={title || 'Uses the selected simulation names'}/></label>}
+    </fieldset>
+    {selectionError && <p className="error" role="alert">{selectionError}</p>}
+    {overBudget && !pending && <p className="error">This would exceed 20 signals in the incident. Start a new incident or reduce the selection.</p>}
+    {rows.length > 0 && <details><summary>Preview · {rows.length} distinct devices</summary><ul>{rows.map(row => <li key={row.deviceId}>{catalog.devices.find(item => item.id === row.deviceId)?.name} · {humanize(row.kind)}</li>)}</ul></details>}
+    <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && (!rows.length || !!selectionError || overBudget))} onClick={trigger}>{busy ? 'Sending…' : pending ? 'Retry remaining alerts' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
+    {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
+    <div className="actions"><button disabled={busy} onClick={() => navigate('simulation-lab')}>Open Simulation Studio</button><button disabled={busy || pending} onClick={() => perform(reload)}>Reload saved simulations</button></div>
+    {feedback}
   </section>;
-  return embedded ? <div className="command-workbench"><div>{map}{briefing}</div>{composer}</div> : composer;
+  if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
+  return <>
+    <section className="card"><div className="row"><div><h2>Simulation Studio</h2><p>Create and save reusable single alerts or multi-device scenarios. Trigger them from Command Center.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>{feedback}<button disabled={busy} onClick={() => perform(reload)}>Reload library</button>{legacy.length > 0 && <details><summary>Previous browser queue</summary><p>Your previous queue is retained. Import its device definitions to edit and save them; importing does not send alerts.</p><button disabled={busy} onClick={() => setDraft({ ...blank(), name: 'Imported scenario', type: legacy.length === 1 ? 'single' : 'scenario', signals: legacy.map(row => ({ deviceId: row.deviceId, kind: row.kind, observation: row.observation || '' })) })}>Import previous queue</button></details>}</section>
+    <div className="columns"><section className="card alert-composer"><h2>{library.items.some(item => item.id === draft.id) ? 'Edit simulation' : 'Create simulation'}</h2>
+      <form onSubmit={e => { e.preventDefault(); perform(async () => { if (!draft.signals.length) throw new Error('Add at least one device alert before saving.'); await saveItems([...library.items.filter(item => item.id !== draft.id), draft]); setDraft(blank()); setNotice('Simulation saved. Select it in Command Center to trigger.'); }); }}>
+        <fieldset disabled={busy || !loaded || !ready}><legend>Definition</legend>
+          <label>Name<input required maxLength={120} value={draft.name} onChange={e => setDraft(old => ({ ...old, name: e.target.value }))} placeholder="Kitchen smoke / Upstairs fire scenario"/></label>
+          <label>Type<select value={draft.type} onChange={e => { if (e.target.value === 'single' && draft.signals.length > 1) { setError('Remove extra devices before switching to Single alert.'); return; } setDraft(old => ({ ...old, type: e.target.value })); }}><option value="single">Single alert · one device</option><option value="scenario">Scenario · multiple devices</option></select></label>
+          <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{catalog.devices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
+          <label>Signal type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
+          <label>Additional device details (optional)<input maxLength={600} value={observation} onChange={e => setObservation(e.target.value)} placeholder="E.g. smoke detected near the kitchen ceiling"/></label>
+          <button type="button" disabled={!device?.enabled || !kind} onClick={addSignal}>Add device alert to definition</button>
+          <ul className="signal-queue">{draft.signals.map(row => <li key={row.deviceId}>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'} · {humanize(row.kind)}<p>{row.observation || 'Default device description'}</p><button type="button" onClick={() => setDraft(old => ({ ...old, signals: old.signals.filter(item => item.deviceId !== row.deviceId) }))}>Remove</button></li>)}</ul>
+          <div className="actions"><button className="primary" disabled={!draft.signals.length}>Save {draft.type === 'single' ? 'single alert' : 'scenario'}</button><button type="button" onClick={() => setDraft(blank())}>New definition</button></div>
+        </fieldset>
+      </form>
+    </section><section className="card"><h2>Saved simulations</h2>{!library.items.length && <p>No saved simulations yet.</p>}{library.items.map(item => <article className="catalog-item" key={item.id}><h3>{item.name}</h3><p>{item.type === 'single' ? 'Single alert' : 'Scenario'} · {item.signals.length} device alerts</p><div className="actions"><button disabled={busy} onClick={() => setDraft({ ...item, signals: item.signals.map(row => ({ ...row })) })}>Edit</button><button disabled={busy} onClick={() => { if (window.confirm(`Delete saved simulation “${item.name}”? Incident evidence is unchanged.`)) perform(async () => { await saveItems(library.items.filter(row => row.id !== item.id)); if (draft.id === item.id) setDraft(blank()); setSelection(old => old.filter(id => id !== item.id)); }); }}>Delete definition</button></div></article>)}</section></div>
+  </>;
 }

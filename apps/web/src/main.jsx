@@ -7,7 +7,6 @@ import AlexaSimulator from './AlexaSimulator';
 import Household from './Household';
 import Handoff from './Handoff';
 import IncidentPicker from './IncidentPicker';
-import ScenarioLab from './ScenarioLab';
 import AppShell from './AppShell';
 import UserGuide from './UserGuide';
 import Settings from './Settings';
@@ -31,7 +30,6 @@ function App() {
   const [studioEpoch, setStudioEpoch] = useState(0);
   const [catalog, setCatalog] = useState({ revision: null, locations: [], devices: [] });
   const [catalogReady, setCatalogReady] = useState(false), [catalogBusy, setCatalogBusy] = useState(false);
-  const [scenarioBusy, setScenarioBusy] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
   const [guestPassVisible, setGuestPassVisible] = useState(false), [copyNotice, setCopyNotice] = useState('');
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
@@ -81,12 +79,15 @@ function App() {
   }
   function clearDrafts() {
     sessionStorage.removeItem('aenea-studio-' + identity);
+    sessionStorage.removeItem('aenea-trigger-' + identity);
     setStudioEpoch(value => value + 1);
   }
   function incidentDeleted(id) {
     setIncidents(old => old.filter(item => item.incident_id !== id));
     if (selected === id) { setSelected(''); setTimeline([]); setIncidentState(null); }
     try {
+      const run = JSON.parse(sessionStorage.getItem('aenea-trigger-' + identity) || 'null');
+      if (run?.incident === id) sessionStorage.removeItem('aenea-trigger-' + identity);
       const drafts = JSON.parse(sessionStorage.getItem('aenea-studio-' + identity) || '[]');
       if (drafts.some(row => row.payload?.incident_id === id)) clearDrafts();
       else setStudioEpoch(value => value + 1);
@@ -172,15 +173,11 @@ function App() {
         <SimulationStudio key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
           briefing={<IncidentBriefing selected={selected} state={incidentState} timeline={timeline} navigate={navigate}/>}
-          api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} disabled={scenarioBusy} onBusy={setStudioBusy} onAccepted={id => {
+          api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
           setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
-        <details className="card" hidden={page !== 'simulation-lab'}><summary>Built-in walkthroughs with sample devices</summary>
-        <ScenarioLab api={api} household={identity} disabled={studioBusy} onBusy={setScenarioBusy} onAccepted={id => {
-          setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
-        }} /></details>
       </div>}
-      {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><Coordination key="settings" api={api} timeline={[]} simulation settingsOnly /><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy || scenarioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}
+      {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><Coordination key="settings" api={api} timeline={[]} simulation settingsOnly /><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}
       {authenticated && config && page === 'command-center' && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
       {authenticated && config && page === 'incident-history' && <>
         <div className="columns"><section className="card" aria-busy={loadingIncidents}><div className="row"><h2>Incidents</h2><button disabled={loadingIncidents} onClick={()=>loadIncidents().catch(e=>setError(e.message))}>{loadingIncidents ? 'Refreshing…' : 'Refresh'}</button></div>

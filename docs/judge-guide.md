@@ -11,7 +11,7 @@ Guest activity is shared with other visitors. Use fictional names, addresses and
 ## Short walkthrough
 
 1. **Settings:** create a fictional named location and add a smoke detector and camera with Simulation connection. Multiple devices are supported. Real-device connection choices are unavailable, not configured integrations.
-2. **Simulation Studio:** compose two observations from these devices and select them. Choose a new incident and **Send next selected signal**. Keep the camera signal for later. **Send selected signals** sends the selected queue sequentially, not atomically.
+2. **Simulation Studio:** save named single alerts for the smoke detector and camera, or save both in a scenario. Studio only saves definitions. In **Command Center**, choose the smoke alert from **Trigger saved alerts**, choose a new incident and send. Add the camera alert later to that incident, or select both definitions to send a sequential batch. Overlapping device selections are blocked.
 3. **Incident:** inspect the saved evidence and wait for a current assessment. An accepted receipt only proves ingress. Review citations, uncertainty and policy outcomes.
 4. **Alexa+:** select that incident, use **Refresh context and actions**, then the status suggestion. Record a fictional check-in. Only supported commands are interpreted; microphone input is optional and reviewed before sending.
 5. **Studio:** send the next selected signal in the same run. Return to the incident and observe its new evidence revision. Older assessments remain history, not authority for new actions.
@@ -24,7 +24,7 @@ For a separate water-only test, configure virtual permissions first. An eligible
 
 Clear Studio drafts to clear local inputs; replay creates a fresh run. To delete an incident you created, use **Settings → Data controls** and confirm its full ID. Cleanup waits at least 15 minutes and then runs on the five-minute schedule; check status later. It removes active incident data/evidence versions but retains a replay-blocking marker. Backups, logs and exported copies have separate retention.
 
-Catalog capacity is 30 locations/100 devices; a Studio queue holds 50 drafts, but the reasoner currently accepts at most 20 signals per incident. Exceeding that budget fails assessment explicitly. Start a new test run instead of expecting unlimited disaster-scale analysis.
+Catalog capacity is 50 locations/200 total devices, with 30 devices per room. The server library supports 50 definitions and 100 total saved device-alert rows. A scenario and combined trigger selection each support at most 20 distinct devices; the reasoner also accepts at most 20 signals per incident. Start a new incident when that evidence budget is reached.
 
 This is a browser Alexa+ simulation over shared cloud tools. No physical Alexa/Ring device or AWS account is required to use the hosted app. Devices, check-ins and effects are synthetic; motion is not proof of occupancy or safety. Follow official alarms and emergency guidance.
 
