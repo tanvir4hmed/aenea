@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { deviceTypes, humanize, signalPayload } from './devices';
 import { incidentLabel } from './incidentNames';
-import { selectedSignals } from './simulations';
+import { selectedSignals, selectionForDevice } from './simulations';
 
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [] });
 
 export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing }) {
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState(blank), [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
+  const [locationId, setLocationId] = useState(''), [roomFilter, setRoomFilter] = useState('');
   const [selection, setSelection] = useState([]), [target, setTarget] = useState('new'), [name, setName] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const runKey = 'aenea-trigger-' + household;
@@ -23,8 +24,11 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   useEffect(() => {
     if (!deviceSelection) return;
     const item = catalog.devices.find(item => item.id === deviceSelection.id);
-    if (item) setNotice(`${item.name} selected on the map. Choose a saved alert containing it below, or create one in Simulation Studio.`);
-  }, [deviceSelection]);
+    if (!item || !loaded) return;
+    const matching = selectionForDevice(library.items, item.id);
+    setSelection(matching);
+    setNotice(matching.length ? `${item.name}: related saved alert selected.` : `${item.name}: no saved alert found. Create one in Simulation Studio.`);
+  }, [deviceSelection, loaded, library.items]);
   async function perform(task) {
     if (lock.current) return;
     lock.current = true; setBusy(true); onBusy(true); setError(''); setNotice('');
@@ -48,6 +52,8 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   let rows = [], selectionError = '';
   try { rows = selectedSignals(library.items, selection, catalog); } catch (e) { selectionError = e.message; }
   const chosen = library.items.filter(item => selection.includes(item.id));
+  const rooms = [...new Set(catalog.devices.filter(item => !locationId || item.location_id === locationId).map(item => item.room || 'Unassigned area'))];
+  const eligibleDevices = catalog.devices.filter(item => (!locationId || item.location_id === locationId) && (!roomFilter || (item.room || 'Unassigned area') === roomFilter));
   const single = chosen.length === 1 && chosen[0].type === 'single';
   const title = name.trim() || chosen.map(item => item.name).join(' + ').slice(0, 120);
   const currentIncident = incidents.find(item => item.incident_id === target);
@@ -78,21 +84,18 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     });
   }
   const feedback = <>{error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}</>;
-  const triggerPanel = <section className="card alert-composer"><h2>Trigger saved alerts</h2>
-    <p>Select one or several saved alerts/scenarios. Each device sends once in this batch.</p>
-    <fieldset disabled={!loaded || busy || pending || !ready || disabled}><legend>Saved simulations</legend>
-      <label>Add to selection<select value="" onChange={e => { if (e.target.value) setSelection(old => [...old, e.target.value]); }}><option value="">Choose a single alert or scenario</option>{library.items.filter(item => !selection.includes(item.id)).map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single alert' : `Scenario · ${item.signals.length} devices`}</option>)}</select></label>
-      {!library.items.length && <p>No saved simulations yet. Create one in Simulation Studio.</p>}
-      <ul className="trigger-selection">{chosen.map(item => <li key={item.id}><strong>{item.name}</strong><button type="button" aria-label={`Remove ${item.name} from selection`} onClick={() => setSelection(old => old.filter(id => id !== item.id))}>Remove</button></li>)}</ul>
+  const triggerPanel = <section className="card alert-composer"><h2>Trigger Alert / Scenario</h2>
+    <fieldset disabled={!loaded || busy || pending || !ready || disabled}>
+      <label>Saved alert or scenario<select multiple size={Math.min(5, Math.max(2, library.items.length))} value={selection} onChange={e => setSelection([...e.target.selectedOptions].map(option => option.value))}>{library.items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single' : `Scenario (${item.signals.length})`}</option>)}</select></label>
+      {!library.items.length && <p>No saved alerts or scenarios. Create one in Simulation Studio.</p>}
       <label>Send to<select value={target} onChange={e => setTarget(e.target.value)}><option value="new">New incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{incidentLabel({ incident_id: selected })}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
       {target === 'new' && <label>Incident name (optional)<input maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder={title || 'Uses the selected simulation names'}/></label>}
     </fieldset>
     {selectionError && <p className="error" role="alert">{selectionError}</p>}
     {overBudget && !pending && <p className="error">This would exceed 20 signals in the incident. Start a new incident or reduce the selection.</p>}
-    {rows.length > 0 && <details><summary>Preview · {rows.length} distinct devices</summary><ul>{rows.map(row => <li key={row.deviceId}>{catalog.devices.find(item => item.id === row.deviceId)?.name} · {humanize(row.kind)}</li>)}</ul></details>}
+    {rows.length > 0 && <p className="trigger-summary">{chosen.length} selected · {rows.length} distinct devices</p>}
     <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && (!rows.length || !!selectionError || overBudget))} onClick={trigger}>{busy ? 'Sending…' : pending ? 'Retry remaining alerts' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
     {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
-    <div className="actions"><button disabled={busy} onClick={() => navigate('simulation-lab')}>Open Simulation Studio</button><button disabled={busy || pending} onClick={() => perform(reload)}>Reload saved simulations</button></div>
     {feedback}
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
@@ -103,7 +106,9 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
         <fieldset disabled={busy || !loaded || !ready}><legend>Definition</legend>
           <label>Name<input required maxLength={120} value={draft.name} onChange={e => setDraft(old => ({ ...old, name: e.target.value }))} placeholder="Kitchen smoke / Upstairs fire scenario"/></label>
           <label>Type<select value={draft.type} onChange={e => { if (e.target.value === 'single' && draft.signals.length > 1) { setError('Remove extra devices before switching to Single alert.'); return; } setDraft(old => ({ ...old, type: e.target.value })); }}><option value="single">Single alert · one device</option><option value="scenario">Scenario · multiple devices</option></select></label>
-          <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{catalog.devices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
+          <div className="form-grid"><label>Location<select value={locationId} onChange={e => { setLocationId(e.target.value); setRoomFilter(''); setDeviceId(''); setKind(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label>Room / area<select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setDeviceId(''); setKind(''); }}><option value="">All rooms / areas</option>{rooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
+          <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{eligibleDevices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
           <label>Signal type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
           <label>Additional device details (optional)<input maxLength={600} value={observation} onChange={e => setObservation(e.target.value)} placeholder="E.g. smoke detected near the kitchen ceiling"/></label>
           <button type="button" disabled={!device?.enabled || !kind} onClick={addSignal}>Add device alert to definition</button>

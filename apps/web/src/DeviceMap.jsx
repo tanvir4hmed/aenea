@@ -34,7 +34,7 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
         </section>;
       })}</div>
       <p className="map-caption">{selected ? `Evidence shown for incident ${selected.slice(0, 8)}. ` : ''}No evidence shown does not mean a device or room is safe. Layout is schematic.</p>
-      <details><summary>Alert colours</summary><p>Amber: evidence recorded. Red: a recent device cited by the current urgent assessment, or three distinct smoke detectors reporting in the same room within five minutes. Simulated escalation does not establish fire size or activate a siren; virtual action outcomes are shown separately.</p></details>
+      <details><summary>Alert colours</summary><p>Amber: evidence recorded. Red: a recent device cited by the current urgent assessment, or the latest of two or more distinct smoke detectors reporting in the same room within five minutes. Related devices keep their own state. Simulated escalation does not establish fire size or activate a siren.</p></details>
     </>}
   </section>;
 }
