@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 export const pages = [
   { id: 'command-center', label: 'Command center', icon: 'grid', description: 'Review incidents, evidence and coordinated actions.' },
   { id: 'incident-history', label: 'Incident history', icon: 'document', description: 'Browse saved incidents, evidence and decision reviews.' },
-  { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Compose an incident from selected device signals.' },
+  { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Define reusable single alerts and multi-device scenarios.' },
   { id: 'alexa-sim', label: 'Alexa+', icon: 'voice', description: 'Explore incident coordination through the Alexa+ web simulator.' },
   { id: 'check-in', label: 'Household', icon: 'people', description: 'Review incident-specific check-ins and requests for help.' },
   { id: 'handoff', label: 'Handoff', icon: 'document', description: 'Prepare a summary of the evidence and recorded response.' },
@@ -60,7 +60,7 @@ export default function AppShell({ page, navigate, authenticated, config, onAuth
       <header className="page-header"><div><span className="eyebrow">AENEA WORKSPACE</span><h1 ref={heading} tabIndex={-1}>{current?.label || 'Page not found'}</h1><p className="page-description">{current?.description || 'This address does not match a workspace page.'}</p></div>
         <div className="header-actions"><span className="mode-label">Simulated</span><button disabled={!config} onClick={onAuth}>{authenticated ? 'Sign out' : 'Sign in'}</button></div>
       </header>
-      {authenticated && !['guide', 'command-center'].includes(page) && current && <div className="context-bar"><span>Incident context</span><strong>{selected ? selectedName : 'No incident selected'}</strong><a href="/incident-history" onClick={event => follow(event, 'incident-history')}>View history</a></div>}
+      {authenticated && !['guide', 'command-center', 'simulation-lab'].includes(page) && current && <div className="context-bar"><span>Incident context</span><strong>{selected ? selectedName : 'No incident selected'}</strong><a href="/incident-history" onClick={event => follow(event, 'incident-history')}>View history</a></div>}
       {current ? children : <section className="card empty-state"><h2>Let’s get you back to the workspace</h2><button className="primary" onClick={() => navigate('command-center')}>Open command center</button></section>}
       <footer className="workspace-footer">Simulated incident coordination. Follow official alarms and emergency guidance.</footer>
     </main>

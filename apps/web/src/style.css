@@ -155,15 +155,25 @@ code { font-size: .85em; }
 .alert-composer select, .alert-composer input:not([type=checkbox]) { display: block; width: 100%; margin: 8px 0 0; }
 .alert-composer small { display: block; color: var(--muted); line-height: 1.5; }
 .alert-composer fieldset { padding: 14px; }
+.simulation-editor { position: static; max-width: 980px; }
+.form-help { color: #8a4d0f; font-size: 13px; }
+.saved-filters { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(4, minmax(140px, 1fr)); gap: 12px; margin: 22px 0; }
+.saved-filters label { display: block; margin: 0; }
+.saved-filters input, .saved-filters select { display: block; width: 100%; margin: 8px 0 0; }
+.saved-definition-list .catalog-item:first-child { border-top: 1px solid var(--line); }
+.definition-devices { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; padding: 0; }
+.definition-devices li { padding: 10px 12px; border-radius: 8px; background: #f3f7f8; }
+.definition-devices span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 24px; }
 .decision-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .action-reason { display: block; font-size: 12px; }
 .rename-incident { margin: 12px 0 24px; }
-@media (max-width: 1100px) { .command-workbench, .decision-cards { grid-template-columns: 1fr; } .alert-composer { position: static; } }
+@media (max-width: 1100px) { .command-workbench, .decision-cards { grid-template-columns: 1fr; } .alert-composer { position: static; } .saved-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .alexa-orb { display: grid; place-items: center; width: 72px; height: 72px; margin: 28px 0; border: 3px solid #7ee1e5; border-radius: 50%; box-shadow: 0 0 28px #52c8dd55; color: #b9f4f7; font-size: 42px; }
 @media (max-width: 1100px) { .command-layout { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .room-map { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) { .settings-columns { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .form-grid, .saved-filters { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) {
   .sidebar { width: 212px; padding-inline: 12px; }
   main { padding: 28px 24px; }

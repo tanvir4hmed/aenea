@@ -7,7 +7,16 @@ from common import response
 
 def read_library(table, owner):
     record = table.get_item(Key={"pk": f"H#{owner}", "sk": "SIMULATIONS"}, ConsistentRead=True).get("Item", {})
-    return {"revision": record.get("revision"), "items": record.get("items", [])}
+    items = [
+        {
+            **item,
+            "type": "single"
+            if item.get("type") == "scenario" and len(item.get("signals", [])) == 1
+            else item.get("type"),
+        }
+        for item in record.get("items", [])
+    ]
+    return {"revision": record.get("revision"), "items": items}
 
 
 def validate_library(body, catalog):
@@ -33,6 +42,8 @@ def validate_library(body, catalog):
             raise ValueError("A simulation needs 1–20 device alerts")
         if item["type"] == "single" and len(rows) != 1:
             raise ValueError("A single alert needs exactly one device")
+        if item["type"] == "scenario" and len(rows) < 2:
+            raise ValueError("A scenario needs at least two devices")
         seen = set()
         for row in rows:
             if not isinstance(row, dict) or set(row) != {"deviceId", "kind", "observation"}:

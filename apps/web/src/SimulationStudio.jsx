@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { deviceTypes, humanize, signalPayload } from './devices';
 import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
@@ -9,14 +9,19 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState(blank), [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
   const [locationId, setLocationId] = useState(''), [roomFilter, setRoomFilter] = useState('');
+  const [savedQuery, setSavedQuery] = useState(''), [savedLocation, setSavedLocation] = useState('');
+  const [savedRoom, setSavedRoom] = useState(''), [savedDevice, setSavedDevice] = useState(''), [savedType, setSavedType] = useState('');
+  const [savedPage, setSavedPage] = useState(1);
   const [selection, setSelection] = useState([]), [target, setTarget] = useState('new'), [name, setName] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const runKey = 'aenea-trigger-' + household;
   const [run, setRun] = useState(() => { try { return JSON.parse(sessionStorage.getItem(runKey)) || null; } catch { return null; } });
-  const [legacy] = useState(() => { try { const value = JSON.parse(sessionStorage.getItem('aenea-studio-' + household)); return Array.isArray(value) ? value : []; } catch { return []; } });
   const lock = useRef(false);
   const pending = run?.rows.some(row => !row.accepted);
   const device = catalog.devices.find(item => item.id === deviceId);
+  const editing = library.items.some(item => item.id === draft.id);
+  const requiredSignals = draft.type === 'single' ? 1 : 2;
+  const canSave = draft.name.trim() && draft.signals.length >= requiredSignals;
   async function reload() {
     const value = await api('/household/simulations'); setLibrary(value); setLoaded(true);
   }
@@ -54,6 +59,20 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const chosen = library.items.filter(item => selection.includes(item.id));
   const rooms = [...new Set(catalog.devices.filter(item => !locationId || item.location_id === locationId).map(item => item.room || 'Unassigned area'))];
   const eligibleDevices = catalog.devices.filter(item => (!locationId || item.location_id === locationId) && (!roomFilter || (item.room || 'Unassigned area') === roomFilter));
+  const savedRooms = [...new Set(catalog.devices.filter(item => !savedLocation || item.location_id === savedLocation).map(item => item.room || 'Unassigned area'))];
+  const filteredItems = useMemo(() => library.items.filter(item => {
+    const sources = item.signals.map(signal => catalog.devices.find(device => device.id === signal.deviceId)).filter(Boolean);
+    const text = `${item.name} ${sources.map(source => `${source.name} ${source.room || ''}`).join(' ')}`.toLowerCase();
+    return (!savedQuery.trim() || text.includes(savedQuery.trim().toLowerCase()))
+      && (!savedType || item.type === savedType)
+      && (!savedLocation || sources.some(source => source.location_id === savedLocation))
+      && (!savedRoom || sources.some(source => (!savedLocation || source.location_id === savedLocation) && (source.room || 'Unassigned area') === savedRoom))
+      && (!savedDevice || item.signals.some(signal => signal.deviceId === savedDevice));
+  }), [library.items, catalog.devices, savedQuery, savedType, savedLocation, savedRoom, savedDevice]);
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / 10));
+  const pageItems = filteredItems.slice((Math.min(savedPage, pageCount) - 1) * 10, Math.min(savedPage, pageCount) * 10);
+  useEffect(() => { setSavedPage(1); }, [savedQuery, savedType, savedLocation, savedRoom, savedDevice]);
+  useEffect(() => { setSavedPage(page => Math.min(page, pageCount)); }, [pageCount]);
   const single = chosen.length === 1 && chosen[0].type === 'single';
   const title = name.trim() || chosen.map(item => item.name).join(' + ').slice(0, 120);
   const currentIncident = incidents.find(item => item.incident_id === target);
@@ -100,9 +119,13 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>
-    <section className="card"><div className="row"><div><h2>Simulation Studio</h2><p>Create and save reusable single alerts or multi-device scenarios. Trigger them from Command Center.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>{feedback}<button disabled={busy} onClick={() => perform(reload)}>Reload library</button>{legacy.length > 0 && <details><summary>Previous browser queue</summary><p>Your previous queue is retained. Import its device definitions to edit and save them; importing does not send alerts.</p><button disabled={busy} onClick={() => setDraft({ ...blank(), name: 'Imported scenario', type: legacy.length === 1 ? 'single' : 'scenario', signals: legacy.map(row => ({ deviceId: row.deviceId, kind: row.kind, observation: row.observation || '' })) })}>Import previous queue</button></details>}</section>
-    <div className="columns"><section className="card alert-composer"><h2>{library.items.some(item => item.id === draft.id) ? 'Edit simulation' : 'Create simulation'}</h2>
-      <form onSubmit={e => { e.preventDefault(); perform(async () => { if (!draft.signals.length) throw new Error('Add at least one device alert before saving.'); await saveItems([...library.items.filter(item => item.id !== draft.id), draft]); setDraft(blank()); setNotice('Simulation saved. Select it in Command Center to trigger.'); }); }}>
+    <section className="card alert-composer simulation-editor"><div className="row"><div><h2>{editing ? 'Edit saved definition' : 'Create simulation'}</h2><p>Save a reusable definition here. Choose new or existing incident only when triggering it from Command Center.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>
+      {feedback}
+      <form onSubmit={e => { e.preventDefault(); perform(async () => {
+        if (draft.type === 'single' && draft.signals.length !== 1) throw new Error('A single alert needs exactly one device.');
+        if (draft.type === 'scenario' && draft.signals.length < 2) throw new Error('A scenario needs at least two different devices.');
+        await saveItems([...library.items.filter(item => item.id !== draft.id), draft]); setDraft(blank()); setNotice('Definition saved. Trigger it from Command Center.');
+      }); }}>
         <fieldset disabled={busy || !loaded || !ready}><legend>Definition</legend>
           <label>Name<input required maxLength={120} value={draft.name} onChange={e => setDraft(old => ({ ...old, name: e.target.value }))} placeholder="Kitchen smoke / Upstairs fire scenario"/></label>
           <label>Type<select value={draft.type} onChange={e => { if (e.target.value === 'single' && draft.signals.length > 1) { setError('Remove extra devices before switching to Single alert.'); return; } setDraft(old => ({ ...old, type: e.target.value })); }}><option value="single">Single alert · one device</option><option value="scenario">Scenario · multiple devices</option></select></label>
@@ -113,9 +136,24 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
           <label>Additional device details (optional)<input maxLength={600} value={observation} onChange={e => setObservation(e.target.value)} placeholder="E.g. smoke detected near the kitchen ceiling"/></label>
           <button type="button" disabled={!device?.enabled || !kind} onClick={addSignal}>Add device alert to definition</button>
           <ul className="signal-queue">{draft.signals.map(row => <li key={row.deviceId}>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'} · {humanize(row.kind)}<p>{row.observation || 'Default device description'}</p><button type="button" onClick={() => setDraft(old => ({ ...old, signals: old.signals.filter(item => item.deviceId !== row.deviceId) }))}>Remove</button></li>)}</ul>
-          <div className="actions"><button className="primary" disabled={!draft.signals.length}>Save {draft.type === 'single' ? 'single alert' : 'scenario'}</button><button type="button" onClick={() => setDraft(blank())}>New definition</button></div>
+          {draft.type === 'scenario' && draft.signals.length < 2 && <p className="form-help">Add at least two different devices to save a scenario.</p>}
+          <div className="actions"><button className="primary" disabled={!canSave}>Save {draft.type === 'single' ? 'single alert' : 'scenario'}</button>{editing && <button type="button" onClick={() => setDraft(blank())}>Cancel editing</button>}</div>
         </fieldset>
       </form>
-    </section><section className="card"><h2>Saved simulations</h2>{!library.items.length && <p>No saved simulations yet.</p>}{library.items.map(item => <article className="catalog-item" key={item.id}><h3>{item.name}</h3><p>{item.type === 'single' ? 'Single alert' : 'Scenario'} · {item.signals.length} device alerts</p><div className="actions"><button disabled={busy} onClick={() => setDraft({ ...item, signals: item.signals.map(row => ({ ...row })) })}>Edit</button><button disabled={busy} onClick={() => { if (window.confirm(`Delete saved simulation “${item.name}”? Incident evidence is unchanged.`)) perform(async () => { await saveItems(library.items.filter(row => row.id !== item.id)); if (draft.id === item.id) setDraft(blank()); setSelection(old => old.filter(id => id !== item.id)); }); }}>Delete definition</button></div></article>)}</section></div>
+    </section>
+    <section className="card saved-library"><div className="row"><div><h2>Saved alerts and scenarios</h2><p>{filteredItems.length} of {library.items.length} definitions</p></div><button disabled={busy} onClick={() => perform(reload)}>Refresh</button></div>
+      <div className="saved-filters">
+        <label>Search<input value={savedQuery} onChange={e => setSavedQuery(e.target.value)} placeholder="Name, room or device"/></label>
+        <label>Type<select value={savedType} onChange={e => setSavedType(e.target.value)}><option value="">All types</option><option value="single">Single alerts</option><option value="scenario">Scenarios</option></select></label>
+        <label>Location<select value={savedLocation} onChange={e => { setSavedLocation(e.target.value); setSavedRoom(''); setSavedDevice(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Room / area<select value={savedRoom} onChange={e => { setSavedRoom(e.target.value); setSavedDevice(''); }}><option value="">All rooms / areas</option>{savedRooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label>Device<select value={savedDevice} onChange={e => setSavedDevice(e.target.value)}><option value="">All devices</option>{catalog.devices.filter(item => (!savedLocation || item.location_id === savedLocation) && (!savedRoom || (item.room || 'Unassigned area') === savedRoom)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      </div>
+      {!pageItems.length && <p>No saved definitions match these filters.</p>}
+      <div className="saved-definition-list">{pageItems.map(item => <article className="catalog-item" key={item.id}><div className="row"><div><h3>{item.name}</h3><p><span className="badge">{item.type === 'single' ? 'SINGLE ALERT' : 'SCENARIO'}</span> · {item.signals.length} {item.signals.length === 1 ? 'device' : 'devices'}</p></div><div className="actions"><button disabled={busy} onClick={() => { setDraft({ ...item, signals: item.signals.map(row => ({ ...row })) }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button><button disabled={busy} onClick={() => { if (window.confirm(`Delete saved definition “${item.name}”? Incident evidence is unchanged.`)) perform(async () => { await saveItems(library.items.filter(row => row.id !== item.id)); if (draft.id === item.id) setDraft(blank()); setSelection(old => old.filter(id => id !== item.id)); }); }}>Delete</button></div></div>
+        <ul className="definition-devices">{item.signals.map(signal => { const source = catalog.devices.find(device => device.id === signal.deviceId); const site = catalog.locations.find(location => location.id === source?.location_id); return <li key={signal.deviceId}><strong>{source?.name || 'Removed device'}</strong><span>{site?.name || 'Unknown location'} · {source?.room || 'Unassigned area'} · {humanize(signal.kind)}</span></li>; })}</ul>
+      </article>)}</div>
+      {filteredItems.length > 10 && <nav className="pagination" aria-label="Saved simulation pages"><button disabled={savedPage <= 1} onClick={() => setSavedPage(page => page - 1)}>Previous</button><span>Page {Math.min(savedPage, pageCount)} of {pageCount}</span><button disabled={savedPage >= pageCount} onClick={() => setSavedPage(page => page + 1)}>Next</button></nav>}
+    </section>
   </>;
 }

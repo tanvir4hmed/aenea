@@ -31,6 +31,11 @@ class SimulationLibraryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exactly one'):
             validate_library(self.body, self.catalog)
 
+    def test_scenario_requires_multiple_devices(self):
+        self.body['items'][0]['type'] = 'scenario'
+        with self.assertRaisesRegex(ValueError, 'at least two'):
+            validate_library(self.body, self.catalog)
+
     def test_save_is_revision_checked_and_household_scoped(self):
         table = Mock()
         table.get_item.return_value = {'Item': self.catalog}
@@ -53,3 +58,11 @@ class SimulationLibraryTests(unittest.TestCase):
         table.get_item.return_value = {}
         self.assertEqual(read_library(table, 'owner'), {'revision': None, 'items': []})
         table.get_item.assert_called_once_with(Key={'pk': 'H#owner', 'sk': 'SIMULATIONS'}, ConsistentRead=True)
+
+    def test_legacy_one_device_scenario_is_presented_as_single_alert(self):
+        table = Mock()
+        legacy = copy.deepcopy(self.body['items'][0])
+        legacy['type'] = 'scenario'
+        table.get_item.return_value = {'Item': {'revision': 'revision', 'items': [legacy]}}
+        result = read_library(table, 'owner')
+        self.assertEqual(result['items'][0]['type'], 'single')
