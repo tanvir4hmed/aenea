@@ -1,6 +1,6 @@
 # Phase 5: Alexa+ experience and MCP
 
-Source implemented on 21 September 2026 and authentication flow updated on 23 September 2026. GitHub Actions owns packaging and deployment. Hosted acceptance is tracked separately: this document does not claim a working native Alexa connection.
+Source implemented on 21 September 2026; resource-bound authentication and transport regressions updated on 28 September 2026. GitHub Actions owns packaging and deployment. Hosted acceptance is tracked separately: this document does not claim a working native Alexa connection. See the [event/auth migration guide](event-contract.md).
 
 ## Shared coordination path
 
@@ -38,8 +38,8 @@ Actions use the existing Phase 4 executor; no new physical-device capabilities o
 2. The canonical MCP resource is `<apiUrl>/mcp`. Public resource metadata is at `<apiUrl>/.well-known/oauth-protected-resource/mcp` (also exposed without the `/mcp` suffix).
 3. Use the metadata's Cognito issuer and its `/.well-known/openid-configuration` discovery document. For the web client, authorization/token endpoints are `<cognitoDomain>/oauth2/authorize` and `/oauth2/token`.
 4. The preregistered public Cognito client uses authorization code + PKCE S256, verified OAuth state, exact `/auth/callback` URLs for the configured web origins and scopes `openid email aenea/read aenea/write`. No client secret or AWS key goes into the browser.
-5. Cognito access tokens for the current custom resource server do not contain an `aud` claim. AgentCore and the private runtime therefore validate signature, expiry, issuer, registered client ID, access-token type and the required custom scopes. The runtime does not mistake the ID-token audience for an API-resource audience.
-6. Sign out and in once after this rollout so Cognito can issue a refresh token. The browser renews the short-lived access token on demand; an invalid or revoked refresh session returns the user to sign-in without losing an active incident during ordinary token renewal.
+5. Authorization includes `resource=<apiUrl>/mcp`, causing Cognito to bind the access token audience to that resource. AgentCore and the private runtime enforce that audience; runtime verification additionally checks signature, expiry, issuer, registered client ID, access-token type and tool scopes. An ID token is never accepted as an access token.
+6. Older unbound browser sessions require one fresh sign-in after rollout. The browser renews resource-bound access tokens on demand. Temporary refresh-service failures retain the session; invalid/revoked refresh tokens require sign-in. Saved incidents/settings are not removed.
 
 Native Alexa+/external-client onboarding is **not verified**. Before attempting it, obtain that client's actual registration/callback requirements and register the appropriate client, scopes and exact callbacks through Terraform. Do not reuse fabricated callbacks or claim automatic dynamic registration. API Gateway may reject unauthenticated calls before the proxy; use the documented public metadata URL for preregistration/discovery rather than assuming a gateway-generated WWW-Authenticate challenge. A native client's compatibility with this path remains an acceptance gate.
 
@@ -49,7 +49,7 @@ References used for implementation: [AWS MCP runtime contract](https://docs.aws.
 
 `infra/mcp` owns a separate `mcp/terraform.tfstate`, private ARM64 Python ZIP bucket, narrowly scoped runtime role, JWT MCP runtime and SSM runtime-ARN parameter. The app proxy reads that parameter; the runtime invokes only the private tool Lambda. This avoids an app/runtime Terraform dependency cycle. The proxy validates browser Origins against the configured website origins. The domain stays `aenea.qleam.com`; no new domain, physical Alexa, Ring account or device is required.
 
-Selective deployment: web-only edits build only web; `services/mcp/**` or `infra/mcp/**` package/apply MCP; tool Lambda edits update that function; shared domain edits update Lambda consumers. Platform changes refresh app and MCP wiring. Deployment-orchestrator changes refresh infrastructure dependencies. No test suite or post-deploy monitoring is added.
+Selective deployment: web-only edits build only web; `services/mcp/**` or `infra/mcp/**` package/apply MCP; tool Lambda edits update that function; shared domain edits update Lambda consumers. Platform changes refresh app and MCP wiring. Deployment-orchestrator changes refresh infrastructure dependencies. Offline tests run in the separate quality workflow; no post-deploy monitoring is added.
 
 GitHub authenticates with OIDC; no browser or long-lived AWS key is required. AgentCore MCP lifecycle and SSM parameter permissions remain defined in the bootstrap templates. Treat the workflow result—not the source push alone—as deployment evidence.
 

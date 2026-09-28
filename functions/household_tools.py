@@ -12,6 +12,7 @@ from coordination import audit, audit_item, attrs, execute, get, profile, table
 from cursors import decode_cursor
 from revisions import current_assessment
 from lifecycle import require_active
+from event_contract import timeline_context
 
 WRITE_TOOLS = {"report_person_status", "acknowledge_incident", "request_safe_action", "confirm_action"}
 TOOLS = WRITE_TOOLS | {"get_incident_status", "get_incident_timeline", "get_household_status",
@@ -30,7 +31,7 @@ def page(partition, prefix="", cursor=None):
     if cursor:
         query["ExclusiveStartKey"] = decode_cursor(cursor, partition, prefix)
     result = table.query(**query)
-    return {"items": result["Items"], "next_cursor": base64.urlsafe_b64encode(
+    return {"items": [timeline_context(item) for item in result["Items"]], "next_cursor": base64.urlsafe_b64encode(
         json.dumps(result["LastEvaluatedKey"]).encode()).decode() if result.get("LastEvaluatedKey") else None}
 
 

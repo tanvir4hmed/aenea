@@ -1,5 +1,6 @@
 """Bounded, revision-checked location/device catalog for a single identity."""
 import uuid
+from typing import Any
 
 from botocore.exceptions import ClientError
 
@@ -60,7 +61,7 @@ def validate_catalog(body):
     return locations, devices
 
 
-def read_catalog(table, owner):
+def read_catalog(table: Any, owner: str) -> dict[str, Any]:
     item = table.get_item(Key={"pk": f"H#{owner}", "sk": "CATALOG"}, ConsistentRead=True).get("Item", {})
     return {"revision": item.get("revision"), "locations": item.get("locations", []), "devices": item.get("devices", [])}
 

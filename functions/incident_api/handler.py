@@ -10,6 +10,7 @@ from common import household, response, table_name
 from cursors import decode_cursor
 from revisions import current_assessment
 from lifecycle import deleted
+from event_contract import timeline_context
 
 table = boto3.resource("dynamodb").Table(table_name())
 
@@ -55,7 +56,7 @@ def handler(request, context):
             latest = table.get_item(Key={"pk": partition, "sk": "ASSESSMENT#" + summary["latest_assessment"]}, ConsistentRead=True).get("Item") if summary.get("latest_assessment") else None
             metadata = {"incident": summary, "latest_assessment": latest,
                         "assessment_current": current_assessment(summary, latest)}
-        return response(200, {"household_id": owner, "items": result["Items"],
+        return response(200, {"household_id": owner, "items": [timeline_context(item) for item in result["Items"]],
                               "next_cursor": next_cursor, **metadata})
     except PermissionError:
         return response(401, {"error": "Authentication required"})

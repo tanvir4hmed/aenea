@@ -13,7 +13,8 @@ export function signalPayload(draft, device, location, household, incident) {
   if (!device.enabled || device.connection !== 'simulation' || !type?.kinds.includes(draft.kind)) {
     throw new Error('This signal needs an enabled, compatible simulation device.');
   }
-  return { incident_id: incident, adapter: type.category === 'camera' ? 'camera-simulator' : type.category === 'weather' ? 'webhook' : 'sensor',
+  return { incident_id: incident, contract_version: '1.1', state: { alarm: 'active', connectivity: 'online' },
+    adapter: type.category === 'camera' ? 'camera-simulator' : type.category === 'weather' ? 'webhook' : 'sensor',
     event: { event_id: crypto.randomUUID(), household_id: household, occurred_at: new Date().toISOString(),
       source: { source_id: device.id, category: type.category, simulated: true }, kind: draft.kind,
       observation: `[Simulation: ${location.name} / ${device.room || 'Unspecified room'} / ${device.name}] ${draft.observation}` } };

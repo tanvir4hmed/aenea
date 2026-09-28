@@ -90,9 +90,10 @@ resource "aws_bedrockagentcore_agent_runtime" "mcp" {
   protocol_configuration { server_protocol = "MCP" }
   authorizer_configuration {
     custom_jwt_authorizer {
-      discovery_url   = "${local.issuer}/.well-known/openid-configuration"
-      allowed_clients = [data.terraform_remote_state.platform.outputs.web_config.clientId]
-      allowed_scopes  = ["aenea/read"]
+      discovery_url    = "${local.issuer}/.well-known/openid-configuration"
+      allowed_clients  = [data.terraform_remote_state.platform.outputs.web_config.clientId]
+      allowed_audience = [local.resource_url]
+      allowed_scopes   = ["aenea/read"]
     }
   }
   request_header_configuration { request_header_allowlist = ["Authorization"] }

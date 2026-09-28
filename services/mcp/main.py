@@ -7,6 +7,7 @@ import boto3
 from botocore.config import Config
 import jwt
 from mcp.server.fastmcp import FastMCP, Context
+from token_auth import verify_token
 
 mcp = FastMCP("Aenea", host="0.0.0.0", port=8000, stateless_http=True, json_response=True,
     instructions="Coordinate simulated household incidents. Never infer occupancy from motion. Confirm valve actions only after an explicit user approval of that exact action. Never claim emergency dispatch.")
@@ -22,13 +23,8 @@ def call(ctx, name, arguments):
     if not header.startswith("Bearer "):
         raise ValueError("Bearer access token required")
     token = header[7:]
-    claims = jwt.decode(token, jwks.get_signing_key_from_jwt(token).key, algorithms=["RS256"],
-        issuer=issuer, options={"require": ["exp", "iat", "sub", "client_id", "token_use"],
-                                "verify_aud": False})
-    if claims["client_id"] != os.environ["COGNITO_CLIENT_ID"] or claims["token_use"] != "access":
-        raise ValueError("Invalid access token")
-    if "aenea/read" not in set(claims.get("scope", "").split()):
-        raise ValueError("Read scope required")
+    claims = verify_token(token, jwks.get_signing_key_from_jwt(token).key, issuer,
+                          os.environ["COGNITO_CLIENT_ID"], os.environ["MCP_RESOURCE_URL"], name)
     payload = {"principal": {"sub": claims["sub"], "scope": claims.get("scope", "")},
                "tool": name, "arguments": arguments}
     result = lambda_client.invoke(FunctionName=os.environ["TOOLS_FUNCTION_ARN"],

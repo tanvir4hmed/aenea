@@ -49,6 +49,7 @@ Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bo
 - [Engineering baseline](docs/engineering-baseline.md) · [earlier workspace phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
 - [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
 - [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
+- [Event/state contract and sign-in migration](docs/event-contract.md)
 - [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)
 - [Demo runbook](docs/demo-runbook.md) · [product feedback](docs/product-feedback.md) · [friction log](docs/friction-log.md)
 - [Operations](docs/operations.md) · [safety](docs/safety.md) · [security](SECURITY.md)

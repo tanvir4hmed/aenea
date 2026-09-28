@@ -8,6 +8,7 @@ from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 from incidentbridge import idempotency_key, validate_event
 from incident_names import validate_name
+from event_contract import historical_context
 
 client = boto3.client("dynamodb")
 serializer = TypeSerializer()
@@ -38,6 +39,7 @@ def handler(detail, context):
             {"Put": {
                 "TableName": os.environ["STATE_TABLE"],
                 "Item": attributes({**timeline_key, "event": event.model_dump(mode="json"),
+                                    "event_context": historical_context(detail),
                                     "evidence_key": detail["evidence_key"]}),
                 "ConditionExpression": "attribute_not_exists(pk)",
             }},

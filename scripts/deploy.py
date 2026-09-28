@@ -97,7 +97,8 @@ def package_mcp():
     run(sys.executable, "-m", "pip", "install", "--target", str(target),
         "--platform", "manylinux2014_aarch64", "--python-version", "3.12",
         "--implementation", "cp", "--only-binary=:all:", "-r", "services/mcp/requirements.txt")
-    shutil.copy2(ROOT / "services/mcp/main.py", target / "main.py")
+    for source in (ROOT / "services/mcp").glob("*.py"):
+        shutil.copy2(source, target / source.name)
     shutil.make_archive(str(ARTIFACTS / "mcp"), "zip", target)
 
 

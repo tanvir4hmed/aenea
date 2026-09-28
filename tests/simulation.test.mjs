@@ -10,6 +10,8 @@ test('signal captures stable device identity and location context', () => {
   assert.equal(result.event.household_id, 'owner');
   assert.match(result.event.observation, /House A \/ Kitchen \/ Kitchen smoke/);
   assert.equal(result.event.source.simulated, true);
+  assert.equal(result.contract_version, '1.1');
+  assert.deepEqual(result.state, { alarm: 'active', connectivity: 'online' });
 });
 test('replay generates fresh event identities', () => {
   const make = () => signalPayload(draft, device, { name: 'House A' }, 'owner', 'incident');

@@ -11,6 +11,7 @@ from incidentbridge import InvalidEvent, idempotency_key, normalize_event, paylo
 from common import household, response, table_name
 from lifecycle import deleted
 from incident_names import validate_name
+from event_contract import event_state, receipt_digest, enrich_event
 
 table = boto3.resource("dynamodb").Table(table_name())
 s3 = boto3.client("s3")
@@ -28,7 +29,7 @@ def handler(request, context):
         if len(raw.encode()) > 16000:
             return response(413, {"error": "Event is too large"})
         payload = json.loads(raw)
-        if not isinstance(payload, dict) or set(payload) - {"incident_id", "event", "adapter", "incident_name"}:
+        if not isinstance(payload, dict) or set(payload) - {"incident_id", "event", "adapter", "incident_name", "contract_version", "state"}:
             return response(400, {"error": "Expected incident_id, event and optional adapter"})
         incident_id = str(uuid.UUID(payload["incident_id"]))
         if deleted(table, owner, incident_id):
@@ -40,23 +41,34 @@ def handler(request, context):
         if not event.source.simulated:
             return response(400, {"error": "Aenea accepts simulated signals only"})
         key = idempotency_key(event)
-        digest = payload_digest(event)
+        state = event_state(payload)
+        digest = receipt_digest(payload_digest(event), payload, state)
         item_key = {"pk": f"H#{owner}", "sk": f"INGEST#{key}"}
-        try:
-            table.put_item(
-                Item={**item_key, "digest": digest, "incident_id": incident_id, "incident_name": incident_name, "status": "pending"},
-                ConditionExpression="attribute_not_exists(pk)",
-            )
-        except ClientError as exc:
-            if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
-                raise
-            existing = table.get_item(Key=item_key, ConsistentRead=True)["Item"]
+        existing = table.get_item(Key=item_key, ConsistentRead=True).get("Item")
+        event_context = None
+        if not existing:
+            try:
+                event_context = enrich_event(table, owner, event, state)
+            except ValueError as exc:
+                return response(400, {"error": str(exc)})
+            try:
+                table.put_item(
+                    Item={**item_key, "digest": digest, "incident_id": incident_id, "incident_name": incident_name,
+                          "status": "pending", "event_context": event_context},
+                    ConditionExpression="attribute_not_exists(pk)",
+                )
+            except ClientError as exc:
+                if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                    raise
+                existing = table.get_item(Key=item_key, ConsistentRead=True)["Item"]
+        if existing:
             incident_name = existing.get("incident_name", incident_name)
             if existing["digest"] != digest or existing["incident_id"] != incident_id:
                 return response(409, {"error": "Event identity already used with different content"})
             if existing["status"] == "published":
                 return response(202, {"incident_id": incident_id, "event_id": event.event_id,
                                       "duplicate": True})
+            event_context = existing.get("event_context")
         evidence_key = f"{owner}/{incident_id}/{key}.json"
         s3.put_object(
             Bucket=os.environ["EVIDENCE_BUCKET"], Key=evidence_key,
@@ -68,7 +80,8 @@ def handler(request, context):
             "Source": "aenea.ingress",
             "DetailType": "IncidentEvent",
             "Detail": json.dumps({"incident_id": incident_id, "incident_name": incident_name, "event": event.model_dump(mode="json"),
-                                  "idempotency_key": key, "evidence_key": evidence_key}),
+                                  "idempotency_key": key, "evidence_key": evidence_key,
+                                  "event_context": event_context}),
         }])
         if result.get("FailedEntryCount"):
             return response(503, {"error": "Publication pending; retry the same event ID and payload"})
