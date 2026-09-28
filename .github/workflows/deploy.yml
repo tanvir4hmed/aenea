@@ -16,6 +16,7 @@ on:
       - "infra/platform/**"
       - "infra/app/**"
       - "scripts/deploy.py"
+      - "scripts/deploy_scope.py"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:

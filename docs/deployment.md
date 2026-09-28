@@ -37,12 +37,12 @@ Each regular layer uses its own S3 state key and native S3 locking. Terraform ow
 - A Terraform layer change applies that layer; data/platform changes also refresh dependent app wiring.
 - Platform changes refresh public web configuration without rebuilding unchanged frontend code.
 - MCP source/infrastructure changes package and deploy MCP only; platform changes also refresh MCP wiring.
-- Changes to `scripts/deploy.py`, the deploy workflow, or an explicit all dispatch refresh all components. Bootstrap/reconciliation scripts do not trigger application deployment.
+- Deployer-only changes (`scripts/deploy.py`, `scripts/deploy_scope.py` or the deploy workflow) refresh infrastructure and backend packages/configuration; unchanged web assets are not rebuilt. Mixed component changes retain component-based selection. An explicit `all` dispatch includes the frontend build. Bootstrap/reconciliation scripts do not trigger application deployment.
 - Documentation and planning changes do not trigger deployment.
 
 Builds run on GitHub Linux runners. No test suite, browser verification or post-deploy health probe is invoked by this workflow. AWS wait-for-update calls sequence Lambda deployments; they are not application tests.
 
-Python dependencies are assembled on the runner with the pinned IncidentBridge commit. Frontend npm and Terraform provider lockfiles still need to be captured from the first successful pipeline for stronger dependency reproducibility. Build/deployment results are intentionally unreviewed at this stage.
+Python dependencies are assembled on the runner with the pinned IncidentBridge commit. Frontend builds use the committed npm lockfile through `npm ci`. Complete runtime/transitive Python locking and Terraform provider-lock coverage remain audit items. The separate read-only `Source quality` workflow runs offline checks; it does not perform hosted acceptance or gate deployment completion.
 
 ## Operational boundaries
 

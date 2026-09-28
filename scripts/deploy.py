@@ -1,4 +1,4 @@
-"""GitHub runner entrypoint. Builds/deploys; does not run the postponed test suite."""
+"""GitHub runner entrypoint. Quality checks run in the separate CI workflow."""
 import json
 import os
 from pathlib import Path
@@ -6,9 +6,10 @@ import shutil
 import subprocess
 import sys
 
+from deploy_scope import select_scope
+
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts"
-FUNCTIONS = {"ingest", "correlate", "incident_api", "invoke_reasoner", "policy", "action_executor", "mcp_tools", "mcp_proxy", "cleanup"}
 
 
 def run(*args, cwd=ROOT):
@@ -104,40 +105,18 @@ def main():
     ARTIFACTS.mkdir(exist_ok=True)
     paths = changed_paths()
     selected = os.environ.get("DEPLOY_COMPONENT", "")
-    deployment_changed = any(
-        p.startswith("scripts/") or p == ".github/workflows/deploy.yml" for p in paths
-    ) and not any(p.startswith(("apps/web/", "functions/", "shared/", "infra/",
-                                "services/mcp/", "agent/reasoner/", "workflows/")) for p in paths)
-    all_components = selected == "all" or (not paths and not selected)
-    web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
-    infra_all = all_components or selected == "infrastructure" or deployment_changed
-    mcp_changed = infra_all or selected == "mcp" or any(
-        p.startswith(("services/mcp/", "infra/mcp/", "infra/platform/")) for p in paths)
-    reasoner_changed = infra_all or selected == "reasoner" or any(
-        p.startswith(("agent/reasoner/", "infra/reasoner/", "shared/")) for p in paths)
-    if reasoner_changed:
+    scope = select_scope(paths, selected)
+    web, layers = scope.web, scope.layers
+    changed_functions, workflow_changed = scope.functions, scope.workflow
+    if scope.reasoner:
         package_reasoner()
         terraform_init("reasoner")
         run("terraform", "-chdir=infra/reasoner", "apply", "-input=false", "-auto-approve")
-    domain = infra_all or selected == "domain" or any(p.startswith("infra/tls/") for p in paths)
-    layers = {layer for layer in ("data", "platform", "app")
-              if infra_all or selected == layer or any(p.startswith(f"infra/{layer}/") for p in paths)}
-    if domain:
-        layers.add("platform")
     if "platform" in layers:
         prepare_domain()
-    if "data" in layers or "platform" in layers:
-        layers.add("app")
-    changed_functions = set(FUNCTIONS) if all_components or deployment_changed or selected == "backend" else {
-        name for name in FUNCTIONS if any(p.startswith(f"functions/{name}/") for p in paths)
-    }
-    if any((p.startswith("functions/") and p.count("/") == 1) or p.startswith("shared/") for p in paths):
-        changed_functions = set(FUNCTIONS)
-    packages = FUNCTIONS if "app" in layers else changed_functions
-    workflow_changed = selected == "backend" or any(p.startswith("workflows/") for p in paths)
     print(json.dumps({"web": web, "layers": sorted(layers),
                       "functions": sorted(changed_functions), "workflow": workflow_changed}))
-    package_functions(packages)
+    package_functions(scope.packages)
     for layer in ("data", "platform", "app"):
         if layer in layers:
             terraform_init(layer)
@@ -148,7 +127,7 @@ def main():
             "--zip-file", f"fileb://{ARTIFACTS / (name + '.zip')}", "--no-cli-pager")
         # Deployment sequencing only: AWS rejects overlapping code/config updates.
         run("aws", "lambda", "wait", "function-updated-v2", "--function-name", function)
-    if mcp_changed:
+    if scope.mcp:
         package_mcp()
         terraform_init("mcp")
         run("terraform", "-chdir=infra/mcp", "apply", "-input=false", "-auto-approve")
@@ -172,7 +151,7 @@ def main():
         config = ARTIFACTS / "config.json"
         config.write_text(json.dumps(platform["web_config"]))
         if web:
-            run("npm", "install", "--package-lock=true", cwd=ROOT / "apps/web")
+            run("npm", "ci", cwd=ROOT / "apps/web")
             run("npm", "run", "build", cwd=ROOT / "apps/web")
             # No --delete: old hashed assets stay available to open browser sessions.
             run("aws", "s3", "sync", "apps/web/dist/assets",

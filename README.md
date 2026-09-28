@@ -39,14 +39,14 @@ This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are
 
 ## Build and release status
 
-The nine [workspace improvement phases](docs/workspace-refresh.md) have source/release-documentation implementation. This does **not** mean hosted acceptance or contest submission is complete. Recorded offline checks include 44 Python regressions, six JavaScript checks and frontend builds across the relevant phases; see [evidence and its limits](docs/build-evidence.md).
+The earlier [workspace improvement phases](docs/workspace-refresh.md) record historical implementation. They do **not** establish hosted acceptance or contest submission completion. The current [engineering baseline](docs/engineering-baseline.md) maps protected features, quality checks and remaining refactors. See [check instructions](CONTRIBUTING.md) and [historical evidence and its limits](docs/build-evidence.md).
 
 Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Pushes select affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 
 ## Documentation
 
 - [User/judge walkthrough](docs/judge-guide.md) · [in-app guide](https://aenea.qleam.com/guide)
-- [Current phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
+- [Engineering baseline](docs/engineering-baseline.md) · [earlier workspace phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
 - [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
 - [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
 - [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)

@@ -47,7 +47,7 @@ function App() {
     const result = await fetch(config.apiUrl + path, { ...options, headers: {
       Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } });
     if (result.status === 401) expireSession();
-    let body = {};
+    let body;
     try { body = await result.json(); } catch { body = {}; }
     if (!result.ok) {
       const operation = options.method && options.method !== 'GET' ? 'Your change' : 'This request';
