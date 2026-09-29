@@ -2,7 +2,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'functions'))
@@ -18,15 +18,19 @@ class IncidentNamesTests(unittest.TestCase):
 
     def test_rename_is_owner_scoped_and_cannot_create_or_restore_an_incident(self):
         table = Mock()
-        result = rename_incident(table, 'owner', 'incident', {'name': 'Kitchen smoke'})
+        with patch('incident_names.boto3.client') as client:
+            result = rename_incident(table, 'owner', 'incident', {'name': 'Kitchen smoke'})
         self.assertEqual(result['statusCode'], 200)
-        args = table.update_item.call_args.kwargs
-        self.assertEqual(args['Key'], {'pk': 'H#owner', 'sk': 'INCIDENT#incident'})
+        ops = client.return_value.transact_write_items.call_args.kwargs['TransactItems']
+        args = ops[0]['Update']
+        self.assertEqual(args['Key'], {'pk': {'S': 'H#owner'}, 'sk': {'S': 'INCIDENT#incident'}})
+        self.assertEqual(ops[1]['Put']['Item']['kind'], {'S': 'renamed'})
         self.assertIn('attribute_exists(pk)', args['ConditionExpression'])
         self.assertIn('attribute_not_exists(deletion_started_at)', args['ConditionExpression'])
         self.assertEqual(json.loads(result['body'])['name'], 'Kitchen smoke')
 
     def test_missing_or_deleting_record_returns_conflict(self):
         table = Mock()
-        table.update_item.side_effect = ClientError({'Error': {'Code': 'ConditionalCheckFailedException'}}, 'UpdateItem')
-        self.assertEqual(rename_incident(table, 'owner', 'incident', {'name': 'Kitchen'})['statusCode'], 409)
+        with patch('incident_names.boto3.client') as client:
+            client.return_value.transact_write_items.side_effect = ClientError({'Error': {'Code': 'TransactionCanceledException'}}, 'TransactWriteItems')
+            self.assertEqual(rename_incident(table, 'owner', 'incident', {'name': 'Kitchen'})['statusCode'], 409)

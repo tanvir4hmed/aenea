@@ -34,7 +34,7 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
         </section>;
       })}</div>
       <p className="map-caption">{selected ? `Evidence shown for incident ${selected.slice(0, 8)}. ` : ''}No evidence shown does not mean a device or room is safe. Layout is schematic.</p>
-      <details><summary>Alert colours</summary><p>Amber: evidence recorded. Red: a recent device cited by the current urgent assessment, or the latest of two or more distinct smoke detectors reporting in the same room within five minutes. Related devices keep their own state. Simulated escalation does not establish fire size or activate a siren.</p></details>
+      <details><summary>Alert colours</summary><p>Amber: an uncleared reported signal. Red: backend escalation from distinct smoke/CO detectors, a CO/SOS report, or a device cited by the current urgent assessment. Repeated reports from one device do not count as more detectors. Colour does not establish fire size, verify safety or activate a siren.</p></details>
     </>}
   </section>;
 }
@@ -44,7 +44,7 @@ export function IncidentBriefing({ state, selected, timeline, navigate }) {
   const summary = assessment?.assessment;
   const pending = timeline.filter(item => item.status === 'pending_confirmation' && item.assessment_id === assessment?.assessment_id);
   const text = incidentBriefing(state, selected);
-  return <aside className="card alexa-briefing"><span className="mode-label">Alexa+ simulation</span><div className="alexa-orb" aria-hidden="true">a</div><h2>Incident briefing</h2><div role="status" aria-live="polite" aria-atomic="true"><p>{text}</p><p>{summary && <span className="badge">{humanize(summary.severity)}</span>} {state?.incident && `Evidence revision ${state.incident.event_count || 0}`}</p></div>
+  return <aside className="card alexa-briefing"><span className="mode-label">Alexa+ simulation</span><div className="alexa-orb" aria-hidden="true">a</div><h2>Incident briefing</h2><div role="status" aria-live="polite" aria-atomic="true"><p>{text}</p><p>{(state?.canonical_severity || summary) && <span className="badge">{humanize(state?.canonical_severity || summary.severity)}</span>} {state?.incident && `Evidence revision ${state.incident.event_count || 0}`}</p></div>
     <button disabled={!selected} onClick={() => { if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } }}>Read briefing aloud</button>
     <div className="actions"><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('handoff')}>Prepare handoff</button></div>
     <h3>Needs your attention</h3><p>{pending.length && state?.assessment_current ? `${pending.length} proposed action(s) need confirmation. Review the current decisions below.` : 'No current confirmation shown in loaded records.'}</p>

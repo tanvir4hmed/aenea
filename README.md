@@ -12,7 +12,7 @@ Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-gu
 
 - **Settings:** name locations, manage simulated devices and set virtual action permissions.
 - **Simulation Studio:** save named single alerts and multi-device scenarios; edit or delete reusable definitions.
-- **Command Center:** select saved simulations, combine non-overlapping devices and trigger alerts beside the live briefing and map.
+- **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.
 - **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
 - **Alexa+ coordination:** ask supported commands, record synthetic check-ins and approve eligible actions.
 - **Handoff:** review and copy/print a bounded incident summary; nothing is sent to responders.
@@ -50,6 +50,7 @@ Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bo
 - [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
 - [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
 - [Event/state contract and sign-in migration](docs/event-contract.md)
+- [Automatic incidents, resolution and long-event processing](docs/automatic-incidents.md)
 - [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)
 - [Demo runbook](docs/demo-runbook.md) · [product feedback](docs/product-feedback.md) · [friction log](docs/friction-log.md)
 - [Operations](docs/operations.md) · [safety](docs/safety.md) · [security](SECURITY.md)

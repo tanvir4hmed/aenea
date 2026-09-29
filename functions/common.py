@@ -2,9 +2,10 @@
 import json
 import os
 from decimal import Decimal
+from typing import Any
 
 
-def response(status, body):
+def response(status: int, body: Any) -> dict[str, Any]:
     return {
         "statusCode": status,
         "headers": {"content-type": "application/json", "cache-control": "no-store"},

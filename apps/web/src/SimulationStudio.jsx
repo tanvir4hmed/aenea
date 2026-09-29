@@ -12,7 +12,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const [savedQuery, setSavedQuery] = useState(''), [savedLocation, setSavedLocation] = useState('');
   const [savedRoom, setSavedRoom] = useState(''), [savedDevice, setSavedDevice] = useState(''), [savedType, setSavedType] = useState('');
   const [savedPage, setSavedPage] = useState(1);
-  const [selection, setSelection] = useState([]), [target, setTarget] = useState('new'), [name, setName] = useState('');
+  const [selection, setSelection] = useState([]), [target, setTarget] = useState('auto'), [name, setName] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const runKey = 'aenea-trigger-' + household;
   const [run, setRun] = useState(() => { try { return JSON.parse(sessionStorage.getItem(runKey)) || null; } catch { return null; } });
@@ -75,15 +75,13 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   useEffect(() => { setSavedPage(page => Math.min(page, pageCount)); }, [pageCount]);
   const single = chosen.length === 1 && chosen[0].type === 'single';
   const title = name.trim() || chosen.map(item => item.name).join(' + ').slice(0, 120);
-  const currentIncident = incidents.find(item => item.incident_id === target);
-  const overBudget = target !== 'new' && (Number(currentIncident?.event_count || 0) + rows.length > 20);
   async function trigger() {
     await perform(async () => {
       let batch = pending ? run : null;
       if (!batch) {
         const signals = selectedSignals(library.items, selection, catalog);
-        if (!signals.length || overBudget) throw new Error('Choose 1–20 device alerts within the incident assessment limit.');
-        const incident = target === 'new' ? crypto.randomUUID() : target;
+        if (!signals.length) throw new Error('Choose device alerts to send.');
+        const incident = target === 'auto' ? undefined : target;
         batch = { incident, name: title, rows: signals.map(row => {
           const source = catalog.devices.find(item => item.id === row.deviceId);
           const location = catalog.locations.find(item => item.id === source.location_id);
@@ -107,19 +105,17 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     <fieldset disabled={!loaded || busy || pending || !ready || disabled}>
       <label>Saved alert or scenario<select multiple size={Math.min(5, Math.max(2, library.items.length))} value={selection} onChange={e => setSelection([...e.target.selectedOptions].map(option => option.value))}>{library.items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single' : `Scenario (${item.signals.length})`}</option>)}</select></label>
       {!library.items.length && <p>No saved alerts or scenarios. Create one in Simulation Studio.</p>}
-      <label>Send to<select value={target} onChange={e => setTarget(e.target.value)}><option value="new">New incident</option>{selected && !incidents.some(item => item.incident_id === selected) && <option value={selected}>{incidentLabel({ incident_id: selected })}</option>}{incidents.map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
-      {target === 'new' && <label>Incident name (optional)<input maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder={title || 'Uses the selected simulation names'}/></label>}
+      <label>Incident assignment<select value={target} onChange={e => setTarget(e.target.value)}><option value="auto">Automatic · create or join related incident</option>{incidents.filter(item => !item.resolved_at && !item.deletion_started_at).map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
     </fieldset>
     {selectionError && <p className="error" role="alert">{selectionError}</p>}
-    {overBudget && !pending && <p className="error">This would exceed 20 signals in the incident. Start a new incident or reduce the selection.</p>}
     {rows.length > 0 && <p className="trigger-summary">{chosen.length} selected · {rows.length} distinct devices</p>}
-    <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && (!rows.length || !!selectionError || overBudget))} onClick={trigger}>{busy ? 'Sending…' : pending ? 'Retry remaining alerts' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
+    <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && (!rows.length || !!selectionError))} onClick={trigger}>{busy ? 'Sending…' : pending ? 'Retry remaining alerts' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
     {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
     {feedback}
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>
-    <section className="card alert-composer simulation-editor"><div className="row"><div><h2>{editing ? 'Edit saved definition' : 'Create simulation'}</h2><p>Save a reusable definition here. Choose new or existing incident only when triggering it from Command Center.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>
+    <section className="card alert-composer simulation-editor"><div className="row"><div><h2>{editing ? 'Edit saved definition' : 'Create simulation'}</h2><p>Save reusable alerts here. Command Center automatically creates or joins a related incident when you send them.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>
       {feedback}
       <form onSubmit={e => { e.preventDefault(); perform(async () => {
         if (draft.type === 'single' && draft.signals.length !== 1) throw new Error('A single alert needs exactly one device.');

@@ -9,7 +9,13 @@ select = ["E9", "F63", "F7", "F82"]
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "shared"
 strict = true
-files = ["scripts/deploy_scope.py", "functions/event_contract.py", "services/mcp/token_auth.py"]
+files = ["scripts/deploy_scope.py", "functions/event_contract.py", "functions/incident_engine.py", "functions/incident_state.py", "services/mcp/token_auth.py"]
 # Legacy imported modules retain the correctness gate until their own refactor phase.
 follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+# AWS SDK calls remain an explicitly dynamic boundary until generated stubs are adopted.
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true

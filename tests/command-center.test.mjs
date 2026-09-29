@@ -17,3 +17,10 @@ test('map retains reporting devices from assessment when timeline pages omit evi
   const state = { latest_assessment: { evidence_snapshot: [{ source: { source_id: 'smoke' } }] } };
   assert.deepEqual([...reportingDevices([{ event: { source: { source_id: 'camera' } } }], state)], ['camera', 'smoke']);
 });
+
+test('backend active state overrides history after clear and resolution', () => {
+  const history = [{ event: { source: { source_id: 'old-smoke' } } }];
+  assert.deepEqual([...reportingDevices(history, { active_devices: [] })], []);
+  assert.match(incidentBriefing({ incident: { resolved_at: 100 } }, 'abc'), /resolved/);
+  assert.doesNotMatch(incidentBriefing({ incident: { resolved_at: 100 } }, 'abc'), /awaiting assessment/);
+});

@@ -113,4 +113,5 @@ class CleanupWorkerTests(unittest.TestCase):
         self.table.query.side_effect = [{"Items": []}, {"Items": [{"pk": "H#owner", "sk": "INGEST#one", "incident_id": INCIDENT}, {"pk": "H#owner", "sk": "INGEST#two", "incident_id": "another"}]}]
         with patch.dict(os.environ, {"EVIDENCE_BUCKET": "offline"}):
             self.module.purge(self.job, self.context)
-        self.writer.delete_item.assert_called_once_with(Key={"pk": "H#owner", "sk": "INGEST#one"})
+        self.writer.put_item.assert_called_once_with(Item={"pk": "H#owner", "sk": "INGEST#one", "status": "deleted"})
+        self.writer.delete_item.assert_not_called()

@@ -24,7 +24,8 @@ def decision(proposal, events, profile, now, expires_at, confirmed=False):
     if not citations or not citations <= {e["event_id"] for e in fresh}:
         return "blocked", "Evidence is missing, stale or future dated"
     kinds = {e["kind"] for e in fresh if e["event_id"] in citations}
-    all_kinds = {e["kind"] for e in fresh}
+    # Ongoing smoke/CO does not become safe merely because its last report aged out.
+    all_kinds = {e["kind"] for e in events}
     if not kinds & HAZARDS:
         return "blocked", "Context signals alone cannot authorize an action"
     if action == "close_valve":

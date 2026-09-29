@@ -1,5 +1,7 @@
 """Offline revision, stale execution and publication regressions."""
 import importlib.util
+import io
+import json
 import os
 from pathlib import Path
 import sys
@@ -63,6 +65,11 @@ class RevisionTests(unittest.TestCase):
         self.table.get_item.return_value = {"Item": {**self.summary, "decision_review": "rejected"}}
         self.assertEqual(self.module.execute("owner", "incident", "action")["status"], "superseded")
 
+    def test_resolution_blocks_previously_allowed_action(self):
+        self.table.get_item.return_value = {"Item": {**self.summary, "resolved_at": 1}}
+        self.assertEqual(self.module.execute("owner", "incident", "action")["status"], "superseded")
+        self.module.evidence.assert_not_called()
+
     def test_transaction_guards_against_signal_or_rejection_arriving_after_read(self):
         self.table.get_item.return_value = {"Item": self.summary}
         client = Mock()
@@ -73,6 +80,7 @@ class RevisionTests(unittest.TestCase):
         self.assertIn("latest_assessment = :assessment", check["ConditionExpression"])
         self.assertIn("decision_review <> :rejected", check["ConditionExpression"])
         self.assertIn("event_count = :revision", check["ConditionExpression"])
+        self.assertIn("attribute_not_exists(resolved_at)", check["ConditionExpression"])
 
 
 class PublicationTests(unittest.TestCase):
@@ -90,20 +98,74 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(result["reasoner_ok"])
         self.assertIn("assessed_revision < :revision", self.storage.table.update_item.call_args.kwargs["ConditionExpression"])
 
-    def test_over_budget_never_invokes_model_with_truncated_evidence(self):
+    def test_over_twenty_events_uses_bounded_state_not_lifetime_rejection(self):
         self.storage.get.return_value = None
-        self.storage.evidence.return_value = [{}] * 21
+        signal = {"event_id": "latest", "kind": "smoke", "source": {"source_id": "detector"}}
+        self.module.snapshot = Mock(return_value={"events": [signal], "context": {"sampled": False, "all_clear": False, "total_events": 250},
+                                                "fingerprint": "state", "active_devices": [], "severity": "warning"})
         self.storage.table.get_item.return_value = {"Item": {"event_count": 21}}
-        self.module.handler({"household_id": "owner", "incident_id": "incident", "event_id": "e21"}, None)
-        self.module.runtime.invoke_agent_runtime.assert_not_called()
+        assessment = {"incident_type": "smoke", "severity": "warning", "confidence": 0.5, "summary": "Reported smoke",
+                      "evidence_ids": ["latest"], "uncertainties": [], "actions": []}
+        self.module.runtime.invoke_agent_runtime.return_value = {"response": io.BytesIO(json.dumps({"assessment": assessment, "model_id": "test"}).encode())}
+        with patch.dict(os.environ, {"REASONER_ARN": "offline"}):
+            self.module.handler({"household_id": "owner", "incident_id": "incident", "event_id": "e21"}, None)
+        self.module.runtime.invoke_agent_runtime.assert_called_once()
         item = self.storage.table.put_item.call_args.kwargs["Item"]
-        self.assertEqual(item["failure_code"], "evidence_budget_exceeded")
-        self.assertEqual(item["status"], "assessment_failed")
+        self.assertEqual(item["status"], "assessed")
+        self.assertEqual(item["context_summary"]["total_events"], 250)
 
     def test_changed_snapshot_is_not_sent_to_model(self):
         self.storage.get.return_value = None
-        self.storage.evidence.return_value = [{}, {}]
+        self.module.snapshot = Mock(return_value={"events": [], "context": {}, "active_devices": [], "severity": "warning"})
         self.storage.table.get_item.side_effect = [{"Item": {"event_count": 1}}, {"Item": {"event_count": 2}}, {"Item": {"event_count": 2}}]
         self.module.handler({"household_id": "owner", "incident_id": "incident", "event_id": "e1"}, None)
         self.module.runtime.invoke_agent_runtime.assert_not_called()
         self.assertEqual(self.storage.table.put_item.call_args.kwargs["Item"]["failure_code"], "snapshot_changed")
+
+    def test_model_failure_is_explicit_and_retry_is_bounded(self):
+        self.storage.get.return_value = None
+        self.module.snapshot = Mock(return_value={"events": [{"event_id": "e1"}],
+            "context": {"all_clear": False}, "fingerprint": "a", "active_devices": [], "severity": "warning"})
+        self.storage.table.get_item.return_value = {"Item": {"event_count": 1}}
+        self.module.runtime.invoke_agent_runtime.side_effect = TimeoutError("offline")
+        event = {"household_id": "owner", "incident_id": "incident", "event_id": "e1"}
+        with patch.dict(os.environ, {"REASONER_ARN": "offline"}):
+            result = self.module.handler(event, None)
+            self.assertTrue(result["retry_needed"])
+            result = self.module.handler({**event, "assessment_attempt": 2}, None)
+        self.assertFalse(result["retry_needed"])
+        item = self.storage.table.put_item.call_args.kwargs["Item"]
+        self.assertEqual(item["status"], "assessment_failed")
+        self.assertNotIn("assessment", item)
+
+    def test_repeat_reuses_citations_only_for_same_device_kind(self):
+        previous = {"evidence_snapshot": [{"event_id": "old", "kind": "smoke", "source": {"source_id": "device"}}],
+            "assessment": {"incident_type": "smoke", "severity": "warning", "confidence": 0.5,
+                "summary": "Reported smoke", "evidence_ids": ["old"], "uncertainties": [], "actions": []}}
+        events = [{"event_id": "new", "kind": "smoke", "source": {"source_id": "device"}}]
+        self.assertEqual(self.module.reused_assessment(previous, events).evidence_ids, ["new"])
+        with self.assertRaises(ValueError):
+            self.module.reused_assessment(previous, [{**events[0], "kind": "water_leak"}])
+
+
+class RecoveryPolicyTests(unittest.TestCase):
+    def test_same_revision_fresh_assessment_replaces_expired_pending_proposal(self):
+        proposal = {"action": "notify", "device_id": "virtual_notification", "rationale": "Reported smoke", "evidence_ids": ["e"]}
+        assessment = {"incident_type": "smoke", "severity": "warning", "confidence": 0.5,
+            "summary": "Reported smoke", "evidence_ids": ["e"], "uncertainties": [], "actions": [proposal]}
+        saved = {"assessment_id": "new", "evidence_revision": 1, "status": "assessed", "assessment": assessment, "expires_at": 9999999999}
+        previous = {"assessment_id": "old", "evidence_revision": 1, "status": "pending_confirmation"}
+        storage = SimpleNamespace(action_id=lambda *args: "action", attrs=lambda value: value, audit=Mock(), evidence=Mock(return_value=[]),
+            get=Mock(side_effect=[saved, previous]), native=lambda value: value, partition=lambda *args: "partition",
+            profile=Mock(return_value={"revision": "p"}), table=Mock())
+        storage.table.get_item.return_value = {"Item": {"latest_assessment": "new", "event_count": 1}}
+        storage.table.put_item.side_effect = [ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"), {}]
+        with patch.dict(sys.modules, {"coordination": storage}):
+            module = load("recovery_policy", "functions/policy/handler.py")
+        module.deleted = Mock(return_value=False)
+        module.decision = Mock(return_value=("pending_confirmation", "Approval required"))
+        with patch.object(module.boto3, "client") as client:
+            module.handler({"household_id": "owner", "incident_id": "incident", "assessment_id": "new"}, None)
+        operations = client.return_value.transact_write_items.call_args.kwargs["TransactItems"]
+        self.assertIn("latest_assessment = :id", operations[0]["ConditionCheck"]["ConditionExpression"])
+        self.assertEqual(operations[1]["Put"]["Item"]["assessment_id"], "new")

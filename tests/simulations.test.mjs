@@ -49,3 +49,12 @@ test('current urgent assessment makes only cited devices red; stale assessment c
   assert.equal(alertStates(catalog, events, state, now).get('four').level, 'amber');
   assert.equal(alertStates(catalog, events, { ...state, assessment_current: false }, now).get('one').level, 'amber');
 });
+
+test('canonical backend state replaces client heuristics and clears historical alerts', () => {
+  const history = [event('one'), event('two')];
+  assert.equal(alertStates(catalog, history, { active_devices: [] }, now).size, 0);
+  const state = { active_devices: [{ device_id: 'two', kind: 'smoke', alarm: 'active', level: 'red' }] };
+  const result = alertStates(catalog, history, state, now);
+  assert.equal(result.size, 1);
+  assert.equal(result.get('two').level, 'red');
+});

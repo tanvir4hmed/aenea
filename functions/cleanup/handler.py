@@ -65,7 +65,8 @@ def purge(job, context):
         with table.batch_writer() as writer:
             for record in page["Items"]:
                 if record.get("incident_id") == incident:
-                    writer.delete_item(Key={"pk": record["pk"], "sk": record["sk"]})
+                    # Keep only the irreversible retry identity, never location/evidence.
+                    writer.put_item(Item={"pk": record["pk"], "sk": record["sk"], "status": "deleted"})
         cursor = page.get("LastEvaluatedKey")
         if not cursor:
             break

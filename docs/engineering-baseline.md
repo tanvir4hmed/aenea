@@ -33,14 +33,14 @@ IncidentBridge independently checks Ruff lint/format, strict typing, schema/CLI 
 
 ## Incremental refactor backlog
 
-The event/auth foundation now adds trusted ingress context, read compatibility for legacy evidence, resource-bound JWT enforcement and transport/session regression coverage; see [contract and migration](event-contract.md). Strict type checks now also cover the new event-contract and JWT modules. Automatic routing/state aggregation and hosted acceptance are still pending.
+The event/auth foundation adds trusted ingress context, legacy compatibility and resource-bound JWT/protocol checks; see [contract and migration](event-contract.md). The [automatic incident engine](automatic-incidents.md) adds atomic routing/lifecycle, paged state, bounded assessment and recovery. Strict type gates cover the selector, event contract, JWT, incident engine and state modules; AWS SDK calls remain an explicit dynamic boundary. Moto transaction tests are development-only. Hosted acceptance remains pending.
 
 Local baseline results: Aenea 72 Python tests (including 12 deployment-selection regressions), 20 JavaScript tests, Ruff correctness/selected-format checks, selector strict typing, ESLint and Vite build passed. IncidentBridge 35 tests, lint/format, strict typing, wheel/sdist build and clean-wheel validate/emit/replay/schema comparison passed. Checks used Python 3.12 and local Node 24; CI targets Node 22. No hosted acceptance or deployment-result verification was performed.
 
 | Module area | Required follow-up |
 | --- | --- |
-| Event contracts and MCP/auth | Trusted catalog enrichment, explicit versioning/state semantics, protocol/auth regression fixtures |
-| Incident engine and history | Atomic assignment/lifecycle, paged evidence, bounded model context without dropping future events |
+| Event contracts and MCP/auth | Foundation implemented; hosted interoperability and token/session acceptance remain |
+| Incident engine and history | Atomic routing/lifecycle and bounded paged-state processing implemented; measured large-history read costs and hosted acceptance remain |
 | Simulation | Shared validated profiles, server scheduling, visible limits and capacity model; preserve current Studio/Command Center layout |
 | Actions and Alexa | Location-scoped capabilities, persisted briefings, material-update deduplication; retain historical data when retiring pages |
 | Frontend | Decompose state-heavy views, accessible form/status feedback, React-aware unused-symbol/hooks checks, targeted formatter adoption |

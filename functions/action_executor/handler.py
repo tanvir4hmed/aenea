@@ -3,6 +3,8 @@ import base64
 import json
 import re
 import uuid
+import os
+import boto3
 
 from common import household, response
 from coordination import audit, execute, get, profile, table
@@ -12,6 +14,7 @@ from decision_review import review
 from lifecycle import require_active, request_deletion
 from incident_names import rename_incident
 from simulation_library import read_library, save_library
+from incident_engine import resolve
 
 
 def handler(event, context):
@@ -55,6 +58,16 @@ def handler(event, context):
         if route == "POST /incidents/{incident_id}/delete":
             return request_deletion(table, owner, incident, body)
         require_active(table, owner, incident)
+        if route == "POST /incidents/{incident_id}/resolve":
+            return resolve(table, owner, incident, body)
+        if route == "POST /incidents/{incident_id}/reassess":
+            summary = table.get_item(Key={"pk": f"H#{owner}", "sk": "INCIDENT#" + incident}, ConsistentRead=True).get("Item", {})
+            if not summary or summary.get("resolved_at"):
+                return response(409, {"error": "Only an open incident can be reassessed"})
+            result = boto3.client("events").put_events(Entries=[{"EventBusName": os.environ["EVENT_BUS"],
+                "Source": "aenea.ingress", "DetailType": "IncidentEvent", "Detail": json.dumps({
+                    "assessment_only": True, "household_id": owner, "incident_id": incident, "event_id": str(uuid.uuid4())})}])
+            return response(503 if result.get("FailedEntryCount") else 202, {"status": "retry" if result.get("FailedEntryCount") else "assessment_requested"})
         if route == "PUT /incidents/{incident_id}/name":
             return rename_incident(table, owner, incident, body)
         if route == "POST /incidents/{incident_id}/assessments/{assessment_id}/review":

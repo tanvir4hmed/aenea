@@ -11,6 +11,7 @@ const readable = value => String(value || 'unknown').replaceAll('_', ' ');
 export function describe(tool, data) {
   if (tool === 'get_responder_summary') return `Handoff prepared for incident ${data.incident.incident_id.slice(0, 8)}. ${data.partial ? 'This snapshot is partial; more records exist. ' : ''}${data.assessment_current ? '' : 'The assessment is outdated or unavailable. '}${data.notice} Nothing has been dispatched.`;
   if (tool === 'get_incident_status') {
+    if (data.incident.resolved_at) return `${data.incident.name || 'Incident'} is resolved by human confirmation. Previous actions cannot execute. This does not verify safety.`;
     const prefix = `Incident ${data.incident.incident_id.slice(0, 8)}, evidence revision ${data.incident.event_count}. `;
     const assessment = data.assessment?.assessment;
     if (!assessment) return prefix + (data.assessment?.message || `Status: ${readable(data.incident.status)}. No validated assessment is available yet.`);
@@ -27,7 +28,7 @@ export function describe(tool, data) {
 }
 
 export function canExecute(action, context, now = Date.now()) {
-  return Boolean(context?.assessment_current && context.incident.decision_review !== 'rejected'
+  return Boolean(context?.assessment_current && !context.incident.resolved_at && context.incident.decision_review !== 'rejected'
     && context.incident.latest_assessment === action.assessment_id
     && context.incident.event_count === action.evidence_revision && now < action.expires_at * 1000);
 }

@@ -19,6 +19,9 @@ def attributes(values):
 
 
 def handler(detail, context):
+    if detail.get("assessment_only"):
+        return {"household_id": detail["household_id"], "incident_id": str(uuid.UUID(detail["incident_id"])),
+                "event_id": detail["event_id"], "deleted": False}
     event = validate_event(detail["event"])
     incident_id = str(uuid.UUID(detail["incident_id"]))
     owner = event.household_id
@@ -40,6 +43,7 @@ def handler(detail, context):
                 "TableName": os.environ["STATE_TABLE"],
                 "Item": attributes({**timeline_key, "event": event.model_dump(mode="json"),
                                     "event_context": historical_context(detail),
+                                    "routing": detail.get("routing"),
                                     "evidence_key": detail["evidence_key"]}),
                 "ConditionExpression": "attribute_not_exists(pk)",
             }},
@@ -51,6 +55,7 @@ def handler(detail, context):
                     "created_at = if_not_exists(created_at, :time), "
                     "event_count = if_not_exists(event_count, :zero) + :one"
                 ),
+                "ConditionExpression": "attribute_not_exists(resolved_at) AND attribute_not_exists(deletion_started_at)",
                 "ExpressionAttributeNames": {"#status": "status", "#name": "name"},
                 "ExpressionAttributeValues": attributes({
                     ":id": incident_id, ":status": "collecting_evidence",
@@ -68,7 +73,23 @@ def handler(detail, context):
         existing = client.get_item(TableName=os.environ["STATE_TABLE"],
                                    Key=attributes(timeline_key), ConsistentRead=True)
         if "Item" not in existing:
-            raise
+            summary = client.get_item(TableName=os.environ["STATE_TABLE"], Key=attributes(summary_key), ConsistentRead=True).get("Item", {})
+            if "resolved_at" not in summary:
+                raise
+            # Accepted before resolution but delivered afterward: archive, never reopen.
+            try:
+                client.transact_write_items(TransactItems=[
+                    {"ConditionCheck": {"TableName": os.environ["STATE_TABLE"],
+                        "Key": attributes({"pk": f"H#{owner}", "sk": "DELETED#" + incident_id}),
+                        "ConditionExpression": "attribute_not_exists(pk)"}},
+                    {"Put": {"TableName": os.environ["STATE_TABLE"], "Item": attributes({**timeline_key,
+                    "event": event.model_dump(mode="json"), "event_context": historical_context(detail),
+                    "evidence_key": detail["evidence_key"], "late_after_resolution": True}),
+                    "ConditionExpression": "attribute_not_exists(pk)"}}])
+            except ClientError as late:
+                if late.response["Error"]["Code"] != "TransactionCanceledException":
+                    raise
+            return {"household_id": owner, "incident_id": incident_id, "deleted": True}
         # A retry after a successful transaction must not increment the aggregate twice.
     return {"household_id": owner, "incident_id": incident_id, "event_id": event.event_id,
             "status": "collecting_evidence", "deleted": False}

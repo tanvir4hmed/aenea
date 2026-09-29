@@ -1,10 +1,11 @@
 """Persist decisions using trusted household configuration and current evidence."""
 import time
 import json
+import boto3
 from botocore.exceptions import ClientError
 
 from assessment import IncidentAssessment
-from coordination import action_id, audit, evidence, get, native, partition, profile, table
+from coordination import action_id, attrs, audit, evidence, get, native, partition, profile, table
 from safety import decision
 from revisions import actionable
 from lifecycle import deleted
@@ -40,11 +41,22 @@ def handler(event, context):
             # A new assessment may reconsider blocked/expired proposals, never completed actions.
             previous = get(owner, incident, "ACTION#" + identifier)
             replaceable = previous["status"] in {"blocked", "expired", "allowed", "pending_confirmation"} and (
-                previous.get("evidence_revision", -1) < saved["evidence_revision"])
+                previous.get("evidence_revision", -1) <= saved["evidence_revision"])
             if replaceable and previous["assessment_id"] != event["assessment_id"]:
-                table.put_item(Item=native(item), ConditionExpression="assessment_id = :old AND #s = :status",
-                    ExpressionAttributeNames={"#s": "status"},
-                    ExpressionAttributeValues={":old": previous["assessment_id"], ":status": previous["status"]})
+                try:
+                    boto3.client("dynamodb").transact_write_items(TransactItems=[
+                        {"ConditionCheck": {"TableName": table.name,
+                            "Key": attrs({"pk": f"H#{owner}", "sk": "INCIDENT#" + incident}),
+                            "ConditionExpression": "latest_assessment = :id AND event_count = :revision AND attribute_not_exists(resolved_at) AND attribute_not_exists(deletion_started_at)",
+                            "ExpressionAttributeValues": attrs({":id": event["assessment_id"], ":revision": saved["evidence_revision"]})}},
+                        {"Put": {"TableName": table.name, "Item": attrs(item),
+                            "ConditionExpression": "assessment_id = :old AND #s = :status",
+                            "ExpressionAttributeNames": {"#s": "status"},
+                            "ExpressionAttributeValues": attrs({":old": previous["assessment_id"], ":status": previous["status"]})}}])
+                except ClientError as race:
+                    if race.response["Error"]["Code"] != "TransactionCanceledException":
+                        raise
+                    continue  # Superseded policy work cannot replace the newer proposal.
             else:
                 item = previous
         audit(owner, incident, "policy", identifier + ":" + event["assessment_id"], item)

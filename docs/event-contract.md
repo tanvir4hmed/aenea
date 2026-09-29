@@ -1,10 +1,10 @@
 # Event/state and authentication foundation
 
-Implemented envelope version 1.1; the embedded **IncidentBridge 1.0** event and pinned dependency are unchanged. Existing incident selection is still required. Automatic assignment, state aggregation/severity, resolution and scheduled simulation belong to subsequent implementation, not this contract release.
+Implemented envelope version 1.1; the embedded **IncidentBridge 1.0** event and pinned dependency are unchanged. [Automatic assignment, current state and resolution](automatic-incidents.md) now build on this foundation. Scheduled simulation remains future work.
 
 ## Ingestion contract
 
-`POST /events` accepts `incident_id`, `event`, optional `adapter`/`incident_name`, and the new `contract_version` and `state` fields. Unknown fields are rejected. Authentication supplies household ownership; a client cannot supply trusted context.
+`POST /events` accepts `event`, optional `incident_id`/`adapter`/`incident_name`, and the new `contract_version` and `state` fields. Omit `incident_id` for automatic create/join; the receipt returns its assigned ID. A client name does not override the automatic route's title. Unknown fields are rejected. Authentication supplies household ownership; a client cannot supply trusted context.
 
 ```json
 {
@@ -27,7 +27,7 @@ Implemented envelope version 1.1; the embedded **IncidentBridge 1.0** event and 
 - `alarm`: `active`, `clear`, `unknown`. `connectivity`: `online`, `offline`, `unknown`. Both are mandatory in 1.1. Connectivity is not proof of hazard clearance; clear is not incident resolution.
 - A new receipt requires an enabled device from the authenticated household catalog, a current location, matching source category and a supported signal type. Only simulation connections are admitted. Invented IDs, other-owner IDs, incompatible signals and claimed real sources fail before evidence publication.
 - Server-generated `event_context` contains trusted device/location snapshots, catalog revision, `received_at`, source provenance and the validated state. Observation text stays untrusted; its room/location descriptions never override the catalog.
-- `occurred_at` is the validated producer timestamp. `received_at` is the first accepted server timestamp. Keep both; neither arrival order nor repeated delivery proves newer hazard state. Ordering/active-state materialization is not implemented here.
+- `occurred_at` is the validated producer timestamp. `received_at` is the first accepted server timestamp. Keep both; neither arrival order nor repeated delivery proves newer hazard state. Current state now uses producer timestamp/event-ID ordering over paged history.
 - The raw S3 evidence remains the compatible IncidentBridge event. The receipt and timeline additionally retain the envelope context. No new bucket/table or destructive data migration is required.
 
 ## Retry and migration rules

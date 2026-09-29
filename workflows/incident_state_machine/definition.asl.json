@@ -1,6 +1,6 @@
 {
   "Comment": "Evidence, AgentCore assessment, deterministic policy and virtual actions.",
-  "TimeoutSeconds": 420,
+  "TimeoutSeconds": 600,
   "StartAt": "RecordEvidence",
   "States": {
     "RecordEvidence": {
@@ -35,9 +35,10 @@
     },
     "ReasonerAvailable": {
       "Type": "Choice",
-      "Choices": [{"Variable": "$.reasoner_ok", "BooleanEquals": true, "Next": "Authorize"}],
+      "Choices": [{"Variable": "$.reasoner_ok", "BooleanEquals": true, "Next": "Authorize"}, {"And": [{"Variable": "$.retry_needed", "IsPresent": true}, {"Variable": "$.retry_needed", "BooleanEquals": true}], "Next": "WaitForEvidence"}],
       "Default": "AssessmentUnavailable"
     },
+    "WaitForEvidence": {"Type": "Wait", "Seconds": 3, "Next": "Assess"},
     "AssessmentUnavailable": {"Type": "Succeed"},
     "Authorize": {
       "Type": "Task",

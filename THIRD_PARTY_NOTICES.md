@@ -10,6 +10,7 @@ Source dependencies currently referenced:
 
 - [IncidentBridge](https://github.com/tanvir4hmed/incidentbridge), Apache-2.0: canonical events and validation; pinned to the v0.1.0 commit.
 - [Boto3](https://github.com/boto/boto3), Apache-2.0: AWS SDK calls from Python handlers.
+- [Moto](https://github.com/getmoto/moto), Apache-2.0: development-only offline AWS transaction tests; not deployed with Lambda/runtime packages.
 - [React](https://github.com/facebook/react), MIT: browser interface.
 - [Vite](https://github.com/vitejs/vite), MIT: browser build tool.
 - [Terraform](https://github.com/hashicorp/terraform), BUSL-1.1 for current releases: infrastructure CLI; [AWS provider](https://github.com/hashicorp/terraform-provider-aws), MPL-2.0.

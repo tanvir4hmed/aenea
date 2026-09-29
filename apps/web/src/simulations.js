@@ -25,6 +25,7 @@ export function selectionForDevice(items, deviceId) {
 }
 
 export function alertStates(catalog, timeline, state, now = Date.now()) {
+  if (state?.active_devices) return new Map(state.active_devices.map(device => [device.device_id, { level: device.level, reason: `${device.kind.replaceAll('_', ' ')} · ${device.alarm}` }]));
   const assessment = state?.latest_assessment?.assessment;
   const events = [...new Map([...timeline.filter(item => item.event).map(item => item.event),
     ...(state?.latest_assessment?.evidence_snapshot || [])].map(event => [event.event_id, event])).values()];

@@ -11,6 +11,7 @@ from cursors import decode_cursor
 from revisions import current_assessment
 from lifecycle import deleted
 from event_contract import timeline_context
+from incident_state import snapshot, assessed_severity
 
 table = boto3.resource("dynamodb").Table(table_name())
 
@@ -56,6 +57,12 @@ def handler(request, context):
             latest = table.get_item(Key={"pk": partition, "sk": "ASSESSMENT#" + summary["latest_assessment"]}, ConsistentRead=True).get("Item") if summary.get("latest_assessment") else None
             metadata = {"incident": summary, "latest_assessment": latest,
                         "assessment_current": current_assessment(summary, latest)}
+            state = snapshot(table, owner, incident_id)
+            after = table.get_item(Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True).get("Item", {})
+            if after.get("event_count") == summary.get("event_count") and after.get("resolved_at") == summary.get("resolved_at"):
+                severity, devices = assessed_severity(state, latest.get("assessment") if metadata["assessment_current"] and summary.get("decision_review") != "rejected" else None)
+                metadata.update(active_devices=[] if summary.get("resolved_at") else devices,
+                                canonical_severity="informational" if summary.get("resolved_at") else severity)
         return response(200, {"household_id": owner, "items": [timeline_context(item) for item in result["Items"]],
                               "next_cursor": next_cursor, **metadata})
     except PermissionError:

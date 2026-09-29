@@ -15,6 +15,7 @@ from common import table_name
 from safety import decision
 from revisions import actionable
 from lifecycle import deleted
+from incident_state import snapshot
 
 table = boto3.resource("dynamodb").Table(table_name())
 serializer = TypeSerializer()
@@ -38,14 +39,7 @@ def get(owner, incident, key):
 
 
 def evidence(owner, incident):
-    query = {"KeyConditionExpression": Key("pk").eq(partition(owner, incident)) &
-             Key("sk").begins_with("EVENT#"), "ScanIndexForward": False,
-             "Limit": 200, "ConsistentRead": True}
-    result = table.query(**query)
-    # Fail closed rather than silently overlooking smoke behind a truncated evidence page.
-    if result.get("LastEvaluatedKey"):
-        raise ValueError("Incident evidence exceeds Aenea policy budget; review required")
-    return [item["event"] for item in result["Items"]]
+    return snapshot(table, owner, incident)["policy_events"]
 
 
 def profile(owner):
@@ -103,7 +97,7 @@ def execute(owner, incident, identifier, confirmed=False, expected_assessment=No
         updated["alternate_plan"] = "Device unavailable; request a household check-in and review the incident. No physical action was taken."
     operations = [
         {"ConditionCheck": {"TableName": table_name(), "Key": attrs(summary_key),
-            "ConditionExpression": "attribute_not_exists(deletion_started_at) AND event_count = :revision AND latest_assessment = :assessment AND (attribute_not_exists(decision_review) OR decision_review <> :rejected)",
+            "ConditionExpression": "attribute_not_exists(resolved_at) AND attribute_not_exists(deletion_started_at) AND event_count = :revision AND latest_assessment = :assessment AND (attribute_not_exists(decision_review) OR decision_review <> :rejected)",
             "ExpressionAttributeValues": attrs({":revision": revision, ":assessment": item["assessment_id"], ":rejected": "rejected"})}},
         {"ConditionCheck": {"TableName": table_name(),
             "Key": attrs({"pk": f"H#{owner}", "sk": "PROFILE"}),

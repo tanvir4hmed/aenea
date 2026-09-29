@@ -72,6 +72,8 @@
       "mcp_proxy"
     ],
     "routes": {
+      "POST /incidents/{incident_id}/resolve": {"function": "action_executor", "scope": "aenea/write"},
+      "POST /incidents/{incident_id}/reassess": {"function": "action_executor", "scope": "aenea/write"},
       "GET /household/simulations": {
         "function": "action_executor",
         "scope": "aenea/read"

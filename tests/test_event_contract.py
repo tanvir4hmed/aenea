@@ -102,6 +102,37 @@ class IngestionContractTests(unittest.TestCase):
         self.assertTrue(detail["event"]["occurred_at"].startswith("2026-09-28T10:00:00"))
         self.assertEqual(detail["event_context"]["state"], self.payload["state"])
 
+    def test_deleted_receipt_never_publishes_or_reopens_automatic_incident(self):
+        from incidentbridge import idempotency_key
+
+        event = normalize_event(self.payload["event"], "sensor")
+        self.records["INGEST#" + idempotency_key(event)] = {"status": "deleted"}
+        del self.payload["incident_id"]
+        self.assertEqual(self.send()["statusCode"], 410)
+        self.module.events.put_events.assert_not_called()
+        self.module.s3.put_object.assert_not_called()
+
+    def test_automatic_assignment_response_and_publication_share_server_incident(self):
+        assigned = str(uuid.uuid4())
+        del self.payload["incident_id"]
+
+        def reserve(table, owner, event, context, receipt):
+            saved = {
+                **receipt,
+                "incident_id": assigned,
+                "incident_name": "Home · Reported smoke",
+                "routing": {"decision": "create", "mode": "agent"},
+            }
+            self.records[receipt["sk"]] = saved
+            return saved
+
+        with patch.object(self.module, "reserve", side_effect=reserve):
+            result = self.send()
+        self.assertEqual(result["statusCode"], 202)
+        self.assertEqual(json.loads(result["body"])["incident_id"], assigned)
+        self.assertEqual(self.detail()["incident_id"], assigned)
+        self.assertEqual(self.detail()["routing"]["mode"], "agent")
+
     def test_unknown_disabled_or_wrong_capability_rejected_before_writes(self):
         for field, value in (
             ("id", "unknown"),
@@ -166,7 +197,7 @@ class IngestionContractTests(unittest.TestCase):
         self.send()
         winner = next(iter(self.records.values()))
         winner["status"] = "pending"
-        self.table.get_item.side_effect = [{}, {"Item": self.catalog}, {"Item": winner}]
+        self.table.get_item.side_effect = [{}, {"Item": self.catalog}, {}, {"Item": winner}]
         self.table.put_item.side_effect = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
         )
