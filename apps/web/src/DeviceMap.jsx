@@ -3,7 +3,7 @@ import { deviceTypes, humanize } from './devices';
 import { incidentBriefing, reportingDevices } from './commandCenter';
 import { alertStates } from './simulations';
 
-const symbols = { smoke_detector: '◉', co_detector: 'CO', leak_sensor: '≈', camera: '◧', medical_button: '+', weather_feed: '☁' };
+const symbols = { smoke_detector: '◉', co_detector: 'CO', leak_sensor: '≈', camera: '◧', medical_button: '+', weather_feed: '☁', heat_detector: '♨', gas_detector: 'G', freeze_sensor: '❄', power_monitor: 'ϟ', security_contact: '⌑', glass_break_sensor: '◇', security_panel: '!', smart_lock: '⌾' };
 
 export default function DeviceMap({ catalog, ready, timeline, state, selected, onDevice, navigate }) {
   const [locationId, setLocationId] = useState('');

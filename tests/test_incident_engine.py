@@ -63,16 +63,21 @@ class IncidentEngineTests(unittest.TestCase):
         spec.loader.exec_module(self.correlate)
 
     def event(self, device="detector-a", kind="smoke", offset=0):
+        camera = kind in {"motion", "doorbell", "package", "vehicle", "person_detected"}
         return normalize_event(
             {
                 "event_id": str(uuid.uuid4()),
                 "household_id": "owner",
                 "occurred_at": (datetime.now(timezone.utc) + timedelta(seconds=offset)).isoformat(),
                 "kind": kind,
-                "source": {"source_id": device, "category": "sensor", "simulated": True},
+                "source": {
+                    "source_id": device,
+                    "category": "camera" if camera else "sensor",
+                    "simulated": True,
+                },
                 "observation": "Reported alarm",
             },
-            "sensor",
+            "camera-simulator" if camera else "sensor",
         )
 
     def context(self, location="home", alarm="active"):
@@ -262,6 +267,21 @@ class IncidentEngineTests(unittest.TestCase):
         )
         self.assertEqual((severity, devices[0]["level"]), ("urgent", "red"))
         self.assertEqual(assessed_severity(state, {"severity": "informational"})[0], "warning")
+
+    def test_signal_tiers_keep_normal_ring_context_low_and_escalate_only_defined_cases(self):
+        self.put_state("doorbell", self.event("front-ring", "doorbell"))
+        low = snapshot(self.table, "owner", "doorbell")
+        self.assertEqual(
+            (low["severity"], low["active_devices"][0]["level"]), ("informational", "normal")
+        )
+        self.put_state("smoke", self.event("kitchen-one", "smoke"))
+        self.assertEqual(snapshot(self.table, "owner", "smoke")["severity"], "warning")
+        self.put_state("smoke", self.event("kitchen-two", "heat", offset=1))
+        escalated = snapshot(self.table, "owner", "smoke")
+        self.assertEqual(escalated["severity"], "urgent")
+        self.assertEqual({row["level"] for row in escalated["active_devices"]}, {"red"})
+        self.put_state("security", self.event("panel", "security_alarm"))
+        self.assertEqual(snapshot(self.table, "owner", "security")["severity"], "urgent")
 
 
 if __name__ == "__main__":

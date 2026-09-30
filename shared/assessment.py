@@ -19,7 +19,15 @@ class Proposal(Contract):
 class IncidentAssessment(Contract):
     schema_version: Literal["1.0"] = "1.0"
     incident_type: Literal[
-        "smoke", "carbon_monoxide", "water_leak", "medical_sos", "severe_weather", "uncertain"
+        "smoke",
+        "carbon_monoxide",
+        "heat",
+        "gas_leak",
+        "water_leak",
+        "medical_sos",
+        "severe_weather",
+        "security_alarm",
+        "uncertain",
     ]
     severity: Literal["informational", "warning", "urgent"]
     confidence: float = Field(ge=0, le=1)

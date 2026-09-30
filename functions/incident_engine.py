@@ -24,10 +24,22 @@ def attrs(value: dict[str, Any]) -> dict[str, Any]:
 
 
 def family(kind: str) -> str:
-    if kind in {"smoke", "carbon_monoxide"}:
-        return "smoke_co"
-    if kind in {"motion", "doorbell", "package", "vehicle"}:
-        return "security_context"
+    if kind in {"smoke", "carbon_monoxide", "heat", "gas_leak"}:
+        return "fire_gas"
+    if kind in {
+        "motion",
+        "doorbell",
+        "package",
+        "vehicle",
+        "person_detected",
+        "contact_open",
+        "forced_entry",
+        "glass_break",
+        "security_alarm",
+        "tamper",
+        "lock_tamper",
+    }:
+        return "security"
     return kind
 
 

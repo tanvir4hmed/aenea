@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { deviceTypes, humanize, signalPayload } from './devices';
+import { deviceTypes, humanize, signalPayload, signalPriority } from './devices';
 import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
 import SimulationRuns from './SimulationRuns';
@@ -156,7 +156,8 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
           <div className="form-grid"><label>Location<select value={locationId} onChange={e => { setLocationId(e.target.value); setRoomFilter(''); setDeviceId(''); setKind(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Room / area<select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setDeviceId(''); setKind(''); }}><option value="">All rooms / areas</option>{rooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
           <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{eligibleDevices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
-          <label>Signal type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label>
+          <label>Signal type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)} · {signalPriority(value)}</option>)}</select></label>
+          {kind && <p className="form-help">Priority: <strong>{signalPriority(kind)}</strong>. Notification-only signals do not qualify for a red alert on their own.</p>}
           <label>Additional device details (optional)<input maxLength={600} value={observation} onChange={e => setObservation(e.target.value)} placeholder="E.g. smoke detected near the kitchen ceiling"/></label>
           <button type="button" disabled={!device?.enabled || !kind} onClick={addSignal}>Add device alert to definition</button>
           <ul className="signal-queue">{draft.signals.map(row => <li key={row.deviceId}>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'} · {humanize(row.kind)}<p>{row.observation || 'Default device description'}</p><button type="button" onClick={() => setDraft(old => ({ ...old, signals: old.signals.filter(item => item.deviceId !== row.deviceId) }))}>Remove</button></li>)}</ul>

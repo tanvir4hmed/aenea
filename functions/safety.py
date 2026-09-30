@@ -8,7 +8,18 @@ DEVICES = {
     "virtual_notification": "notify",
     "virtual_valve": "close_valve",
 }
-HAZARDS = {"smoke", "carbon_monoxide", "water_leak", "medical_sos", "severe_weather"}
+HAZARDS = {
+    "smoke",
+    "carbon_monoxide",
+    "heat",
+    "gas_leak",
+    "water_leak",
+    "medical_sos",
+    "severe_weather",
+    "security_alarm",
+    "forced_entry",
+    "glass_break",
+}
 
 
 def decision(proposal, events, profile, now, expires_at, confirmed=False):
@@ -47,8 +58,16 @@ def decision(proposal, events, profile, now, expires_at, confirmed=False):
             if confirmed
             else ("pending_confirmation", "Closing virtual valve requires explicit confirmation")
         )
-    if action == "siren_on" and not kinds & {"smoke", "carbon_monoxide"}:
-        return "blocked", "Siren is limited to smoke/CO signals"
+    if action == "siren_on" and not kinds & {
+        "smoke",
+        "carbon_monoxide",
+        "heat",
+        "gas_leak",
+        "security_alarm",
+        "forced_entry",
+        "glass_break",
+    }:
+        return "blocked", "Siren requires critical fire, gas or verified security signals"
     if device.get("preauthorized") is not True:
         return "blocked", "Household has not preauthorized this action"
     return "allowed", "Household preauthorization and evidence checks passed"

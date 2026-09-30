@@ -50,6 +50,7 @@ Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bo
 - [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
 - [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
 - [Event/state contract and sign-in migration](docs/event-contract.md)
+- [Signal priority and red-alert policy](docs/signal-priority.md)
 - [Automatic incidents, resolution and long-event processing](docs/automatic-incidents.md)
 - [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)
 - [Demo runbook](docs/demo-runbook.md) · [product feedback](docs/product-feedback.md) · [friction log](docs/friction-log.md)

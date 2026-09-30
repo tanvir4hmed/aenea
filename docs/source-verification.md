@@ -4,11 +4,11 @@ Phases 4–6 source implementation is complete. This report is **offline evidenc
 
 ## Checks
 
-- Aenea: 139 Python regression tests and 34 JavaScript tests pass. Tests exercise simulated AWS persistence, actual ingestion/correlation handlers, MCP HTTP/auth boundaries, routing, deletion, retry identities, scheduler limits, policy and stale-action refusal.
+- Aenea: 142 Python regression tests and 34 JavaScript tests pass. Tests exercise simulated AWS persistence, actual ingestion/correlation handlers, MCP HTTP/auth boundaries, routing, deletion, retry identities, scheduler limits, policy, signal tiers and stale-action refusal.
 - Whole-repository Python correctness lint/format checks pass; strict typing passes for the five declared core modules. Dynamic AWS persistence boundaries are not claimed fully strictly typed.
 - Frontend lint and production build pass: JavaScript 319.20 KB (97.22 KB gzip), CSS 15.49 KB (4.15 KB gzip). These are bundle sizes, not measured application latency.
 - Terraform recursive formatting passes. This does not replace provider validation, IAM reconciliation or a hosted apply.
-- IncidentBridge is unchanged: 35 tests, lint, formatting, strict types and source/wheel packaging pass.
+- IncidentBridge's safety/security signal contract: 40 tests, lint, formatting, strict types and source/wheel packaging pass.
 
 New coverage includes repeat and clear schedules, fresh incident allowances, exhausted-generation pause/resume, same-ID retries, overlapping runs, single-definition uniqueness, named selection conflicts, same-location actions, cross-incident hazard vetoes, optional note revisions, material briefing deduplication, real command scope propagation, worker failure recovery and cleanup after an uncertain ingestion response.
 

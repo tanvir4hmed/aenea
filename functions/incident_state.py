@@ -8,6 +8,7 @@ from collections.abc import Iterable, Iterator
 from typing import Any
 
 from boto3.dynamodb.conditions import Key
+from hazard_priority import red_device_ids, severity as priority_severity
 
 
 def records(table: Any, owner: str, incident: str) -> Iterator[dict[str, Any]]:
@@ -63,9 +64,18 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
     priority = {
         "smoke": 0,
         "carbon_monoxide": 0,
-        "medical_sos": 1,
-        "severe_weather": 2,
-        "water_leak": 3,
+        "heat": 0,
+        "gas_leak": 0,
+        "medical_sos": 0,
+        "security_alarm": 0,
+        "forced_entry": 0,
+        "glass_break": 0,
+        "water_leak": 1,
+        "severe_weather": 1,
+        "freeze_risk": 1,
+        "power_outage": 1,
+        "tamper": 1,
+        "lock_tamper": 1,
     }
     ordered = sorted(
         active, key=lambda row: (priority.get(row["event"]["kind"], 4), -row["order"][0])
@@ -80,15 +90,8 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
     if not selected:
         selected = sorted(ledger.values(), key=lambda row: row["order"], reverse=True)[:1]
     counts = dict(Counter(row["event"]["kind"] for row in active))
-    smoke = [row for row in active if row["event"]["kind"] in {"smoke", "carbon_monoxide"}]
-    severity = (
-        "urgent"
-        if len({row["event"]["source"]["source_id"] for row in smoke}) >= 2
-        or any(row["event"]["kind"] in {"carbon_monoxide", "medical_sos"} for row in active)
-        else "warning"
-        if active
-        else "informational"
-    )
+    severity = priority_severity(active)
+    red = red_device_ids(active)
     devices = [
         {
             "device_id": row["event"]["source"]["source_id"],
@@ -103,9 +106,10 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
             "room": row["context"].get("device", {}).get("room", ""),
             "location_id": row["context"].get("location", {}).get("id"),
             "level": "red"
-            if severity == "urgent"
-            and row["event"]["kind"] in {"smoke", "carbon_monoxide", "medical_sos"}
-            else "amber",
+            if row["event"]["source"]["source_id"] in red
+            else "amber"
+            if severity != "informational"
+            else "normal",
         }
         for row in active
     ]
