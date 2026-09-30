@@ -1,4 +1,5 @@
 """Authenticated simulator ingress with retryable publication and conflict detection."""
+
 import base64
 import json
 import os
@@ -14,6 +15,7 @@ from incident_names import validate_name
 from event_contract import event_state, receipt_digest, enrich_event
 from incident_engine import reserve
 from incident_engine import family
+from simulation_budget import charge, read_budget
 
 table = boto3.resource("dynamodb").Table(table_name())
 s3 = boto3.client("s3")
@@ -24,21 +26,37 @@ def handler(request, context):
     try:
         owner = household(request)
         if os.environ.get("INGESTION_ENABLED", "true") != "true":
-            return response(503, {"error": "New simulated signals are paused by the operator; no event accepted"})
+            return response(
+                503,
+                {"error": "New simulated signals are paused by the operator; no event accepted"},
+            )
         raw = request.get("body") or ""
         if request.get("isBase64Encoded"):
             raw = base64.b64decode(raw, validate=True).decode("utf-8")
         if len(raw.encode()) > 16000:
             return response(413, {"error": "Event is too large"})
         payload = json.loads(raw)
-        if not isinstance(payload, dict) or set(payload) - {"incident_id", "event", "adapter", "incident_name", "contract_version", "state"}:
-            return response(400, {"error": "Expected event and supported optional assignment/state fields"})
+        if not isinstance(payload, dict) or set(payload) - {
+            "incident_id",
+            "event",
+            "adapter",
+            "incident_name",
+            "contract_version",
+            "state",
+        }:
+            return response(
+                400, {"error": "Expected event and supported optional assignment/state fields"}
+            )
         requested = str(uuid.UUID(payload["incident_id"])) if payload.get("incident_id") else None
         incident_id = requested
         if incident_id and deleted(table, owner, incident_id):
             return response(410, {"error": "Incident was deleted. Start a new incident instead."})
         event = normalize_event(payload["event"], payload.get("adapter", "webhook"))
-        incident_name = validate_name(payload["incident_name"]) if "incident_name" in payload else "Simulated " + event.kind.replace("_", " ")
+        incident_name = (
+            validate_name(payload["incident_name"])
+            if "incident_name" in payload
+            else "Simulated " + event.kind.replace("_", " ")
+        )
         if event.household_id != owner:
             return response(403, {"error": "Household does not belong to this identity"})
         if not event.source.simulated:
@@ -56,67 +74,134 @@ def handler(request, context):
                 return response(400, {"error": str(exc)})
             if not requested:
                 try:
-                    existing = reserve(table, owner, event, event_context,
-                        {**item_key, "digest": digest, "status": "pending", "request_target": "auto", "event_context": event_context})
+                    existing = reserve(
+                        table,
+                        owner,
+                        event,
+                        event_context,
+                        {
+                            **item_key,
+                            "digest": digest,
+                            "status": "pending",
+                            "request_target": "auto",
+                            "event_context": event_context,
+                        },
+                    )
                 except ValueError as exc:
                     return response(409, {"error": str(exc)})
                 except RuntimeError:
                     return response(503, {"error": "Assignment busy; retry this same event"})
             else:
-                summary = table.get_item(Key={"pk": f"H#{owner}", "sk": "INCIDENT#" + requested}, ConsistentRead=True).get("Item", {})
+                summary = table.get_item(
+                    Key={"pk": f"H#{owner}", "sk": "INCIDENT#" + requested}, ConsistentRead=True
+                ).get("Item", {})
                 if summary.get("resolved_at"):
-                    return response(409, {"error": "Incident is resolved. Use automatic assignment for new alerts."})
+                    return response(
+                        409,
+                        {"error": "Incident is resolved. Use automatic assignment for new alerts."},
+                    )
                 if summary.get("location_id") not in {None, event_context["location"]["id"]}:
-                    return response(409, {"error": "Device belongs to a different incident location"})
+                    return response(
+                        409, {"error": "Device belongs to a different incident location"}
+                    )
                 if summary.get("hazard_family") not in {None, family(event.kind)}:
-                    return response(409, {"error": "Use automatic assignment for this unrelated hazard"})
+                    return response(
+                        409, {"error": "Use automatic assignment for this unrelated hazard"}
+                    )
             try:
                 if not existing:
                     table.put_item(
-                    Item={**item_key, "digest": digest, "incident_id": incident_id, "incident_name": incident_name,
-                          "status": "pending", "event_context": event_context},
-                    ConditionExpression="attribute_not_exists(pk)",
-                )
+                        Item={
+                            **item_key,
+                            "digest": digest,
+                            "incident_id": incident_id,
+                            "incident_name": incident_name,
+                            "status": "pending",
+                            "event_context": event_context,
+                        },
+                        ConditionExpression="attribute_not_exists(pk)",
+                    )
             except ClientError as exc:
                 if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
                     raise
                 existing = table.get_item(Key=item_key, ConsistentRead=True)["Item"]
         if existing:
             if existing.get("status") == "deleted":
-                return response(410, {"error": "Event belonged to deleted activity; use a fresh event"})
+                return response(
+                    410, {"error": "Event belonged to deleted activity; use a fresh event"}
+                )
             incident_name = existing.get("incident_name", incident_name)
             expected = "auto" if not requested else requested
-            if existing["digest"] != digest or existing.get("request_target", existing["incident_id"]) != expected:
-                return response(409, {"error": "Event identity already used with different content"})
+            if (
+                existing["digest"] != digest
+                or existing.get("request_target", existing["incident_id"]) != expected
+            ):
+                return response(
+                    409, {"error": "Event identity already used with different content"}
+                )
             incident_id = existing["incident_id"]
             if deleted(table, owner, incident_id):
                 return response(410, {"error": "Incident was deleted; old events cannot reopen it"})
             if existing["status"] == "published":
-                return response(202, {"incident_id": incident_id, "event_id": event.event_id,
-                                      "duplicate": True})
+                return response(
+                    202, {"incident_id": incident_id, "event_id": event.event_id, "duplicate": True}
+                )
             event_context = existing.get("event_context")
+        # This ingress only accepts simulator sources. Future real adapters must not use this meter.
+        if not charge(table, owner, incident_id, item_key):
+            return response(
+                429,
+                {
+                    "error": "Simulation allowance reached or incident closed. Review usage before continuing; no new signal published.",
+                    "incident_id": incident_id,
+                    "simulation_budget": read_budget(table, owner, incident_id),
+                },
+            )
         evidence_key = f"{owner}/{incident_id}/{key}.json"
         s3.put_object(
-            Bucket=os.environ["EVIDENCE_BUCKET"], Key=evidence_key,
-            Body=event.model_dump_json().encode(), ContentType="application/json",
+            Bucket=os.environ["EVIDENCE_BUCKET"],
+            Key=evidence_key,
+            Body=event.model_dump_json().encode(),
+            ContentType="application/json",
             ServerSideEncryption="AES256",
         )
-        result = events.put_events(Entries=[{
-            "EventBusName": os.environ["EVENT_BUS"],
-            "Source": "aenea.ingress",
-            "DetailType": "IncidentEvent",
-            "Detail": json.dumps({"incident_id": incident_id, "incident_name": incident_name, "event": event.model_dump(mode="json"),
-                                  "idempotency_key": key, "evidence_key": evidence_key,
-                                  "event_context": event_context,
-                                  "routing": existing.get("routing") if existing else None}),
-        }])
+        result = events.put_events(
+            Entries=[
+                {
+                    "EventBusName": os.environ["EVENT_BUS"],
+                    "Source": "aenea.ingress",
+                    "DetailType": "IncidentEvent",
+                    "Detail": json.dumps(
+                        {
+                            "incident_id": incident_id,
+                            "incident_name": incident_name,
+                            "event": event.model_dump(mode="json"),
+                            "idempotency_key": key,
+                            "evidence_key": evidence_key,
+                            "event_context": event_context,
+                            "routing": existing.get("routing") if existing else None,
+                        }
+                    ),
+                }
+            ]
+        )
         if result.get("FailedEntryCount"):
-            return response(503, {"error": "Publication pending; retry the same event ID and payload"})
-        table.update_item(Key=item_key, UpdateExpression="SET #status = :published",
-                          ExpressionAttributeNames={"#status": "status"},
-                          ExpressionAttributeValues={":published": "published"})
-        return response(202, {"incident_id": incident_id, "event_id": event.event_id,
-                              "duplicate": False})
+            return response(
+                503,
+                {
+                    "error": "Publication pending; retry the same event ID and payload",
+                    "incident_id": incident_id,
+                },
+            )
+        table.update_item(
+            Key=item_key,
+            UpdateExpression="SET #status = :published",
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={":published": "published"},
+        )
+        return response(
+            202, {"incident_id": incident_id, "event_id": event.event_id, "duplicate": False}
+        )
     except PermissionError:
         return response(401, {"error": "Authentication required"})
     except (InvalidEvent, ValueError, KeyError, TypeError, UnicodeError):

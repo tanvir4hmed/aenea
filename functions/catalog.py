@@ -1,4 +1,5 @@
 """Bounded, revision-checked location/device catalog for a single identity."""
+
 import uuid
 from typing import Any
 
@@ -7,9 +8,22 @@ from botocore.exceptions import ClientError
 from common import response
 
 DEVICE_KINDS = {
-    "smoke_detector": ["smoke"], "co_detector": ["carbon_monoxide"],
-    "leak_sensor": ["water_leak"], "camera": ["motion", "doorbell", "package", "vehicle"],
-    "medical_button": ["medical_sos"], "weather_feed": ["severe_weather"],
+    "smoke_detector": ["smoke"],
+    "co_detector": ["carbon_monoxide"],
+    "leak_sensor": ["water_leak"],
+    "camera": ["motion", "doorbell", "package", "vehicle"],
+    "medical_button": ["medical_sos"],
+    "weather_feed": ["severe_weather"],
+    "light": [],
+    "siren": [],
+    "notification": [],
+    "water_valve": [],
+}
+ACTUATORS = {
+    "light": "virtual_lights",
+    "siren": "virtual_siren",
+    "notification": "virtual_notification",
+    "water_valve": "virtual_valve",
 }
 
 MAX_LOCATIONS = 50
@@ -29,7 +43,12 @@ def validate_catalog(body):
     if body["revision"] is not None:
         uuid.UUID(body["revision"])
     locations, devices = body["locations"], body["devices"]
-    if not isinstance(locations, list) or not isinstance(devices, list) or len(locations) > MAX_LOCATIONS or len(devices) > MAX_DEVICES:
+    if (
+        not isinstance(locations, list)
+        or not isinstance(devices, list)
+        or len(locations) > MAX_LOCATIONS
+        or len(devices) > MAX_DEVICES
+    ):
         raise ValueError(f"Limit: {MAX_LOCATIONS} locations and {MAX_DEVICES} devices")
     seen = set()
     for location in locations:
@@ -44,7 +63,15 @@ def validate_catalog(body):
     device_ids = set()
     rooms = {}
     for device in devices:
-        if not isinstance(device, dict) or set(device) != {"id", "location_id", "name", "room", "type", "connection", "enabled"}:
+        if not isinstance(device, dict) or set(device) != {
+            "id",
+            "location_id",
+            "name",
+            "room",
+            "type",
+            "connection",
+            "enabled",
+        }:
             raise ValueError("Invalid device")
         device["id"] = str(uuid.UUID(device["id"]))
         if device["id"] in device_ids or device["location_id"] not in seen:
@@ -56,27 +83,47 @@ def validate_catalog(body):
         rooms[room_key] = rooms.get(room_key, 0) + 1
         if rooms[room_key] > MAX_DEVICES_PER_ROOM:
             raise ValueError(f"Limit: {MAX_DEVICES_PER_ROOM} devices in one room or zone")
-        if device["type"] not in DEVICE_KINDS or device["connection"] != "simulation" or type(device["enabled"]) is not bool:
+        if (
+            device["type"] not in DEVICE_KINDS
+            or device["connection"] != "simulation"
+            or type(device["enabled"]) is not bool
+        ):
             raise ValueError("Unsupported device configuration")
     return locations, devices
 
 
 def read_catalog(table: Any, owner: str) -> dict[str, Any]:
-    item = table.get_item(Key={"pk": f"H#{owner}", "sk": "CATALOG"}, ConsistentRead=True).get("Item", {})
-    return {"revision": item.get("revision"), "locations": item.get("locations", []), "devices": item.get("devices", [])}
+    item = table.get_item(Key={"pk": f"H#{owner}", "sk": "CATALOG"}, ConsistentRead=True).get(
+        "Item", {}
+    )
+    return {
+        "revision": item.get("revision"),
+        "locations": item.get("locations", []),
+        "devices": item.get("devices", []),
+    }
 
 
 def save_catalog(table, owner, body):
     locations, devices = validate_catalog(body)
-    item = {"pk": f"H#{owner}", "sk": "CATALOG", "revision": str(uuid.uuid4()),
-            "locations": locations, "devices": devices}
+    item = {
+        "pk": f"H#{owner}",
+        "sk": "CATALOG",
+        "revision": str(uuid.uuid4()),
+        "locations": locations,
+        "devices": devices,
+    }
     condition = {"ConditionExpression": "attribute_not_exists(pk)"}
     if body["revision"] is not None:
-        condition = {"ConditionExpression": "revision = :revision", "ExpressionAttributeValues": {":revision": body["revision"]}}
+        condition = {
+            "ConditionExpression": "revision = :revision",
+            "ExpressionAttributeValues": {":revision": body["revision"]},
+        }
     try:
         table.put_item(Item=item, **condition)
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
             raise
-        return response(409, {"error": "Settings changed elsewhere. Reload settings before editing again."})
+        return response(
+            409, {"error": "Settings changed elsewhere. Reload settings before editing again."}
+        )
     return response(200, {key: item[key] for key in ("revision", "locations", "devices")})

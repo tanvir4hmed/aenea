@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Workspace improvement phases
 
 This sequence improves the contest application while keeping Alexa+ incident coordination central. Each phase requires owner permission before implementation. Finish with a commit and push, confirm the deployment trigger, and leave hosted acceptance for the dedicated verification session.

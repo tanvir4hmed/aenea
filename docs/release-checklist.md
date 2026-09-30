@@ -1,45 +1,35 @@
-# Release gates — not yet cleared
+# Release gates
 
-Updated 24 September 2026. Phase 9 completes release preparation, not live acceptance, a video or a Devpost submission.
+Updated 30 September 2026. Source phases are distinct from hosted acceptance and submission. See [source evidence](source-verification.md) and [migration](state-driven-coordination.md).
 
-## Prepared
+## Source prepared
 
-- [x] Current README, unchanged architecture baseline, license and third-party notices.
-- [x] Nine workspace phases documented, including revisions, decision review and cleanup.
-- [x] Offline checks recorded separately from hosted evidence.
-- [x] Judge instructions, timed narrative, submission draft and feedback inventory.
-- [x] Aenea and IncidentBridge public visibility checked; IncidentBridge Apache-2.0 license and pinned contribution date checked.
+- [x] Shared simulated ingestion, automatic incidents, state/repeat cloud runs and visible incident allowance.
+- [x] Location actions, fresh policy/confirmation, material briefings, optional notes and bounded commands.
+- [x] Legacy report/history reads retained; new members/calling excluded.
+- [x] Current walkthrough, migration, architecture notes and check instructions; unchanged selected v1 diagram.
+- [x] Offline regression/build and explicitly local component-browser evidence, separated from cloud results.
 
-## Deployment and access — authorized verification still needed
+## Operator / hosted gates — not cleared by a push
 
-- [ ] Reconcile the current bootstrap deployment policy with an authorized AWS administrator session. The Phase 8 scheduled cleanup requires the exact default-bus rule ARN for `aenea-cleanup`; an older live role may lack it. See [operations](operations.md).
-- [ ] Record the successful final-code pipeline run, deployed commit and DNS/TLS result. A push or workflow trigger alone is not proof.
-- [ ] Verify Cognito PKCE sign-in, access-token refresh, MCP discovery and every tool. Verify wrong-client, ID-token, expired-token and insufficient-scope rejection.
-- [ ] Verify the shared guest sign-in from a clean browser. Public guest credentials are intentionally displayed by the application; they are not private tenant credentials. Use fictional data only.
-- [ ] Confirm owner account isolation from guest and another account, including forged IDs/cursors.
-- [ ] Verify billing alerts, OIDC/environment restrictions, ingress pause/resume and dependency review.
+- [ ] Reconcile bootstrap IAM, including exact scheduled-rule permission for `aenea-simulation`, under an authorized administrator session. No new secret is required.
+- [ ] Record successful pipeline and deployed commit, runtime packages, DNS/TLS and clean-browser guest access.
+- [ ] Exercise Cognito PKCE/audience/refresh and MCP initialize/tools, wrong-client, expired/ID token and insufficient-scope denial.
+- [ ] Verify owner/guest/second-account isolation and forged incident/device/cursor rejection.
+- [ ] Run actual cloud signal → evidence → model → policy → virtual outcome; demonstrate failure and changed-evidence rejection without invented output.
+- [ ] Repeats/clear, named overlap, concurrent run locks, publication retry, paused allowance/extension, stop/Resolve and fresh incident counter.
+- [ ] Location-specific outputs, settings races, confirmation expiry and cross-incident same-location smoke/valve veto.
+- [ ] Live briefings, actual browser speech/microphone fallback, optional notes and stale approval blocking.
+- [ ] Guarded deletion, full evidence version removal, registered output state preservation, associated run cleanup and retry drain.
+- [ ] Measure large-history API/model cost and scheduler delay under representative load; no safety SLA or performance claim from unit tests.
+- [ ] Fresh-clone install, dependency vulnerability/transitive-lock review, provider locks, IAM/security audit and billing alerts. Current checks do not certify these.
+- [ ] Full accessibility/assistive-technology and multi-browser acceptance. Local 390/1280-width fixture checks are not WCAG certification.
 
-## Product acceptance
+Test destructive cleanup only on your authorized synthetic records. Guest data is shared. Backups, logs and workflow history have separate retention from active-record deletion.
 
-- [ ] Fresh-clone dependency installation and offline checks; retain logs with the commit. Existing local results are not a clean-install guarantee.
-- [ ] Catalog edits/conflicts, duplicate devices, selected one-at-a-time sends, stable uncertain retries and new-incident replay.
-- [ ] Hosted signal → evidence → model assessment → policy → saved virtual outcome.
-- [ ] Later evidence supersedes an old assessment; out-of-order model completions cannot replace the current revision.
-- [ ] Rejection blocks future actions; agreement does not approve them. Confirmation is tied to the exact assessment, expires, and cannot cross revisions.
-- [ ] Duplicate/concurrent ingress, reviews, acknowledgments and check-ins; failures and partial handoffs remain visible.
-- [ ] Evidence budget failure beyond 20 signals is explicit, not a silently incomplete assessment.
-- [ ] Authorized incident deletion: hidden immediately, drain at least 15 minutes, scheduled retry, all S3 evidence versions and active incident records removed; unrelated data retained.
-- [ ] Keyboard/mobile/browser-speech fallback, clipboard/print and understandable errors. No WCAG certification is asserted.
+## Owner submission tasks
 
-Do not perform destructive acceptance on another visitor's records. The public guest is a shared identity; its data is not private. Cleanup retains a minimal replay-blocking marker; backups, workflow history, exported copies and logs have separate retention.
-
-## Submission assets and owner decisions
-
-- [ ] Recheck [official rules](https://amazonappdev2026.devpost.com/rules) on submission day; owner confirms eligibility, rights and team representation.
-- [ ] Record and publish the actual English demo; insert its URL into the draft.
-- [ ] Complete observed task/onboarding/strengths/problems/reuse feedback for every tool used. Include AWS integration details.
-- [ ] Confirm optional Open Source entry links and what/how/why description against the final pinned contribution.
-- [ ] Include working testing instructions and current login credentials where needed in the entry; maintain free judge access for the required period.
-- [ ] Owner reviews and submits the final Devpost entry. No submission was made by this phase.
-
-The source plan ends at Phase 9. Remaining items are release/verification gates, not an implied extra coding phase.
+- [ ] Recheck official rules/resources, deadline, eligibility, rights and required judge-access period on submission day.
+- [ ] Record/publish the genuine English demo and complete testing instructions with verified access.
+- [ ] Finish actual product feedback and optional IncidentBridge contribution details.
+- [ ] Review and submit Devpost materials. No submission or video publication is performed by a source phase.

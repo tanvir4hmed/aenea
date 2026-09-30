@@ -26,7 +26,7 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
         const red = members.some(item => states.get(item.id)?.level === 'red');
         return <section key={name} className={'map-room ' + (room === name ? 'focused ' : '') + (red ? 'urgent-room' : active.length ? 'reporting' : '')} aria-label={name}>
           <button className="room-title" aria-pressed={room === name} onClick={() => { setRoom(name); setExpanded(old => ({ ...old, [name]: true })); }}><strong>{name}</strong><small>{members.length} devices{active.length ? ` · ${active.length} with evidence` : ''}</small></button>
-          <div className="map-devices">{visible.map(device => <button key={device.id} className={'map-device ' + (states.get(device.id)?.level === 'red' ? 'red-alert' : reporting.has(device.id) ? 'has-evidence' : '')} onClick={() => { setRoom(name); onDevice({ id: device.id, nonce: Date.now() }); }} aria-label={`${device.name}, ${states.get(device.id)?.reason || (device.enabled ? 'no evidence loaded' : 'disabled')}`} title={states.get(device.id)?.reason}>
+          <div className="map-devices">{visible.map(device => <button key={device.id} className={'map-device ' + (states.get(device.id)?.level === 'red' ? 'red-alert' : reporting.has(device.id) ? 'has-evidence' : '')} onClick={() => { setRoom(name); if (deviceTypes[device.type]?.category === 'actuator') { navigate('/settings'); return; } onDevice({ id: device.id, nonce: Date.now() }); }} aria-label={`${device.name}, ${states.get(device.id)?.reason || (device.enabled ? 'no evidence loaded' : 'disabled')}`} title={states.get(device.id)?.reason}>
             <span className="device-symbol" aria-hidden="true">{symbols[device.type] || '◉'}</span><strong>{device.name}</strong><small>{states.get(device.id)?.level === 'red' ? 'Red alert' : !device.enabled ? 'Disabled' : reporting.has(device.id) ? 'Evidence recorded' : deviceTypes[device.type]?.label}</small>
           </button>)}</div>
           {members.length > 12 && !expanded[name] && <button onClick={() => setExpanded(old => ({ ...old, [name]: true }))}>Show all {members.length} devices</button>}
@@ -42,11 +42,11 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
 export function IncidentBriefing({ state, selected, timeline, navigate }) {
   const assessment = state?.latest_assessment;
   const summary = assessment?.assessment;
-  const pending = timeline.filter(item => item.status === 'pending_confirmation' && item.assessment_id === assessment?.assessment_id);
+  const pending = (state?.actions || timeline).filter(item => item.status === 'pending_confirmation' && item.assessment_id === assessment?.assessment_id && (item.note_revision || 0) === (state?.incident?.note_revision || 0) && state?.incident?.decision_review !== 'rejected' && Date.now() < item.expires_at * 1000);
   const text = incidentBriefing(state, selected);
   return <aside className="card alexa-briefing"><span className="mode-label">Alexa+ simulation</span><div className="alexa-orb" aria-hidden="true">a</div><h2>Incident briefing</h2><div role="status" aria-live="polite" aria-atomic="true"><p>{text}</p><p>{(state?.canonical_severity || summary) && <span className="badge">{humanize(state?.canonical_severity || summary.severity)}</span>} {state?.incident && `Evidence revision ${state.incident.event_count || 0}`}</p></div>
     <button disabled={!selected} onClick={() => { if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } }}>Read briefing aloud</button>
-    <div className="actions"><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('handoff')}>Prepare handoff</button></div>
+    <div className="actions"><button disabled={!selected} onClick={() => navigate('alexa-sim')}>Ask Alexa+</button><button disabled={!selected} onClick={() => navigate('incident-history')}>Incident history</button></div>
     <h3>Needs your attention</h3><p>{pending.length && state?.assessment_current ? `${pending.length} proposed action(s) need confirmation. Review the current decisions below.` : 'No current confirmation shown in loaded records.'}</p>
     <small>Updates as saved incident evidence is processed. Full reasoning is available in Incident history.</small>
   </aside>;

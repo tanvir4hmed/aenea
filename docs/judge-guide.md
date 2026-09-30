@@ -1,31 +1,20 @@
 # Aenea judge guide
 
-## Access
+Open [Aenea](https://aenea.qleam.com). The public [guide](https://aenea.qleam.com/guide) does not require sign-in. The welcome screen provides shared guest credentials with reveal/copy controls. **Open guest sign in** opens Cognito; paste the credentials there. The owner must verify access against the final deployed commit before submission.
 
-Open [Aenea](https://aenea.qleam.com). The public [user guide](https://aenea.qleam.com/guide) is available without signing in.
+Guest data is shared. Use synthetic names/addresses/observations and do not delete another visitor's records.
 
-The welcome screen displays a shared guest email and a hidden password with reveal/copy controls. Copy those values, choose **Open guest sign in**, and enter them in the Cognito form. The button opens sign-in; it does not automatically populate another domain's form. Registration is not required.
+1. **Settings:** create a fictional location and two smoke detectors in a room. Optionally add a virtual light/siren at that location and explicitly enable/preauthorize it in action permissions. Inputs and outputs are simulated.
+2. **Simulation Studio:** save a single alert and a multi-device scenario. Set on-change or repeat, interval, duration and optional clear. Saving does not send. Scenarios may reuse devices from other saved definitions.
+3. **Command Center:** select a saved definition (or click its mapped device), leave assignment Automatic and Send. Multiple selections work when their devices do not overlap; the warning names overlapping definitions. Scheduled does not mean published: inspect the cloud run's progress, then the named incident.
+4. **Alexa+:** observe live device/room context and the actual saved assessment. Enable browser spoken updates if desired. Try status/timeline commands and an optional synthetic note. The model's decision is a proposal; policy/execution results distinguish allowed, pending, blocked and completed virtual effects.
+5. **Sequential evidence:** reuse a definition or let an active repeat profile continue. Related alerts join the incident and changed context supersedes old approvals. Repeated identical reports are not independent detectors. Cloud generation does not require the page to remain open.
+6. **History and Resolve:** inspect citations, uncertainties, notes and review records. Explicitly resolve when finished. A fresh trigger gets new incident activity and a fresh allowance. Stop is different: it cancels generation but does not clear alarms or certify safety.
 
-Guest activity is shared with other visitors. Use fictional names, addresses and observations; do not delete another visitor's incidents. Final hosted login acceptance has not yet been recorded. The owner must confirm current credentials in the submitted testing instructions.
+For a separate water-only test, register a virtual valve at that location. A proposed closure needs explicit fresh approval, and smoke/CO in another open incident at the same location blocks it. The model is not guaranteed to propose every action. A browser display is never evidence of physical actuation.
 
-## Short walkthrough
+Run pause/resume preserves pending identities. Per-incident simulation allowance starts at 2,000 and can be extended deliberately up to 10,000; quota exhaustion is not resolution. Catalog/library/run capacities and scheduling delays are documented in [state-driven coordination](state-driven-coordination.md).
 
-1. **Settings:** create a fictional named location and add a smoke detector and camera with Simulation connection. Multiple devices are supported. Real-device connection choices are unavailable, not configured integrations.
-2. **Simulation Studio:** filter by location and room, then save named single alerts or a scenario. Studio only saves definitions. In **Command Center**, choose **Trigger Alert / Scenario**, leave assignment on **Automatic** and send. Clicking a map device preselects its saved single or related scenario. Send another smoke detector at the same property to join the open incident; a different property or unrelated hazard receives a separate incident. Overlapping selections are blocked. Review evidence, then **Resolve incident** explicitly; the next fresh alert opens new activity.
-3. **Incident:** inspect the saved evidence and wait for a current assessment. An accepted receipt only proves ingress. Review citations, uncertainty and policy outcomes.
-4. **Alexa+:** select that incident, use **Refresh context and actions**, then the status suggestion. Record a fictional check-in. Only supported commands are interpreted; microphone input is optional and reviewed before sending.
-5. **Studio:** send the next selected signal in the same run. Return to the incident and observe its new evidence revision. Older assessments remain history, not authority for new actions.
-6. **Decision review:** inspect the evidence snapshot and record agreement/rejection if desired. Rejecting blocks future execution for that assessment; it cannot undo an already executed virtual command. Agreement does not approve an action.
-7. **Handoff:** prepare and inspect the timestamped summary. Partial warnings matter. Copy/print is manual and sends nothing to emergency services.
+Delete only your test incident via Settings → Data controls with exact confirmation. Cleanup is eligible after 15 minutes; inspect its status later. Only completed means the active database/evidence-version purge finished; minimal replay markers and separately retained backups/logs remain.
 
-For a separate water-only test, configure virtual permissions first. An eligible valve proposal requires explicit confirmation of its current assessment and expires. Do not assume the model will propose every action.
-
-## Reset and limitations
-
-Clear Studio drafts to clear local inputs; replay creates a fresh run. To delete an incident you created, use **Settings → Data controls** and confirm its full ID. Cleanup waits at least 15 minutes and then runs on the five-minute schedule; check status later. It removes active incident data/evidence versions but retains a replay-blocking marker. Backups, logs and exported copies have separate retention.
-
-Catalog capacity is 50 locations/200 total devices, with 30 devices per room. The server library supports 50 definitions and 100 total saved device-alert rows. A scenario and combined trigger selection each support at most 20 distinct devices. Incident history has no 20-event lifetime cutoff: the model receives up to 32 representative current events and aggregate counts, while policy reads complete active state. Scheduled simulation and unified capacities remain pending; see [automatic incident behavior](automatic-incidents.md).
-
-This is a browser Alexa+ simulation over shared cloud tools. No physical Alexa/Ring device or AWS account is required to use the hosted app. Devices, check-ins and effects are synthetic; motion is not proof of occupancy or safety. Follow official alarms and emergency guidance.
-
-If a write times out, read saved state before retrying. Use the pending signal retry rather than sending a newly identified duplicate. Report persistent errors with the time and incident ID, never a token/password.
+Hosted runtime, login, microphone and deployment acceptance are separate from [offline source checks](source-verification.md). Aenea has no native Alexa/Ring integration, people registry, emergency dispatch or monitoring service. Follow official alarms and emergency guidance.

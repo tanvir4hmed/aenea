@@ -223,3 +223,16 @@ code { font-size: .85em; }
   .handoff-sheet .error, .handoff-sheet .notice { border: 1px solid #666; background: none; color: black; }
   button { display: none !important; }
 }
+
+/* Live coordination stays within the existing workspace grid. */
+.alexa-command { display: grid; gap: 1rem; margin: 1.25rem 0; }
+.alexa-live > label { display: grid; gap: .5rem; margin: 1rem 0; }
+.alexa-command input, .alexa-live select, textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.live-briefing { padding: 1rem; border-left: 4px solid var(--accent, #146267); background: #edf5f4; margin: 1rem 0; }
+.affected-devices { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.hazard-chip { border: 1px solid #bdcfce; border-radius: .4rem; padding: .5rem; overflow-wrap: anywhere; }
+.simulation-runs { margin-top: 1rem; }
+.simulation-runs article { overflow-wrap: anywhere; }
+.timeline pre { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+textarea { font: inherit; padding: .75rem; border: 1px solid #aebfc6; border-radius: .35rem; margin: .5rem 0; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid #2768ba; outline-offset: 3px; }

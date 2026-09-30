@@ -5,7 +5,7 @@ resource "aws_iam_role_policy" "cleanup" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"]
+        Action   = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:ConditionCheckItem", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"]
         Resource = data.terraform_remote_state.data.outputs.table_arn
       },
       {

@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Engineering baseline
 
 Baseline established 28 September 2026. This document describes source coverage, not hosted acceptance or safety certification. No UI layout, event schema, incident routing, AWS resource or model behavior changes are part of this baseline.

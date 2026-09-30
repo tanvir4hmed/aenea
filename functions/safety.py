@@ -1,8 +1,13 @@
 """Deterministic policy. Observation text and model confidence cannot authorize actions."""
+
 from datetime import datetime, timezone
 
-DEVICES = {"virtual_lights": "lights_on", "virtual_siren": "siren_on",
-           "virtual_notification": "notify", "virtual_valve": "close_valve"}
+DEVICES = {
+    "virtual_lights": "lights_on",
+    "virtual_siren": "siren_on",
+    "virtual_notification": "notify",
+    "virtual_valve": "close_valve",
+}
 HAZARDS = {"smoke", "carbon_monoxide", "water_leak", "medical_sos", "severe_weather"}
 
 
@@ -10,9 +15,15 @@ def decision(proposal, events, profile, now, expires_at, confirmed=False):
     if now >= expires_at:
         return "expired", "Proposal expired; request a new assessment"
     device_id, action = proposal["device_id"], proposal["action"]
-    if DEVICES.get(device_id) != action:
+    capability = proposal.get("capability", device_id)
+    if DEVICES.get(capability) != action:
         return "blocked", "Unsupported device/action pair"
     device = profile.get("devices", {}).get(device_id, {})
+    if proposal.get("capability") and (
+        device.get("capability") != capability
+        or device.get("location_id") != proposal.get("location_id")
+    ):
+        return "blocked", "Actuator no longer belongs to this incident location/capability"
     if device.get("enabled") is not True or device.get("simulated") is not True:
         return "blocked", "Virtual device is not enabled for this household"
     fresh = []
@@ -31,8 +42,11 @@ def decision(proposal, events, profile, now, expires_at, confirmed=False):
     if action == "close_valve":
         if "water_leak" not in kinds or all_kinds & {"smoke", "carbon_monoxide"}:
             return "blocked", "Valve only supports water leak without smoke/CO evidence"
-        return ("allowed", "Explicit confirmation accepted") if confirmed else (
-            "pending_confirmation", "Closing virtual valve requires explicit confirmation")
+        return (
+            ("allowed", "Explicit confirmation accepted")
+            if confirmed
+            else ("pending_confirmation", "Closing virtual valve requires explicit confirmation")
+        )
     if action == "siren_on" and not kinds & {"smoke", "carbon_monoxide"}:
         return "blocked", "Siren is limited to smoke/CO signals"
     if device.get("preauthorized") is not True:

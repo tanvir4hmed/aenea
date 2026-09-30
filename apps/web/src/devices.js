@@ -5,6 +5,10 @@ export const deviceTypes = {
   camera: { label: 'Camera / doorbell', category: 'camera', kinds: ['motion', 'doorbell', 'package', 'vehicle'] },
   medical_button: { label: 'Medical alert button', category: 'sensor', kinds: ['medical_sos'] },
   weather_feed: { label: 'Weather feed', category: 'weather', kinds: ['severe_weather'] },
+  light: { label: 'Virtual light', category: 'actuator', kinds: [] },
+  siren: { label: 'Virtual siren', category: 'actuator', kinds: [] },
+  notification: { label: 'In-app notification', category: 'actuator', kinds: [] },
+  water_valve: { label: 'Virtual water valve', category: 'actuator', kinds: [] },
 };
 export const humanize = value => value.replaceAll('_', ' ');
 

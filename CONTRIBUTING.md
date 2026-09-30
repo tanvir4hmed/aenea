@@ -16,7 +16,7 @@ Use Python 3.12 and Node 22, matching CI. Create an isolated virtual environment
 
 ```sh
 python -m ruff check .
-python -m ruff format --check scripts/deploy_scope.py functions/event_contract.py functions/incident_engine.py functions/incident_state.py functions/invoke_reasoner/handler.py services/mcp/token_auth.py tests/test_incident_engine.py tests/test_deploy_scope.py tests/test_event_contract.py tests/test_mcp_auth.py tests/test_mcp_proxy.py tests/test_mcp_server.py
+python -m ruff format --check .
 python -m mypy
 python -m unittest discover -s tests
 npm --prefix apps/web ci
@@ -29,6 +29,8 @@ npm --prefix apps/web run build
 
 ## Coding standard
 
-Keep UI, transport, domain rules and storage separated. New Python modules use type annotations and Ruff formatting; extend the explicit format/type gate when adopting a module. Existing Python gets a repository-wide correctness lint gate, not a claim of full strict typing. Frontend gets ESLint correctness checks; retain existing formatting when editing legacy JSX. Do not silence a check to hide a regression. Tests assert public behavior, retry identity and ownership boundaries rather than internal implementation details.
+Keep UI, transport, domain rules and storage separated. All Python follows Ruff formatting and repository-wide correctness checks; strict types cover the explicit core-module list in `pyproject.toml`. AWS persistence remains a dynamic boundary, not a claim of whole-repo strict typing. Frontend gets ESLint correctness checks; retain existing formatting when editing legacy JSX. Do not silence a check to hide a regression. Tests assert public behavior, retry identity and ownership boundaries rather than internal implementation details.
+
+For isolated browser layout checks, run `node scripts/preview_ui.mjs` after installing web dependencies. It serves production components with visibly labeled synthetic fixtures at `http://127.0.0.1:4179`. It cannot exercise AWS, authentication, or live agents; never use its output as hosted/model evidence. Stop it after inspection. The fixture is not included in the production web entry point.
 
 Use committed npm lockfiles with `npm ci`. Python check tools are pinned directly; runtime/transitive dependency ranges are not yet fully locked. Record that limitation rather than claiming byte-for-byte reproducibility. See the [engineering baseline](docs/engineering-baseline.md) for coverage and remaining work.

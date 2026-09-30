@@ -15,15 +15,26 @@ from catalog import read_catalog, save_catalog, validate_catalog
 class CatalogTests(unittest.TestCase):
     def setUp(self):
         self.location = {"id": str(uuid.uuid4()), "name": "Home A", "address": "Fictional street"}
-        self.device = {"id": str(uuid.uuid4()), "name": "Kitchen smoke", "room": "Kitchen",
-                       "location_id": self.location["id"], "type": "smoke_detector", "enabled": True, "connection": "simulation"}
+        self.device = {
+            "id": str(uuid.uuid4()),
+            "name": "Kitchen smoke",
+            "room": "Kitchen",
+            "location_id": self.location["id"],
+            "type": "smoke_detector",
+            "enabled": True,
+            "connection": "simulation",
+        }
         self.body = {"revision": None, "locations": [self.location], "devices": [self.device]}
 
     def test_read_is_scoped_to_authenticated_owner(self):
         table = Mock()
         table.get_item.return_value = {}
-        self.assertEqual(read_catalog(table, "owner-a"), {"revision": None, "locations": [], "devices": []})
-        table.get_item.assert_called_once_with(Key={"pk": "H#owner-a", "sk": "CATALOG"}, ConsistentRead=True)
+        self.assertEqual(
+            read_catalog(table, "owner-a"), {"revision": None, "locations": [], "devices": []}
+        )
+        table.get_item.assert_called_once_with(
+            Key={"pk": "H#owner-a", "sk": "CATALOG"}, ConsistentRead=True
+        )
 
     def test_write_uses_revision_and_separate_catalog_record(self):
         table = Mock()
@@ -37,7 +48,9 @@ class CatalogTests(unittest.TestCase):
 
     def test_conflicting_save_returns_409(self):
         table = Mock()
-        table.put_item.side_effect = ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
+        table.put_item.side_effect = ClientError(
+            {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
+        )
         self.assertEqual(save_catalog(table, "owner-a", self.body)["statusCode"], 409)
 
     def test_orphan_device_rejected(self):

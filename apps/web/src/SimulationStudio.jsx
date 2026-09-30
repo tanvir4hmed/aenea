@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { deviceTypes, humanize, signalPayload } from './devices';
 import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
+import SimulationRuns from './SimulationRuns';
 
-const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [] });
+const defaultProfile = { mode: 'on_change', interval_seconds: 60, duration_seconds: 300, alarm: 'active', connectivity: 'online', clear_at_end: false };
+const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
 
 export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing }) {
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
@@ -17,7 +19,10 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const runKey = 'aenea-trigger-' + household;
   const [run, setRun] = useState(() => { try { return JSON.parse(sessionStorage.getItem(runKey)) || null; } catch { return null; } });
   const lock = useRef(false);
-  const pending = run?.rows.some(row => !row.accepted);
+  const [started, setStarted] = useState(null);
+  const requestKey = 'aenea-run-request-' + household;
+  const [request, setRequest] = useState(() => { try { return JSON.parse(sessionStorage.getItem(requestKey)); } catch { return null; } });
+  const pending = run?.rows?.some(row => !row.accepted);
   const device = catalog.devices.find(item => item.id === deviceId);
   const editing = library.items.some(item => item.id === draft.id);
   const requiredSignals = draft.type === 'single' ? 1 : 2;
@@ -48,7 +53,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     setError('');
     if (!device?.enabled || !deviceTypes[device.type]?.kinds.includes(kind)) return;
     if (draft.signals.some(row => row.deviceId === deviceId)) { setError('This device is already included. Each device can appear once.'); return; }
-    if (draft.signals.length >= (draft.type === 'single' ? 1 : 20)) { setError(draft.type === 'single' ? 'Single alert contains one device. Choose Scenario for several devices.' : 'Use up to 20 devices per scenario.'); return; }
+    if (draft.signals.length >= (draft.type === 'single' ? 1 : 200)) { setError(draft.type === 'single' ? 'Single alert contains one device. Choose Scenario for several devices.' : 'Use up to 200 devices per scenario.'); return; }
     setDraft(old => ({ ...old, signals: [...old.signals, { deviceId, kind, observation: observation.trim() }] })); setObservation('');
   }
   function persistRun(value) {
@@ -57,8 +62,9 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   let rows = [], selectionError = '';
   try { rows = selectedSignals(library.items, selection, catalog); } catch (e) { selectionError = e.message; }
   const chosen = library.items.filter(item => selection.includes(item.id));
+  const expected = chosen.reduce((sum, item) => { const profile = { ...defaultProfile, ...item.profile }; return sum + item.signals.length * ((profile.mode === 'repeat' && profile.alarm === 'active' ? Math.ceil(profile.duration_seconds / profile.interval_seconds) : 1) + (profile.clear_at_end && profile.alarm !== 'clear' ? 1 : 0)); }, 0);
   const rooms = [...new Set(catalog.devices.filter(item => !locationId || item.location_id === locationId).map(item => item.room || 'Unassigned area'))];
-  const eligibleDevices = catalog.devices.filter(item => (!locationId || item.location_id === locationId) && (!roomFilter || (item.room || 'Unassigned area') === roomFilter));
+  const eligibleDevices = catalog.devices.filter(item => deviceTypes[item.type]?.kinds.length && (!locationId || item.location_id === locationId) && (!roomFilter || (item.room || 'Unassigned area') === roomFilter));
   const savedRooms = [...new Set(catalog.devices.filter(item => !savedLocation || item.location_id === savedLocation).map(item => item.room || 'Unassigned area'))];
   const filteredItems = useMemo(() => library.items.filter(item => {
     const sources = item.signals.map(signal => catalog.devices.find(device => device.id === signal.deviceId)).filter(Boolean);
@@ -75,7 +81,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   useEffect(() => { setSavedPage(page => Math.min(page, pageCount)); }, [pageCount]);
   const single = chosen.length === 1 && chosen[0].type === 'single';
   const title = name.trim() || chosen.map(item => item.name).join(' + ').slice(0, 120);
-  async function trigger() {
+  async function triggerLegacy() {
     await perform(async () => {
       let batch = pending ? run : null;
       if (!batch) {
@@ -100,18 +106,34 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
       setSelection([]); setName('');
     });
   }
+  async function trigger() {
+    if (pending) return triggerLegacy();
+    await perform(async () => {
+      const payload = request || { request_id: crypto.randomUUID(), definition_ids: selection, incident_id: target === 'auto' ? null : target };
+      sessionStorage.setItem(requestKey, JSON.stringify(payload)); setRequest(payload);
+      try {
+        const result = await api('/household/runs', { method: 'POST', body: JSON.stringify(payload) });
+        setStarted(result); setSelection([]); setNotice('Run scheduled in the cloud. It continues when this tab closes.');
+        sessionStorage.removeItem(requestKey); setRequest(null);
+      } catch (failure) {
+        if ([400, 404].includes(failure.status)) { sessionStorage.removeItem(requestKey); setRequest(null); }
+        throw failure;
+      }
+    });
+  }
   const feedback = <>{error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}</>;
   const triggerPanel = <section className="card alert-composer"><h2>Trigger Alert / Scenario</h2>
-    <fieldset disabled={!loaded || busy || pending || !ready || disabled}>
-      <label>Saved alert or scenario<select multiple size={Math.min(5, Math.max(2, library.items.length))} value={selection} onChange={e => setSelection([...e.target.selectedOptions].map(option => option.value))}>{library.items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single' : `Scenario (${item.signals.length})`}</option>)}</select></label>
+    <fieldset disabled={!loaded || busy || pending || !!request || !ready || disabled}>
+      <label>Saved alert or scenario<select multiple size={Math.min(5, Math.max(2, library.items.length))} value={selection} onChange={e => setSelection([...e.target.selectedOptions].map(option => option.value))}>{library.items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single · 1 device' : `Scenario · ${item.signals.length} devices`}</option>)}</select></label>
       {!library.items.length && <p>No saved alerts or scenarios. Create one in Simulation Studio.</p>}
       <label>Incident assignment<select value={target} onChange={e => setTarget(e.target.value)}><option value="auto">Automatic · create or join related incident</option>{incidents.filter(item => !item.resolved_at && !item.deletion_started_at).map(item => <option key={item.incident_id} value={item.incident_id}>{incidentLabel(item)}</option>)}</select></label>
     </fieldset>
     {selectionError && <p className="error" role="alert">{selectionError}</p>}
-    {rows.length > 0 && <p className="trigger-summary">{chosen.length} selected · {rows.length} distinct devices</p>}
-    <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && (!rows.length || !!selectionError))} onClick={trigger}>{busy ? 'Sending…' : pending ? 'Retry remaining alerts' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
+    {rows.length > 0 && <p className="trigger-summary">{chosen.length} selected · {rows.length} distinct devices · {expected} scheduled signals</p>}
+    <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && !request && (!rows.length || !!selectionError))} onClick={trigger}>{busy ? 'Scheduling…' : request ? 'Retry run request' : pending ? 'Retry previous delivery' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
     {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
     {feedback}
+    <SimulationRuns api={api} household={household} started={started} onSelect={onAccepted}/>
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>
@@ -125,6 +147,12 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
         <fieldset disabled={busy || !loaded || !ready}><legend>Definition</legend>
           <label>Name<input required maxLength={120} value={draft.name} onChange={e => setDraft(old => ({ ...old, name: e.target.value }))} placeholder="Kitchen smoke / Upstairs fire scenario"/></label>
           <label>Type<select value={draft.type} onChange={e => { if (e.target.value === 'single' && draft.signals.length > 1) { setError('Remove extra devices before switching to Single alert.'); return; } setDraft(old => ({ ...old, type: e.target.value })); }}><option value="single">Single alert · one device</option><option value="scenario">Scenario · multiple devices</option></select></label>
+          <div className="form-grid"><label>Reporting mode<select value={draft.profile?.mode || 'on_change'} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, mode: e.target.value, alarm: 'active' } }))}><option value="on_change">State change</option><option value="repeat">Repeat while active</option></select></label>
+          <label>Initial state<select disabled={draft.profile?.mode === 'repeat'} value={draft.profile?.alarm || 'active'} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, alarm: e.target.value } }))}><option value="active">Alarm active</option><option value="clear">Alarm clear</option><option value="unknown">Unknown</option></select></label>
+          <label>Connectivity<select value={draft.profile?.connectivity || 'online'} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, connectivity: e.target.value } }))}><option value="online">Online</option><option value="offline">Offline</option><option value="unknown">Unknown</option></select></label>
+          <label>Duration (seconds)<input type="number" min="60" max="3600" required value={draft.profile?.duration_seconds ?? 300} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, duration_seconds: Number(e.target.value) } }))}/></label>
+          <label>Repeat interval (seconds)<input type="number" min="60" max="900" disabled={draft.profile?.mode !== 'repeat'} value={draft.profile?.interval_seconds ?? 60} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, interval_seconds: Number(e.target.value) } }))}/></label></div>
+          <label><input type="checkbox" checked={draft.profile?.clear_at_end || false} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, clear_at_end: e.target.checked } }))}/>Send a clear state at the end</label>
           <div className="form-grid"><label>Location<select value={locationId} onChange={e => { setLocationId(e.target.value); setRoomFilter(''); setDeviceId(''); setKind(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Room / area<select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setDeviceId(''); setKind(''); }}><option value="">All rooms / areas</option>{rooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
           <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{eligibleDevices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>

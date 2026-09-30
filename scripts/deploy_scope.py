@@ -14,6 +14,7 @@ FUNCTIONS = frozenset(
         "mcp_tools",
         "mcp_proxy",
         "cleanup",
+        "simulation_worker",
     }
 )
 

@@ -74,6 +74,8 @@ class IngestionContractTests(unittest.TestCase):
         self.module.events = Mock()
         self.module.events.put_events.return_value = {"FailedEntryCount": 0}
         self.module.s3 = Mock()
+        # Meter transactions have separate Moto integration coverage.
+        self.module.charge = Mock(return_value=True)
 
     def read(self, **kw):
         key = kw["Key"]

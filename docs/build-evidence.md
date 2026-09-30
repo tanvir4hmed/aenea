@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Build evidence and limits
 
 Updated 24 September 2026. Source, offline tests, workflow triggers and hosted acceptance are different evidence classes.

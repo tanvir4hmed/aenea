@@ -1,4 +1,5 @@
 """Offline regressions; prepared for the deferred verification gate, not run here."""
+
 import base64
 import json
 from pathlib import Path
@@ -19,8 +20,14 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(decode_cursor(token(key), "H#a", "INCIDENT#"), key)
 
     def test_rejects_foreign_partition_prefix_and_shape(self):
-        for value in [{"pk": "H#b", "sk": "INCIDENT#1"}, {"pk": "H#a", "sk": "PERSON#1"},
-                      {"pk": "H#a", "sk": 1}, [], None, {"pk": "H#a"}]:
+        for value in [
+            {"pk": "H#b", "sk": "INCIDENT#1"},
+            {"pk": "H#a", "sk": "PERSON#1"},
+            {"pk": "H#a", "sk": 1},
+            [],
+            None,
+            {"pk": "H#a"},
+        ]:
             with self.subTest(value=value), self.assertRaises(ValueError):
                 decode_cursor(token(value), "H#a", "INCIDENT#")
 

@@ -1,4 +1,5 @@
 """Private Lambda invoked only by the JWT-verifying MCP runtime."""
+
 from household_tools import dispatch
 from common import response
 

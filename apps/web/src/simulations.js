@@ -2,7 +2,13 @@ import { deviceTypes } from './devices.js';
 
 export function selectedSignals(items, ids, catalog) {
   const devices = new Map(catalog.devices.map(device => [device.id, device]));
-  const seen = new Set(), rows = [];
+  const seen = new Set(), rows = [], sources = new Map();
+  for (const id of ids) {
+    const item = items.find(item => item.id === id);
+    for (const signal of item?.signals || []) sources.set(signal.deviceId, [...(sources.get(signal.deviceId) || []), item.name]);
+  }
+  const conflicts = [...sources].filter(([, names]) => names.length > 1);
+  if (conflicts.length) throw new Error(conflicts.map(([id, names]) => `${devices.get(id)?.name || id} appears more than once: ${names.join(' + ')}`).join('; '));
   for (const id of ids) {
     const item = items.find(item => item.id === id);
     if (!item) throw new Error('A selected simulation was removed. Select it again.');
@@ -14,7 +20,7 @@ export function selectedSignals(items, ids, catalog) {
       seen.add(device.id); rows.push(signal);
     }
   }
-  if (rows.length > 20) throw new Error('Select up to 20 distinct devices per batch.');
+  if (rows.length > 200) throw new Error('Select up to 200 distinct devices per run.');
   return rows;
 }
 

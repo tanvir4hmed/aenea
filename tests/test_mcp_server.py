@@ -87,6 +87,8 @@ class McpServerTests(unittest.TestCase):
         self.assertEqual(self.post("notifications/initialized", {}, None).status_code, 202)
         names = {tool["name"] for tool in self.post("tools/list", {}).json()["result"]["tools"]}
         self.assertIn("get_incident_status", names)
+        self.assertNotIn("report_person_status", names)
+        self.assertEqual(len(names), 8)
 
     def test_tool_forwards_verified_identity_not_client_owner(self):
         self.module.lambda_client.invoke.return_value = {

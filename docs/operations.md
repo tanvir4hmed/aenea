@@ -1,6 +1,6 @@
-# Demo operations and cost boundaries
+# Operations and cost boundaries
 
-Implementation review: 23 September 2026. Operational checks remain deferred. No budget amount, billing recipient, IAM change or account cleanup was silently configured in this phase.
+Source updated 30 September 2026. Operational checks remain separate. No live budget, billing recipient, IAM reconciliation or account cleanup was performed by this source change.
 
 ## Spend controls
 
@@ -14,7 +14,7 @@ Before opening judge access, the account owner must select a monthly budget and 
 
 ### Incident cleanup
 
-Before the first Phase 8 rollout in an existing account, reconcile the updated bootstrap deployment policy with an authorized administrator session using `python scripts/reconcile_bootstrap.py`. The policy adds the exact default-bus EventBridge rule ARN for `aenea-cleanup`; an older custom-bus-only rule pattern does not cover scheduled rules. Re-run the app deployment after reconciliation if necessary. No new secret is required. Live IAM synchronization is not performed by a source push.
+Before rolling out scheduling, reconcile bootstrap policy with an authorized administrator session using `python scripts/reconcile_bootstrap.py`. Exact default-bus rule ARNs include `aenea-cleanup` and the new `aenea-simulation`; custom-bus-only patterns do not cover them. Re-run app deployment after reconciliation if necessary. No new secret is required. Live IAM synchronization is not performed by a source push.
 
 User-requested deletion blocks new work and queues cleanup after a 15-minute drain window. The worker runs every five minutes with concurrency one. Monitor pending/retrying jobs and the cleanup Lambda log/error metrics if a request stays incomplete. Failure to invoke the worker leaves requests pending; it must not be described as successful physical deletion. Inspect IAM and rule/target configuration before retrying deployment. Deletion never removes Terraform state or shared resources.
 
@@ -23,7 +23,7 @@ The worker removes active DynamoDB incident data, associated receipts, applicabl
 ### Event and action retries
 
 - Signal ingress uses a stable event ID and payload; an identical retry is accepted without another correlated event. Changed payload with the same identity is rejected.
-- Check-in tool requires a UUID `request_id`. Its audit and latest person state commit atomically. Reusing the ID with identical person/status returns the recorded original result without overwriting a newer check-in; differing content is rejected. The browser retains the ID for uncertain retries in the current MCP client instance only. After navigation/reload, read current reports before writing again.
+- New person reporting is retired. Optional notes and cloud runs use stable UUID request identities; retry unchanged requests, not newly identified duplicates. Read current state after uncertain writes.
 - Acknowledgment and its unique audit commit together. Repeated acknowledgment does not resolve the incident or duplicate the audit.
 - Virtual actions retain the existing deterministic action identity and transactional policy/execution checks. Concurrent settings/evidence changes fail closed.
 - MCP proxy timeout does not prove failure: read saved state before retrying a mutation. Private Lambda invocation disables SDK automatic retries; the browser does not automatically replay writes.
@@ -31,7 +31,9 @@ The worker removes active DynamoDB incident data, associated receipts, applicabl
 
 ## Security review boundaries
 
-Public metadata contains identifiers only. JWT signature, issuer, registered client, access-token type and scope checks protect MCP; the current Cognito access token has no resource `aud` claim. Household partition checks remain separate. Proxy SSM access is limited to this account's single runtime parameter. The reasoner cannot access household storage or execute devices; only its model output reaches policy. The private MCP tool Lambda has no API route. Application roles are limited to project resources, but shared-table tenancy is enforced in code, not by per-household IAM credentials.
+Public metadata contains identifiers only. JWT signature, issuer, registered client, access-token type, resource-bound audience and scope checks protect MCP. Old unbound sessions must sign in again. Household partition checks remain separate. Proxy SSM access is limited to this account's runtime parameter. The reasoner cannot access storage or execute devices. The private tool Lambda has no public API route. Application roles are project-scoped; shared-table tenancy is enforced in code, not per-household IAM credentials.
+
+The simulation worker has a 240-second lease around a 170-second invocation, a persistent fairness cursor and explicit pause state on delivery failure. Check the run message, published/reserved counts and worker error metrics. Stop leaves accepted evidence intact; never equate stop/exhaustion with clear. No application limit is a monetary AWS spending cap. See [scheduling and migration](state-driven-coordination.md).
 
 The deployment role remains intentionally broader than application roles: it can manage project-prefixed roles and resources. GitHub environment protection and exact OIDC trust are critical. A full external IAM audit, dependency vulnerability review, token/session threat review and adversarial hosted tests are still release gates. Do not describe this prototype as production-hardened.
 

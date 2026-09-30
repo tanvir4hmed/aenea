@@ -1,6 +1,6 @@
 # Aenea — submission draft, not submitted
 
-Updated 24 September 2026. Release acceptance is [still open](release-checklist.md). Review these claims against the actual recording before submitting.
+Updated 30 September 2026. Release acceptance is [still open](release-checklist.md). Review these source claims against the actual deployment and recording before submitting.
 
 **Tagline:** Shared household context, accountable incident coordination.
 
@@ -10,25 +10,25 @@ Updated 24 September 2026. Release acceptance is [still open](release-checklist.
 
 ## Inspiration
 
-An alarm identifies a signal, but a household still needs to understand what changed, who has reported in and which responses actually happened. Aenea explores one shared incident context instead of disconnected alerts.
+An alarm identifies a signal, but a household still needs to understand what changed and which permitted responses actually happened. Aenea explores one coordinated incident context instead of disconnected alerts.
 
 ## What it does
 
-Users configure fictional locations and simulated devices, then send selected observations one at a time or as a sequence. A cloud agent assesses the accumulated evidence. Later signals create a new evidence revision: an outdated assessment cannot authorize a new action.
+Users configure locations and simulated inputs/outputs, save state/repeat profiles, then start selected cloud runs. Related alerts automatically create/join named incidents. A cloud agent assesses current evidence; later changes invalidate older approvals. Human Resolve closes an incident, while simulation stop, clear and acknowledgment remain distinct.
 
-The Alexa+ browser simulation reads that same incident through authenticated MCP tools, records synthetic household check-ins and offers eligible virtual responses. Decision review exposes citations, uncertainty, policy reasons and human feedback. Rejection blocks future execution from that assessment; agreement alone is not action approval.
+The Alexa+ browser simulation reads the same incident through authenticated MCP and application APIs, shows persistent live briefings and offers eligible virtual responses. Optional text/voice commands are bounded; unverified notes stay separate from sensor evidence. Decision review exposes citations, uncertainty, policy reasons and human feedback. Rejection blocks future execution; agreement alone is not action approval.
 
-A reviewable handoff collects evidence, reports and saved outcomes without contacting responders. Settings also provides guarded incident cleanup. Motion never proves occupancy or safety.
+History preserves evidence, notes, decisions and saved outcomes without contacting responders. Settings provides guarded incident cleanup. No new member reporting is included. Motion never proves occupancy or safety.
 
 ## How it is built
 
 React; Cognito authorization code with PKCE and refresh; MCP 2025-11-25 Streamable HTTP on AgentCore; private Lambda tools; IncidentBridge normalization; EventBridge and Step Functions orchestration; Strands and Amazon Bedrock assessments; deterministic Lambda policy/execution; DynamoDB transactions and S3 evidence; CloudFront, Terraform and component-selective GitHub Actions. See [AWS service responsibilities](aws-builder.md).
 
-Access tokens are checked against issuer, signature, expiry, registered client, token type and scopes. The implementation does not require an absent Cognito access-token audience claim.
+Access tokens are checked against issuer, signature, expiry, registered client, token type, resource-bound audience and scopes; old unbound sessions need a fresh login.
 
 ## Honest boundaries
 
-This is a prototype, not an emergency service, medical device or certified alarm. Device inputs/effects and the Alexa interface are simulated. No Ring API, native Alexa connection or physical-device control is claimed. The browser understands explicit supported commands, not unrestricted natural-language requests. One Cognito identity owns a workspace; the shared guest is not private multi-user tenancy. Current assessment capacity is 20 signals per incident.
+This is a prototype, not an emergency service, medical device or certified alarm. Device inputs/effects and the Alexa interface are simulated. No Ring API, native Alexa or physical control is claimed. Commands are constrained to approved intents, not unrestricted control. One Cognito identity owns a workspace; the guest is shared. Model context is bounded without a 20-event incident lifetime cutoff. Simulator allowances restrict test generation only; cloud scheduling is best effort, not a real-time safety guarantee.
 
 ## Entry links
 

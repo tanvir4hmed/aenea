@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Incident-first remediation and Command Center roadmap
 
 **Status:** approved implementation plan — no Command Center feature work has started.

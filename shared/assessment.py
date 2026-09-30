@@ -1,4 +1,5 @@
 """Versioned reasoner contract shared by AgentCore and Lambda boundaries."""
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +18,9 @@ class Proposal(Contract):
 
 class IncidentAssessment(Contract):
     schema_version: Literal["1.0"] = "1.0"
-    incident_type: Literal["smoke", "carbon_monoxide", "water_leak", "medical_sos", "severe_weather", "uncertain"]
+    incident_type: Literal[
+        "smoke", "carbon_monoxide", "water_leak", "medical_sos", "severe_weather", "uncertain"
+    ]
     severity: Literal["informational", "warning", "urgent"]
     confidence: float = Field(ge=0, le=1)
     summary: str = Field(min_length=1, max_length=1200)
@@ -41,3 +44,7 @@ class RoutingDecision(Contract):
     decision: Literal["create", "join"]
     name: str = Field(min_length=1, max_length=120)
     reason: str = Field(min_length=1, max_length=500)
+
+
+class ConversationIntent(Contract):
+    intent: Literal["status", "timeline", "acknowledge", "unsupported"]

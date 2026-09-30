@@ -1,4 +1,5 @@
 """Pure policy regressions; no AWS or model calls. Deferred suite: python -m unittest discover -s tests."""
+
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -11,18 +12,34 @@ NOW = 1700000000
 
 
 def signal(kind="smoke", age=0):
-    return {"event_id": kind, "kind": kind, "source": {"simulated": True},
-            "occurred_at": datetime.fromtimestamp(NOW - age, timezone.utc).isoformat()}
+    return {
+        "event_id": kind,
+        "kind": kind,
+        "source": {"simulated": True},
+        "occurred_at": datetime.fromtimestamp(NOW - age, timezone.utc).isoformat(),
+    }
 
 
 class PolicyTests(unittest.TestCase):
-    def evaluate(self, action="lights_on", device="virtual_lights", kinds=("smoke",),
-                 confirmed=False, preauthorized=True, age=0, expires=NOW + 60):
+    def evaluate(
+        self,
+        action="lights_on",
+        device="virtual_lights",
+        kinds=("smoke",),
+        confirmed=False,
+        preauthorized=True,
+        age=0,
+        expires=NOW + 60,
+    ):
         proposal = {"action": action, "device_id": device, "evidence_ids": [kinds[0]]}
-        profile = {"devices": {device: {"enabled": True, "simulated": True,
-                                        "preauthorized": preauthorized}}}
-        return decision(proposal, [signal(kind, age) for kind in kinds], profile,
-                        NOW, expires, confirmed)[0]
+        profile = {
+            "devices": {
+                device: {"enabled": True, "simulated": True, "preauthorized": preauthorized}
+            }
+        }
+        return decision(
+            proposal, [signal(kind, age) for kind in kinds], profile, NOW, expires, confirmed
+        )[0]
 
     def test_preapproved_lights(self):
         self.assertEqual(self.evaluate(), "allowed")
@@ -34,13 +51,19 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(self.evaluate(kinds=("motion",)), "blocked")
 
     def test_valve_requires_confirmation(self):
-        self.assertEqual(self.evaluate("close_valve", "virtual_valve", ("water_leak",)), "pending_confirmation")
+        self.assertEqual(
+            self.evaluate("close_valve", "virtual_valve", ("water_leak",)), "pending_confirmation"
+        )
 
     def test_confirmed_water_valve(self):
-        self.assertEqual(self.evaluate("close_valve", "virtual_valve", ("water_leak",), True), "allowed")
+        self.assertEqual(
+            self.evaluate("close_valve", "virtual_valve", ("water_leak",), True), "allowed"
+        )
 
     def test_smoke_overrides_valve_confirmation(self):
-        self.assertEqual(self.evaluate("close_valve", "virtual_valve", ("water_leak", "smoke"), True), "blocked")
+        self.assertEqual(
+            self.evaluate("close_valve", "virtual_valve", ("water_leak", "smoke"), True), "blocked"
+        )
 
     def test_stale_and_future_evidence(self):
         for age in (901, -10):

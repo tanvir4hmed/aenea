@@ -15,6 +15,9 @@ from coordination import audit, get, native, partition, table
 from incident_state import snapshot
 from revisions import actionable
 from lifecycle import deleted
+from incident_notes import latest_notes
+from briefings import record as record_briefing
+from model_context import bounded_payload
 
 runtime = boto3.client(
     "bedrock-agentcore",
@@ -42,6 +45,7 @@ def handler(event, context):
     if deleted(table, owner, incident) or summary.get("resolved_at") or not summary:
         return {**event, "reasoner_ok": False, "retry_needed": False}
     revision = summary["event_count"]
+    note_revision = summary.get("note_revision", 0)
     previous = (
         get(owner, incident, "ASSESSMENT#" + summary["latest_assessment"])
         if summary.get("latest_assessment")
@@ -56,14 +60,27 @@ def handler(event, context):
             "retry_needed": False,
         }
     identifier = hashlib.sha256(
-        f"{event['event_id']}:{revision}:{event['assessment_attempt']}".encode()
+        f"{event['event_id']}:{revision}:{note_revision}:{event['assessment_attempt']}".encode()
     ).hexdigest()[:32]
     failure_code = "snapshot_unavailable"
     state = None
     try:
         state = snapshot(table, owner, incident)
+        notes = (
+            latest_notes(table, owner, incident)
+            if note_revision
+            else {"items": [], "partial": False, "total": 0}
+        )
+        if note_revision:
+            state["fingerprint"] = hashlib.sha256(
+                f"{state['fingerprint']}:{note_revision}".encode()
+            ).hexdigest()
         after = table.get_item(Key=summary_key, ConsistentRead=True).get("Item", {})
-        if revision != after.get("event_count") or after.get("resolved_at"):
+        if (
+            revision != after.get("event_count")
+            or note_revision != after.get("note_revision", 0)
+            or after.get("resolved_at")
+        ):
             failure_code = "snapshot_changed"
             raise ValueError("Evidence changed during snapshot")
         events = state["events"]
@@ -71,6 +88,10 @@ def handler(event, context):
             raise ValueError("No evidence available")
         failure_code = "reasoner_unavailable_or_invalid"
         from safety import DEVICES
+
+        payload = bounded_payload(events, state["context"], notes, DEVICES)
+        events = payload["events"]
+        state["context"] = payload["state_summary"]
 
         coalesced = False
         if (
@@ -91,14 +112,7 @@ def handler(event, context):
                 agentRuntimeArn=os.environ["REASONER_ARN"],
                 runtimeSessionId=str(uuid.uuid4()),
                 contentType="application/json",
-                payload=json.dumps(
-                    {
-                        "events": events,
-                        "state_summary": state["context"],
-                        "virtual_devices": DEVICES,
-                    },
-                    default=float,
-                ).encode(),
+                payload=json.dumps(payload, default=float).encode(),
             )
             body = json.loads(result["response"].read())
             assessment = IncidentAssessment.model_validate(body["assessment"]).check_evidence(
@@ -139,6 +153,7 @@ def handler(event, context):
         sk="ASSESSMENT#" + identifier,
         assessment_id=identifier,
         evidence_revision=revision,
+        note_revision=note_revision,
         created_at=int(time.time()),
         expires_at=int(time.time()) + 300,
     )
@@ -160,7 +175,7 @@ def publish(event, owner, incident, identifier, item, summary_key):
         table.update_item(
             Key=summary_key,
             UpdateExpression="SET #s = :status, latest_assessment = :id, assessed_revision = :revision, decision_review = :review REMOVE reviewed_at",
-            ConditionExpression="attribute_not_exists(resolved_at) AND attribute_not_exists(deletion_started_at) AND event_count = :revision AND (attribute_not_exists(assessed_revision) OR assessed_revision < :revision OR latest_assessment = :previous)",
+            ConditionExpression="attribute_not_exists(resolved_at) AND attribute_not_exists(deletion_started_at) AND event_count = :revision AND (note_revision = :notes OR (attribute_not_exists(note_revision) AND :notes = :zero)) AND (attribute_not_exists(assessed_revision) OR assessed_revision < :revision OR latest_assessment = :previous)",
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
                 ":status": item["status"],
@@ -168,6 +183,8 @@ def publish(event, owner, incident, identifier, item, summary_key):
                 ":revision": revision,
                 ":review": "unreviewed",
                 ":previous": event.get("replaces_assessment", ""),
+                ":notes": item.get("note_revision", 0),
+                ":zero": 0,
             },
         )
     except ClientError as exc:
@@ -175,6 +192,8 @@ def publish(event, owner, incident, identifier, item, summary_key):
             raise
     summary = table.get_item(Key=summary_key, ConsistentRead=True).get("Item", {})
     ok = actionable(summary, item)
+    if summary.get("latest_assessment") == identifier:
+        record_briefing(table, owner, incident)
     retry = (
         not summary.get("resolved_at")
         and not summary.get("deletion_started_at")

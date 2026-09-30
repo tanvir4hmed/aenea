@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Phase 6 — household simulation and demo experience
 
 Source implemented on 21 September 2026. Local application builds, hosted acceptance, visual QA and timed rehearsal remain deferred by project-owner instruction. This is implementation evidence, not a claim that the 2:45–2:55 demo has passed repeatedly.

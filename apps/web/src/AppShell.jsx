@@ -5,8 +5,6 @@ export const pages = [
   { id: 'incident-history', label: 'Incident history', icon: 'document', description: 'Browse saved incidents, evidence and decision reviews.' },
   { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Define reusable single alerts and multi-device scenarios.' },
   { id: 'alexa-sim', label: 'Alexa+', icon: 'voice', description: 'Explore incident coordination through the Alexa+ web simulator.' },
-  { id: 'check-in', label: 'Household', icon: 'people', description: 'Review incident-specific check-ins and requests for help.' },
-  { id: 'handoff', label: 'Handoff', icon: 'document', description: 'Prepare a summary of the evidence and recorded response.' },
   { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage locations, simulation devices and action permissions.' },
   { id: 'guide', label: 'User guide', icon: 'help', description: 'A quick guide to your workspace.' },
 ];

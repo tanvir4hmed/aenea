@@ -1,9 +1,7 @@
 export const commands = [
   { phrase: 'What is happening?', tool: 'get_incident_status', aliases: ['status', 'incident status'] },
   { phrase: 'Show the timeline', tool: 'get_incident_timeline', aliases: ['show actions', 'what actions are available'] },
-  { phrase: 'Who has checked in?', tool: 'get_household_status', aliases: ['who is safe', 'household status'] },
   { phrase: 'Acknowledge incident', tool: 'acknowledge_incident', aliases: ['acknowledge'] },
-  { phrase: 'Prepare a handoff', tool: 'get_responder_summary', aliases: ['handoff', 'prepare handoff'] },
 ];
 const normalize = text => text.toLowerCase().replace(/[?.!]/g, '').trim().replace(/\s+/g, ' ');
 export function commandFor(text) { return commands.find(command => [command.phrase, ...command.aliases].some(value => normalize(value) === normalize(text))); }
@@ -12,7 +10,7 @@ export function describe(tool, data) {
   if (tool === 'get_responder_summary') return `Handoff prepared for incident ${data.incident.incident_id.slice(0, 8)}. ${data.partial ? 'This snapshot is partial; more records exist. ' : ''}${data.assessment_current ? '' : 'The assessment is outdated or unavailable. '}${data.notice} Nothing has been dispatched.`;
   if (tool === 'get_incident_status') {
     if (data.incident.resolved_at) return `${data.incident.name || 'Incident'} is resolved by human confirmation. Previous actions cannot execute. This does not verify safety.`;
-    const prefix = `Incident ${data.incident.incident_id.slice(0, 8)}, evidence revision ${data.incident.event_count}. `;
+    const prefix = `${data.incident.name || 'Incident ' + data.incident.incident_id.slice(0, 8)}, evidence revision ${data.incident.event_count}. `;
     const assessment = data.assessment?.assessment;
     if (!assessment) return prefix + (data.assessment?.message || `Status: ${readable(data.incident.status)}. No validated assessment is available yet.`);
     return prefix + (data.assessment_current ? '' : 'Previous assessment; newer evidence is awaiting assessment or revision tracking is unavailable. ')
@@ -30,5 +28,6 @@ export function describe(tool, data) {
 export function canExecute(action, context, now = Date.now()) {
   return Boolean(context?.assessment_current && !context.incident.resolved_at && context.incident.decision_review !== 'rejected'
     && context.incident.latest_assessment === action.assessment_id
+    && (context.incident.note_revision || 0) === (action.note_revision || 0)
     && context.incident.event_count === action.evidence_revision && now < action.expires_at * 1000);
 }

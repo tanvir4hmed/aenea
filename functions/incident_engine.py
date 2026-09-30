@@ -238,9 +238,10 @@ def reserve(
 def resolve(table: Any, owner: str, incident: str, body: Any) -> Any:
     if (
         not isinstance(body, dict)
-        or set(body) != {"confirm", "revision"}
+        or not {"confirm", "revision"} <= set(body) <= {"confirm", "revision", "note_revision"}
         or body["confirm"] is not True
         or type(body["revision"]) is not int
+        or type(body.get("note_revision", 0)) is not int
     ):
         return response(
             400, {"error": "Explicit confirmation and current evidence revision required"}
@@ -257,7 +258,7 @@ def resolve(table: Any, owner: str, incident: str, body: Any) -> Any:
                 "TableName": table.name,
                 "Key": attrs(key),
                 "UpdateExpression": "SET lifecycle = :closed, resolved_at = :now, resolved_by = :owner, #s = :closed",
-                "ConditionExpression": "attribute_exists(pk) AND attribute_not_exists(deletion_started_at) AND attribute_not_exists(resolved_at) AND event_count = :revision",
+                "ConditionExpression": "attribute_exists(pk) AND attribute_not_exists(deletion_started_at) AND attribute_not_exists(resolved_at) AND event_count = :revision AND (note_revision = :notes OR (attribute_not_exists(note_revision) AND :notes = :zero))",
                 "ExpressionAttributeNames": {"#s": "status"},
                 "ExpressionAttributeValues": attrs(
                     {
@@ -265,6 +266,8 @@ def resolve(table: Any, owner: str, incident: str, body: Any) -> Any:
                         ":now": stamp,
                         ":owner": owner,
                         ":revision": body["revision"],
+                        ":notes": body.get("note_revision", 0),
+                        ":zero": 0,
                     }
                 ),
             }

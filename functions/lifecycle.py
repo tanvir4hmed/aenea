@@ -1,4 +1,5 @@
 """Deletion markers survive cleanup to reject late event/workflow replays."""
+
 import time
 import uuid
 from decimal import Decimal
@@ -31,34 +32,74 @@ def request_deletion(table, owner, incident, body):
     if previous:
         return response(200, previous)
     now = Decimal(str(time.time()))
-    marker = {**marker_key(owner, incident), "incident_id": incident,
-              "requested_at": now, "eligible_at": now + 900, "cleanup_status": "pending"}
+    marker = {
+        **marker_key(owner, incident),
+        "incident_id": incident,
+        "requested_at": now,
+        "eligible_at": now + 900,
+        "cleanup_status": "pending",
+    }
     serializer = TypeSerializer()
     attrs = lambda value: {key: serializer.serialize(item) for key, item in value.items()}
     operations = [
-            {"Put": {"TableName": table.name, "Item": attrs(marker), "ConditionExpression": "attribute_not_exists(pk)"}},
-            {"Update": {"TableName": table.name,
+        {
+            "Put": {
+                "TableName": table.name,
+                "Item": attrs(marker),
+                "ConditionExpression": "attribute_not_exists(pk)",
+            }
+        },
+        {
+            "Update": {
+                "TableName": table.name,
                 "Key": attrs({"pk": f"H#{owner}", "sk": "INCIDENT#" + incident}),
                 "UpdateExpression": "SET deletion_started_at = :now, #s = :status",
                 "ConditionExpression": "attribute_exists(pk)",
                 "ExpressionAttributeNames": {"#s": "status"},
-                "ExpressionAttributeValues": attrs({":now": now, ":status": "deleting"})}},
-            {"Put": {"TableName": table.name, "Item": attrs({"pk": "CLEANUP", "sk": f"JOB#{owner}#{incident}",
-                "owner": owner, "incident_id": incident, "eligible_at": now + 900})}},
-        ]
-    summary = table.get_item(Key={"pk": f"H#{owner}", "sk": "INCIDENT#" + incident}, ConsistentRead=True).get("Item", {})
+                "ExpressionAttributeValues": attrs({":now": now, ":status": "deleting"}),
+            }
+        },
+        {
+            "Put": {
+                "TableName": table.name,
+                "Item": attrs(
+                    {
+                        "pk": "CLEANUP",
+                        "sk": f"JOB#{owner}#{incident}",
+                        "owner": owner,
+                        "incident_id": incident,
+                        "eligible_at": now + 900,
+                    }
+                ),
+            }
+        },
+    ]
+    summary = table.get_item(
+        Key={"pk": f"H#{owner}", "sk": "INCIDENT#" + incident}, ConsistentRead=True
+    ).get("Item", {})
     if summary.get("route_key"):
         key = {"pk": f"H#{owner}", "sk": summary["route_key"]}
         route = table.get_item(Key=key, ConsistentRead=True).get("Item", {})
         if route.get("incident_id") == incident:
-            operations.append({"Put": {"TableName": table.name,
-                "Item": attrs({**key, "generation": str(uuid.uuid4()), "closed_at": now}),
-                "ConditionExpression": "incident_id = :id", "ExpressionAttributeValues": attrs({":id": incident})}})
+            operations.append(
+                {
+                    "Put": {
+                        "TableName": table.name,
+                        "Item": attrs({**key, "generation": str(uuid.uuid4()), "closed_at": now}),
+                        "ConditionExpression": "incident_id = :id",
+                        "ExpressionAttributeValues": attrs({":id": incident}),
+                    }
+                }
+            )
     try:
         boto3.client("dynamodb").transact_write_items(TransactItems=operations)
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "TransactionCanceledException":
             raise
         previous = deleted(table, owner, incident)
-        return response(200, previous) if previous else response(409, {"error": "Incident not found or changed; refresh before deleting"})
+        return (
+            response(200, previous)
+            if previous
+            else response(409, {"error": "Incident not found or changed; refresh before deleting"})
+        )
     return response(202, marker)

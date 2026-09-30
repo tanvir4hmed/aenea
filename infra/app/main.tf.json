@@ -61,6 +61,7 @@
   },
   "locals": {
     "functions": [
+      "simulation_worker",
       "cleanup",
       "ingest",
       "correlate",
@@ -72,6 +73,13 @@
       "mcp_proxy"
     ],
     "routes": {
+      "POST /incidents/{incident_id}/message": {"function": "action_executor", "scope": "aenea/write"},
+      "POST /incidents/{incident_id}/notes": {"function": "action_executor", "scope": "aenea/write"},
+      "GET /household/runs": {"function": "action_executor", "scope": "aenea/read"},
+      "GET /household/runs/{run_id}": {"function": "action_executor", "scope": "aenea/read"},
+      "POST /household/runs": {"function": "action_executor", "scope": "aenea/write"},
+      "POST /household/runs/{run_id}": {"function": "action_executor", "scope": "aenea/write"},
+      "POST /incidents/{incident_id}/simulation-limit": {"function": "action_executor", "scope": "aenea/write"},
       "POST /incidents/{incident_id}/resolve": {"function": "action_executor", "scope": "aenea/write"},
       "POST /incidents/{incident_id}/reassess": {"function": "action_executor", "scope": "aenea/write"},
       "GET /household/simulations": {
@@ -215,7 +223,7 @@
         "handler": "handler.handler",
         "filename": "${path.module}/../../.artifacts/${each.key}.zip",
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
-        "timeout": "${contains([\"invoke_reasoner\", \"cleanup\"], each.key) ? 170 : 25}",
+        "timeout": "${contains([\"invoke_reasoner\", \"cleanup\", \"simulation_worker\"], each.key) ? 170 : 25}",
           "reserved_concurrent_executions": -1,
         "memory_size": 256,
         "environment": {
@@ -223,6 +231,7 @@
               "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
               "INGESTION_ENABLED": "${tostring(var.ingestion_enabled)}",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
+            "INGEST_FUNCTION": "aenea-ingest",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
             "REASONER_ARN": "${data.terraform_remote_state.reasoner.outputs.runtime_arn}",
             "MCP_PARAMETER": "/aenea/mcp/runtime-arn",

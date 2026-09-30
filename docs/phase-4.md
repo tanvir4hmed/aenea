@@ -1,3 +1,5 @@
+> Historical checkpoint. Current implementation and check results supersede future-work statements below: [state-driven coordination](state-driven-coordination.md), [source verification](source-verification.md).
+
 # Phase 4: reasoner and safety
 
 Source implementation prepared on 17 September and finalized on 21 September 2026. Cloud build/deployment is delegated to GitHub Actions. Runtime acceptance testing remains deferred by project-owner instruction; this document does not claim a successful model invocation or end-to-end demo.

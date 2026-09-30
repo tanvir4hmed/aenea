@@ -2,11 +2,20 @@
 
 
 def current_assessment(summary, assessment):
-    return bool(not summary.get("resolved_at") and not summary.get("deletion_started_at") and assessment and assessment.get("evidence_revision") is not None
-                and summary.get("event_count") == assessment["evidence_revision"]
-                and summary.get("latest_assessment") == assessment.get("assessment_id"))
+    return bool(
+        not summary.get("resolved_at")
+        and not summary.get("deletion_started_at")
+        and assessment
+        and assessment.get("evidence_revision") is not None
+        and summary.get("event_count") == assessment["evidence_revision"]
+        and summary.get("note_revision", 0) == assessment.get("note_revision", 0)
+        and summary.get("latest_assessment") == assessment.get("assessment_id")
+    )
 
 
 def actionable(summary, assessment):
-    return (current_assessment(summary, assessment) and assessment.get("status") == "assessed"
-            and summary.get("decision_review") != "rejected")
+    return (
+        current_assessment(summary, assessment)
+        and assessment.get("status") == "assessed"
+        and summary.get("decision_review") != "rejected"
+    )

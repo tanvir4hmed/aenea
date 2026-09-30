@@ -4,7 +4,7 @@ import { commandFor, describe, canExecute } from '../apps/web/src/alexaConversat
 
 test('explicit commands allow aliases but never infer device approval', () => {
   assert.equal(commandFor(' What is happening?! ').tool, 'get_incident_status');
-  assert.equal(commandFor('who is safe').tool, 'get_household_status');
+  assert.equal(commandFor('who is safe'), undefined);
   assert.equal(commandFor('yes close all valves'), undefined);
 });
 test('handoff response is not swallowed by an assessment summary', () => {

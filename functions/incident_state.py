@@ -92,6 +92,9 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
     devices = [
         {
             "device_id": row["event"]["source"]["source_id"],
+            "name": row["context"]
+            .get("device", {})
+            .get("name", row["event"]["source"]["source_id"]),
             "kind": row["event"]["kind"],
             "alarm": row["alarm"],
             "connectivity": row["context"].get("state", {}).get("connectivity", "unknown"),
