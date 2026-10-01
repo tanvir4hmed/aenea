@@ -8,6 +8,7 @@ const defaultProfile = { mode: 'on_change', interval_seconds: 60, duration_secon
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
 
 export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing }) {
+  const [view, setView] = useState('create');
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState(blank), [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
   const [locationId, setLocationId] = useState(''), [roomFilter, setRoomFilter] = useState('');
@@ -137,7 +138,8 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>
-    <section className="card alert-composer simulation-editor"><div className="row"><div><h2>{editing ? 'Edit saved definition' : 'Create simulation'}</h2><p>Save reusable alerts here. Command Center automatically creates or joins a related incident when you send them.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>
+    <nav className="view-tabs" aria-label="Simulation Studio sections"><button aria-current={view === 'create' ? 'page' : undefined} onClick={() => setView('create')}>Create simulation</button><button aria-current={view === 'saved' ? 'page' : undefined} onClick={() => setView('saved')}>Saved simulations · {library.items.length}</button></nav>
+    <div hidden={view !== 'create'}><section className="card alert-composer simulation-editor"><div className="row"><div><h2>{editing ? 'Edit saved definition' : 'Create simulation'}</h2><p>Save reusable alerts here. Command Center automatically creates or joins a related incident when you send them.</p></div><button onClick={() => navigate('command-center')}>Go to Command Center</button></div>
       {feedback}
       <form onSubmit={e => { e.preventDefault(); perform(async () => {
         if (draft.type === 'single' && draft.signals.length !== 1) throw new Error('A single alert needs exactly one device.');
@@ -166,7 +168,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
         </fieldset>
       </form>
     </section>
-    <section className="card saved-library"><div className="row"><div><h2>Saved alerts and scenarios</h2><p>{filteredItems.length} of {library.items.length} definitions</p></div><button disabled={busy} onClick={() => perform(reload)}>Refresh</button></div>
+    </div><div hidden={view !== 'saved'}>{feedback}<section className="card saved-library"><div className="row"><div><h2>Saved alerts and scenarios</h2><p>{filteredItems.length} of {library.items.length} definitions</p></div><button disabled={busy} onClick={() => perform(reload)}>Refresh</button></div>
       <div className="saved-filters">
         <label>Search<input value={savedQuery} onChange={e => setSavedQuery(e.target.value)} placeholder="Name, room or device"/></label>
         <label>Type<select value={savedType} onChange={e => setSavedType(e.target.value)}><option value="">All types</option><option value="single">Single alerts</option><option value="scenario">Scenarios</option></select></label>
@@ -175,10 +177,10 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
         <label>Device<select value={savedDevice} onChange={e => setSavedDevice(e.target.value)}><option value="">All devices</option>{catalog.devices.filter(item => (!savedLocation || item.location_id === savedLocation) && (!savedRoom || (item.room || 'Unassigned area') === savedRoom)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       </div>
       {!pageItems.length && <p>No saved definitions match these filters.</p>}
-      <div className="saved-definition-list">{pageItems.map(item => <article className="catalog-item" key={item.id}><div className="row"><div><h3>{item.name}</h3><p><span className="badge">{item.type === 'single' ? 'SINGLE ALERT' : 'SCENARIO'}</span> · {item.signals.length} {item.signals.length === 1 ? 'device' : 'devices'}</p></div><div className="actions"><button disabled={busy} onClick={() => { setDraft({ ...item, signals: item.signals.map(row => ({ ...row })) }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button><button disabled={busy} onClick={() => { if (window.confirm(`Delete saved definition “${item.name}”? Incident evidence is unchanged.`)) perform(async () => { await saveItems(library.items.filter(row => row.id !== item.id)); if (draft.id === item.id) setDraft(blank()); setSelection(old => old.filter(id => id !== item.id)); }); }}>Delete</button></div></div>
+      <div className="saved-definition-list">{pageItems.map(item => <article className="catalog-item" key={item.id}><div className="row"><div><h3>{item.name}</h3><p><span className="badge">{item.type === 'single' ? 'SINGLE ALERT' : 'SCENARIO'}</span> · {item.signals.length} {item.signals.length === 1 ? 'device' : 'devices'}</p></div><div className="actions"><button disabled={busy} onClick={() => { setView('create'); setDraft({ ...item, signals: item.signals.map(row => ({ ...row })) }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button><button disabled={busy} onClick={() => { if (window.confirm(`Delete saved definition “${item.name}”? Incident evidence is unchanged.`)) perform(async () => { await saveItems(library.items.filter(row => row.id !== item.id)); if (draft.id === item.id) setDraft(blank()); setSelection(old => old.filter(id => id !== item.id)); }); }}>Delete</button></div></div>
         <ul className="definition-devices">{item.signals.map(signal => { const source = catalog.devices.find(device => device.id === signal.deviceId); const site = catalog.locations.find(location => location.id === source?.location_id); return <li key={signal.deviceId}><strong>{source?.name || 'Removed device'}</strong><span>{site?.name || 'Unknown location'} · {source?.room || 'Unassigned area'} · {humanize(signal.kind)}</span></li>; })}</ul>
       </article>)}</div>
       {filteredItems.length > 10 && <nav className="pagination" aria-label="Saved simulation pages"><button disabled={savedPage <= 1} onClick={() => setSavedPage(page => page - 1)}>Previous</button><span>Page {Math.min(savedPage, pageCount)} of {pageCount}</span><button disabled={savedPage >= pageCount} onClick={() => setSavedPage(page => page + 1)}>Next</button></nav>}
-    </section>
+    </section></div>
   </>;
 }

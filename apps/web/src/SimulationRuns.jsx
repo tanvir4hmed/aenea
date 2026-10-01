@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 
 export default function SimulationRuns({ api, household, started, onSelect }) {
   const [runs, setRuns] = useState([]), [cursor, setCursor] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
-  const follow = useRef(null), lock = useRef(false), pageCursor = useRef(null);
+  const lock = useRef(false), pageCursor = useRef(null);
   const known = useRef([]);
   useEffect(() => { known.current = runs; }, [runs]);
   const [visibleCount, setVisibleCount] = useState(20);
-  useEffect(() => { if (started) { follow.current = started.id; setRuns(old => [started, ...old.filter(run => run.id !== started.id)]); localStorage.setItem('aenea-last-run-' + household, started.id); } }, [started]);
+  useEffect(() => { if (started) { setRuns(old => [started, ...old.filter(run => run.id !== started.id)]); localStorage.setItem('aenea-last-run-' + household, started.id); } }, [started]);
   async function refresh(more = false) {
     if (lock.current) return;
     lock.current = true;
@@ -25,8 +25,6 @@ export default function SimulationRuns({ api, household, started, onSelect }) {
       }
       setRuns(old => [...new Map([...old, ...result.items].map(run => [run.id, run])).values()].sort((a, b) => b.created_at - a.created_at));
       if (more || pageCursor.current === null) { pageCursor.current = result.next_cursor || ''; setCursor(result.next_cursor); }
-      const current = result.items.find(run => run.id === follow.current);
-      if (current?.incident_ids?.length) { follow.current = null; onSelect(current.incident_ids[0]); }
       setError('');
     } catch (failure) { setError(failure.message); }
     finally { lock.current = false; }

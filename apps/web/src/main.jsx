@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { accessToken, callback, expireSession, hasSession, login, logout } from './auth';
 import './style.css';
-import Coordination from './Coordination';
+import IncidentHistory from './IncidentHistory';
 import AlexaSimulator from './AlexaSimulator';
 import ActionSettings from './ActionSettings';
 import IncidentPicker from './IncidentPicker';
@@ -14,7 +14,7 @@ import DataControls from './DataControls';
 import DeviceMap, { IncidentBriefing } from './DeviceMap';
 import { incidentName } from './incidentNames';
 import IncidentSummary from './IncidentSummary';
-import HistoryRecord from './HistoryRecord';
+
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
@@ -37,6 +37,8 @@ function App() {
   const additionalPages = useRef(false);
   const activeIncident = useRef(selected);
   activeIncident.current = selected;
+  const selectionMade = useRef(!!selected);
+  function selectIncident(id) { selectionMade.current = true; if (activeIncident.current === id) return; activeIncident.current = id; setSelected(id); setIncidentState(null); setTimeline([]); }
   const [incidentState, setIncidentState] = useState(null);
   function receiveTimeline(data, append = false) {
     setIncidentState({ ...data, receivedAt: Date.now() });
@@ -129,7 +131,7 @@ function App() {
         if (!active) return;
         cursor = data.next_cursor;
         setIncidents(old => [...new Map([...old, ...data.items].map(item => [item.incident_id, item])).values()]);
-        if (!activeIncident.current) { const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); if (open.length) setSelected(open[0].incident_id); }
+        if (!selectionMade.current && !activeIncident.current) { const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); if (open.length) selectIncident(open[0].incident_id); }
       } catch (failure) { if (active) setError(failure.message); } finally { running = false; }
     };
     const timer = setInterval(tick, 10000);
@@ -148,7 +150,7 @@ function App() {
       refreshing = true;
       try {
         const data = await api('/incidents/' + selected + '/timeline');
-        if (active) { receiveTimeline(data, additionalPages.current); if (!additionalPages.current) setTimelineCursor(data.next_cursor); }
+        if (active && activeIncident.current === selected) { receiveTimeline(data, additionalPages.current); if (!additionalPages.current) setTimelineCursor(data.next_cursor); }
       } catch(e) { if(active) setError(e.message); }
       finally { refreshing = false; }
     };
@@ -183,7 +185,7 @@ function App() {
         {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
       </section>}
       {authenticated && config && page === 'command-center' && <>
-        <IncidentPicker incidents={incidents} selected={selected} onSelect={setSelected} busy={loadingIncidents}
+        <IncidentPicker incidents={incidents} selected={selected} onSelect={selectIncident} busy={loadingIncidents}
           onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
       </>}
       {authenticated && config && identity && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
@@ -191,24 +193,16 @@ function App() {
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
           briefing={<IncidentBriefing selected={selected} state={incidentState} timeline={timeline} navigate={navigate}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
-          setSelected(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
+          selectIncident(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
       </div>}
       {authenticated && config && page === 'settings' && <><Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate}/><ActionSettings api={api} catalog={catalog}/><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}
       {authenticated && config && page === 'command-center' && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
-      {authenticated && config && page === 'incident-history' && <>
-        <div className="columns"><section className="card" aria-busy={loadingIncidents}><div className="row"><h2>Incidents</h2><button disabled={loadingIncidents} onClick={()=>loadIncidents().catch(e=>setError(e.message))}>{loadingIncidents ? 'Refreshing…' : 'Refresh'}</button></div>
-          {!incidents.length && <div className="empty-state"><h3>{loadingIncidents ? 'Loading incidents…' : 'No incidents yet'}</h3><p>Start with a simulated signal to see the coordinated response.</p>{!loadingIncidents && page === 'command-center' && <button onClick={() => navigate('simulation-lab')}>Open Simulation lab</button>}</div>}
-          {incidents.map(i=><button aria-pressed={selected===i.incident_id} className={'incident '+(selected===i.incident_id?'selected':'')} key={i.incident_id} onClick={()=>setSelected(i.incident_id)}><b>{incidentName(i)}</b><span>{i.event_count} signals · {i.status.replaceAll('_',' ')} · {i.created_at ? new Date(i.created_at).toLocaleString() : ''}</span></button>)}
-          {incidentCursor && <button onClick={()=>loadIncidents(incidentCursor).catch(e=>setError(e.message))}>Load more</button>}
-        </section><section className="card"><h2>Evidence timeline</h2>{!selected && <p>Select an incident to see its evidence.</p>}{selected && !timeline.length && <p>Waiting for processed evidence…</p>}
-          <ol className="timeline">{timeline.filter(item=>item.event || item.kind || item.person).map(item=><HistoryRecord key={item.sk} item={item}/>)}</ol>
-          {timelineCursor && <button onClick={()=>loadTimeline(selected,timelineCursor).catch(e=>setError(e.message))}>Earlier / additional events</button>}
-        </section></div>
-        {selected && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
-        <details className="card"><summary>Assessment details and decision review</summary><Coordination key={selected} api={api} timeline={timeline} incident={selected} incidentState={incidentState} simulation={false} onRefresh={()=>loadTimeline(selected)} /></details>
-      </>}
-      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={setSelected} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)}/>}
+      {authenticated && config && page === 'incident-history' && <IncidentHistory api={api} incidents={incidents} catalog={catalog} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} loading={loadingIncidents}
+        onRefreshList={() => loadIncidents().catch(e => setError(e.message))} onMoreIncidents={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}
+        onRefresh={() => loadTimeline(selected).catch(e => setError(e.message))} onMoreEvidence={timelineCursor ? () => loadTimeline(selected, timelineCursor).catch(e => setError(e.message)) : null}
+        onDeleted={incidentDeleted} navigate={navigate}/>}
+      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)}/>}
     </AppShell>;
 }
 createRoot(document.getElementById('root')).render(<App/>);

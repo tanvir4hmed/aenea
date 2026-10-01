@@ -236,3 +236,14 @@ code { font-size: .85em; }
 .timeline pre { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 textarea { font: inherit; padding: .75rem; border: 1px solid #aebfc6; border-radius: .35rem; margin: .5rem 0; }
 button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid #2768ba; outline-offset: 3px; }
+.view-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+.view-tabs button[aria-current="page"] { background: #155f64; color: #fff; border-color: #155f64; }
+.history-filters { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+.history-filters input, .history-filters select { width: 100%; }
+.history-list { display: grid; gap: 10px; }
+.history-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 16px; align-items: center; text-align: left; width: 100%; padding: 16px; }
+.history-row span, .history-row time { min-width: 0; overflow-wrap: anywhere; }
+.history-row small { display: block; margin-top: 6px; }
+.delete-confirmation { border-color: #b82929; }
+.timeline pre { overflow: auto; max-height: 300px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .history-filters, .history-row { grid-template-columns: 1fr; } .history-row > span:last-child { display: none; } }

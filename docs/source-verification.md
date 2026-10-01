@@ -1,5 +1,13 @@
 # Source verification — 30 September 2026
 
+## UI follow-up — 1 October 2026
+
+Simulation Studio now separates Create and Saved simulations. Incident history opens as a searchable location/status list, ten loaded incidents per page, with separate overview/actions, evidence and decision-review sections after selection. Deletion is available on the incident detail header and uses the existing guarded cleanup API. Evidence renders ten loaded records per page; raw records remain collapsed. Filters and sorting cover loaded records; additional server pages are explicit, not silently represented as a complete global search.
+
+Removed simulation-run polling's implicit incident-selection callback, which could replace a manually chosen Alexa incident when the run panel remounted. Manual selection now updates the active request reference immediately, rejects stale timeline responses, and prevents automatic reselection after clearing the picker.
+
+Frontend lint, all 34 JavaScript tests and production build pass. Local browser fixture checks verified 23-incident pagination, search, opening detail sections, evidence pagination, and the disabled deletion confirmation/cancel flow. No live incident was deleted. Hosted selection behavior and full responsive acceptance were not reverified. See [scheduler cost estimate](scheduler-cost.md); scheduler cadence and infrastructure are unchanged.
+
 Phases 4–6 source implementation is complete. This report is **offline evidence**, not deployment, Alexa certification or physical-device verification.
 
 ## Checks

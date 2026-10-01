@@ -7,7 +7,7 @@ export default function HistoryRecord({ item }) {
   return <li><span className="badge">SIMULATED</span><h3>{category.replaceAll('_', ' ')}</h3>
     <p>{message || (person ? `${person.person}: ${person.status} — historical, unverified report` : 'Coordination decision recorded')}</p>
     <time>{new Date(item.event?.occurred_at || item.recorded_at || item.reported_at).toLocaleString()}</time>
-    {item.event && <small>{item.context?.device?.name || item.event.source.source_id}</small>}
+    {item.event && <small>{[item.event_context?.location?.name, item.event_context?.device?.room, item.event_context?.device?.name || item.event.source.source_id].filter(Boolean).join(' · ')}</small>}
     <details><summary>Saved evidence details</summary><pre>{JSON.stringify(item, null, 2)}</pre></details>
   </li>;
 }

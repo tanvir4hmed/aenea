@@ -58,7 +58,7 @@ export default function AppShell({ page, navigate, authenticated, config, onAuth
       <header className="page-header"><div><span className="eyebrow">AENEA WORKSPACE</span><h1 ref={heading} tabIndex={-1}>{current?.label || 'Page not found'}</h1><p className="page-description">{current?.description || 'This address does not match a workspace page.'}</p></div>
         <div className="header-actions"><span className="mode-label">Simulated</span><button disabled={!config} onClick={onAuth}>{authenticated ? 'Sign out' : 'Sign in'}</button></div>
       </header>
-      {authenticated && !['guide', 'command-center', 'simulation-lab'].includes(page) && current && <div className="context-bar"><span>Incident context</span><strong>{selected ? selectedName : 'No incident selected'}</strong><a href="/incident-history" onClick={event => follow(event, 'incident-history')}>View history</a></div>}
+      {authenticated && !['guide', 'command-center', 'simulation-lab', 'incident-history', 'settings'].includes(page) && current && <div className="context-bar"><span>Incident context</span><strong>{selected ? selectedName : 'No incident selected'}</strong><a href="/incident-history" onClick={event => follow(event, 'incident-history')}>View history</a></div>}
       {current ? children : <section className="card empty-state"><h2>Let’s get you back to the workspace</h2><button className="primary" onClick={() => navigate('command-center')}>Open command center</button></section>}
       <footer className="workspace-footer">Simulated incident coordination. Follow official alarms and emergency guidance.</footer>
     </main>
