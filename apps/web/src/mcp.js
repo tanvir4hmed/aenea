@@ -1,4 +1,4 @@
-import { accessToken, expireSession } from './auth.js';
+import { accessToken, refreshAccessToken } from './auth.js';
 import { rpcResult } from './mcpProtocol.js';
 
 const protocol = '2025-11-25';
@@ -8,9 +8,8 @@ export function createMcpClient(config) {
   let initializing;
   const pendingReports = new Map();
   async function request(method, params = {}, notification = false) {
-    const token = await accessToken(config);
     const id = notification ? undefined : crypto.randomUUID();
-    const result = await fetch(config.apiUrl + '/mcp', {
+    const send = token => fetch(config.apiUrl + '/mcp', {
       method: 'POST', headers: {
         Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json', Accept: 'application/json, text/event-stream',
@@ -19,8 +18,9 @@ export function createMcpClient(config) {
       },
       body: JSON.stringify({ jsonrpc: '2.0', ...(notification ? {} : { id }), method, params }),
     });
+    let result = await send(await accessToken(config));
+    if (result.status === 401) result = await send(await refreshAccessToken(config));
     if (!result.ok) {
-      if (result.status === 401) expireSession();
       const expired = result.status === 404 && Boolean(sessionId);
       if (expired) { initialized = false; sessionId = undefined; }
       const error = new Error('MCP request failed (' + result.status + '). A write may have completed; check its status before retrying.');

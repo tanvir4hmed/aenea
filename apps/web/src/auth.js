@@ -50,6 +50,21 @@ async function refresh(config, value) {
   return next;
 }
 
+async function refreshCurrent(config) {
+  if (savedSession() && savedSession().resource !== resourceFor(config)) {
+    expireSession();
+    throw new Error('Sign in once again to enable resource-protected access. Your saved incidents are unchanged.');
+  }
+  const value = savedSession();
+  if (!value?.refreshToken) { expireSession(); throw new Error('Your session has ended. Please sign in again.'); }
+  if (!refreshPromise) refreshPromise = refresh(config, value).finally(() => { refreshPromise = null; });
+  try { return await refreshPromise; }
+  catch (error) {
+    if (error.sessionEnded) expireSession();
+    throw error;
+  }
+}
+
 export async function accessToken(config) {
   if (savedSession() && savedSession().resource !== resourceFor(config)) {
     expireSession();
@@ -57,14 +72,11 @@ export async function accessToken(config) {
   }
   const active = session();
   if (active) return active.accessToken;
-  const value = savedSession();
-  if (!value?.refreshToken) { expireSession(); throw new Error('Your session has ended. Please sign in again.'); }
-  if (!refreshPromise) refreshPromise = refresh(config, value).finally(() => { refreshPromise = null; });
-  try { return (await refreshPromise).accessToken; }
-  catch (error) {
-    if (error.sessionEnded) expireSession();
-    throw error;
-  }
+  return (await refreshCurrent(config)).accessToken;
+}
+
+export async function refreshAccessToken(config) {
+  return (await refreshCurrent(config)).accessToken;
 }
 
 const b64 = buffer => btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');

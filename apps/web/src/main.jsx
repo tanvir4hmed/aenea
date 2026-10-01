@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { accessToken, callback, expireSession, hasSession, login, logout } from './auth';
+import { accessToken, callback, hasSession, login, logout, refreshAccessToken } from './auth';
 import './style.css';
 import IncidentHistory from './IncidentHistory';
 import AlexaSimulator from './AlexaSimulator';
@@ -47,9 +47,10 @@ function App() {
   }
   async function api(path, options = {}) {
     const token = await accessToken(config);
-    const result = await fetch(config.apiUrl + path, { ...options, headers: {
-      Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } });
-    if (result.status === 401) expireSession();
+    const send = bearer => fetch(config.apiUrl + path, { ...options, headers: {
+      Authorization: 'Bearer ' + bearer, 'Content-Type': 'application/json' } });
+    let result = await send(token);
+    if (result.status === 401) result = await send(await refreshAccessToken(config));
     let body;
     try { body = await result.json(); } catch { body = {}; }
     if (!result.ok) {
