@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function SimulationRuns({ api, household, started, onSelect }) {
+export default function SimulationRuns({ api, household, started, onSelect, active = true }) {
   const [runs, setRuns] = useState([]), [cursor, setCursor] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const lock = useRef(false), pageCursor = useRef(null);
   const known = useRef([]);
@@ -29,7 +29,7 @@ export default function SimulationRuns({ api, household, started, onSelect }) {
     } catch (failure) { setError(failure.message); }
     finally { lock.current = false; }
   }
-  useEffect(() => { let active = true; const tick = () => { if (active) refresh(); }; tick(); const timer = setInterval(tick, 10000); return () => { active = false; clearInterval(timer); }; }, [household]);
+  useEffect(() => { if (!active) return; let mounted = true; const tick = () => { if (mounted && !document.hidden) refresh(); }; tick(); const timer = setInterval(tick, 10000); return () => { mounted = false; clearInterval(timer); }; }, [household, active]);
   async function control(run, action) {
     setBusy(true);
     try { const result = await api('/household/runs/' + run.id, { method: 'POST', body: JSON.stringify({ action }) }); setRuns(old => old.map(item => item.id === run.id ? result : item)); }

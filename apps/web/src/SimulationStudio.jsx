@@ -7,7 +7,7 @@ import SimulationRuns from './SimulationRuns';
 const defaultProfile = { mode: 'on_change', interval_seconds: 60, duration_seconds: 300, alarm: 'active', connectivity: 'online', clear_at_end: false };
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
 
-export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing }) {
+export default function SimulationStudio({ api, household, catalog, ready, selected, incidents, onAccepted, onBusy, navigate, disabled, deviceSelection, embedded = false, map, briefing, active = true }) {
   const [view, setView] = useState('create');
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState(blank), [deviceId, setDeviceId] = useState(''), [kind, setKind] = useState(''), [observation, setObservation] = useState('');
@@ -134,7 +134,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && !request && (!rows.length || !!selectionError))} onClick={trigger}>{busy ? 'Scheduling…' : request ? 'Retry run request' : pending ? 'Retry previous delivery' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
     {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
     {feedback}
-    <SimulationRuns api={api} household={household} started={started} onSelect={onAccepted}/>
+    <SimulationRuns api={api} household={household} started={started} onSelect={onAccepted} active={active}/>
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>

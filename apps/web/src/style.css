@@ -239,7 +239,20 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
 .view-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
 .view-tabs button[aria-current="page"] { background: #155f64; color: #fff; border-color: #155f64; }
 .view-tabs button[aria-pressed="true"] { background: #155f64; color: #fff; border-color: #155f64; }
-.settings-panels form { margin-top: 24px; }
+.settings-panels form { margin: 0; }
+.settings-form fieldset { margin: 0; }
+.settings-form label, .permission-mode { display: grid; gap: 8px; margin: 0; }
+.settings-form input:not([type=checkbox]), .settings-form select { width: 100%; margin: 0; }
+.settings-form .form-grid { max-width: 900px; }
+.settings-form > label { margin: 12px 0; }
+.saved-locations { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 12px; }
+.settings-overview p { margin: 8px 0 0; }
+.permission-mode { max-width: 440px; }
+.permission-mode select { margin: 0; }
+.incident-note-form { display: grid; gap: 10px; }
+.incident-note-form label { display: grid; gap: 8px; margin: 0; }
+.incident-note-form textarea { margin: 0; min-height: 88px; max-height: 220px; resize: vertical; }
+.incident-note-form button { justify-self: start; }
 .settings-panels .catalog-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; }
 .settings-panels .catalog-item h3, .settings-panels .catalog-item p, .settings-panels .catalog-item small { grid-column: 1; overflow-wrap: anywhere; }
 .settings-panels .catalog-item .actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; }

@@ -15,8 +15,10 @@ from event_contract import timeline_context
 from incident_state import snapshot, assessed_severity
 from simulation_budget import read_budget
 from incident_notes import latest_notes
+from evidence_cache import EvidenceCache
 
 table = boto3.resource("dynamodb").Table(table_name())
+evidence_cache = EvidenceCache()
 
 
 def key_condition(partition, prefix):
@@ -99,7 +101,10 @@ def handler(request, context):
                     break
                 action_query["ExclusiveStartKey"] = action_page["LastEvaluatedKey"]
             metadata["actions"] = actions
-            state = snapshot(table, owner, incident_id)
+            state = evidence_cache.get(owner, incident_id, summary.get("event_count"))
+            cache_miss = state is None
+            if cache_miss:
+                state = snapshot(table, owner, incident_id)
             after = table.get_item(
                 Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True
             ).get("Item", {})
@@ -110,6 +115,8 @@ def handler(request, context):
                 and after.get("latest_assessment") == summary.get("latest_assessment")
                 and after.get("decision_review") == summary.get("decision_review")
             ):
+                if cache_miss:
+                    evidence_cache.put(owner, incident_id, summary.get("event_count"), state)
                 severity, devices = assessed_severity(
                     state,
                     latest.get("assessment")
@@ -121,6 +128,9 @@ def handler(request, context):
                     active_devices=[] if summary.get("resolved_at") else devices,
                     canonical_severity="informational" if summary.get("resolved_at") else severity,
                 )
+            else:
+                metadata["assessment_current"] = False
+                metadata["refreshing"] = True
         return response(
             200,
             {

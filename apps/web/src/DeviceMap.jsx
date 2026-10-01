@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { deviceTypes, humanize } from './devices';
 import { incidentBriefing, reportingDevices } from './commandCenter';
 import { alertStates } from './simulations';
@@ -9,7 +9,8 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
   const [locationId, setLocationId] = useState('');
   const [room, setRoom] = useState('');
   const [expanded, setExpanded] = useState({});
-  const site = catalog.locations.find(item => item.id === locationId) || catalog.locations[0];
+  useEffect(() => { setLocationId(''); setRoom(''); }, [selected]);
+  const site = catalog.locations.find(item => item.id === (locationId || state?.incident?.location_id)) || catalog.locations[0];
   const devices = catalog.devices.filter(item => item.location_id === site?.id);
   const rooms = [...new Set(devices.map(item => item.room || 'Unassigned area'))];
   const reporting = reportingDevices(timeline, state);
@@ -26,7 +27,7 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
         const red = members.some(item => states.get(item.id)?.level === 'red');
         return <section key={name} className={'map-room ' + (room === name ? 'focused ' : '') + (red ? 'urgent-room' : active.length ? 'reporting' : '')} aria-label={name}>
           <button className="room-title" aria-pressed={room === name} onClick={() => { setRoom(name); setExpanded(old => ({ ...old, [name]: true })); }}><strong>{name}</strong><small>{members.length} devices{active.length ? ` · ${active.length} with evidence` : ''}</small></button>
-          <div className="map-devices">{visible.map(device => <button key={device.id} className={'map-device ' + (states.get(device.id)?.level === 'red' ? 'red-alert' : reporting.has(device.id) ? 'has-evidence' : '')} onClick={() => { setRoom(name); if (deviceTypes[device.type]?.category === 'actuator') { navigate('/settings'); return; } onDevice({ id: device.id, nonce: Date.now() }); }} aria-label={`${device.name}, ${states.get(device.id)?.reason || (device.enabled ? 'no evidence loaded' : 'disabled')}`} title={states.get(device.id)?.reason}>
+          <div className="map-devices">{visible.map(device => <button key={device.id} className={'map-device ' + (states.get(device.id)?.level === 'red' ? 'red-alert' : reporting.has(device.id) ? 'has-evidence' : '')} onClick={() => { setRoom(name); if (deviceTypes[device.type]?.category === 'actuator') { navigate('settings'); return; } onDevice({ id: device.id, nonce: Date.now() }); }} aria-label={`${device.name}, ${states.get(device.id)?.reason || (device.enabled ? 'no evidence loaded' : 'disabled')}`} title={states.get(device.id)?.reason}>
             <span className="device-symbol" aria-hidden="true">{symbols[device.type] || '◉'}</span><strong>{device.name}</strong><small>{states.get(device.id)?.level === 'red' ? 'Red alert' : !device.enabled ? 'Disabled' : reporting.has(device.id) ? 'Evidence recorded' : deviceTypes[device.type]?.label}</small>
           </button>)}</div>
           {members.length > 12 && !expanded[name] && <button onClick={() => setExpanded(old => ({ ...old, [name]: true }))}>Show all {members.length} devices</button>}

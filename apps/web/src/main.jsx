@@ -1,19 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { accessToken, callback, hasSession, login, logout, refreshAccessToken } from './auth';
+import { callback, hasSession, login, logout } from './auth';
 import './style.css';
-import IncidentHistory from './IncidentHistory';
+const IncidentHistory = lazy(() => import('./IncidentHistory'));
 import AlexaSimulator from './AlexaSimulator';
-import ActionSettings from './ActionSettings';
+const ActionSettings = lazy(() => import('./ActionSettings'));
 import IncidentPicker from './IncidentPicker';
 import AppShell from './AppShell';
-import UserGuide from './UserGuide';
-import Settings from './Settings';
-import SimulationStudio from './SimulationStudio';
-import DataControls from './DataControls';
+const UserGuide = lazy(() => import('./UserGuide'));
+const Settings = lazy(() => import('./Settings'));
+const SimulationStudio = lazy(() => import('./SimulationStudio'));
+const DataControls = lazy(() => import('./DataControls'));
 import DeviceMap, { IncidentBriefing } from './DeviceMap';
 import { incidentName } from './incidentNames';
 import IncidentSummary from './IncidentSummary';
+import { requestJson } from './api';
+import { createIncidentCache } from './incidentCache';
 
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
@@ -35,39 +37,32 @@ function App() {
   const [guestPassVisible, setGuestPassVisible] = useState(false), [copyNotice, setCopyNotice] = useState('');
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
   const additionalPages = useRef(false);
+  const incidentCache = useRef(createIncidentCache());
+  const [studioMounted, setStudioMounted] = useState(false);
+  const studioActive = ['simulation-lab', 'command-center'].includes(page);
+  useEffect(() => { if (studioActive) setStudioMounted(true); }, [studioActive]);
   const activeIncident = useRef(selected);
   activeIncident.current = selected;
   const selectionMade = useRef(!!selected);
-  function selectIncident(id) { selectionMade.current = true; if (activeIncident.current === id) return; activeIncident.current = id; setSelected(id); setIncidentState(null); setTimeline([]); }
+  function selectIncident(id) { selectionMade.current = true; if (activeIncident.current === id) return; activeIncident.current = id; setSelected(id); const cached = incidentCache.current.preview(id); setIncidentState(cached); setTimeline(cached?.items || []); }
   const [incidentState, setIncidentState] = useState(null);
   function receiveTimeline(data, append = false) {
-    setIncidentState({ ...data, receivedAt: Date.now() });
+    const fresh = { ...data, receivedAt: Date.now(), refreshing: Boolean(data.refreshing) };
+    if (data.incident?.incident_id && !append && !data.refreshing) incidentCache.current.remember(data.incident.incident_id, fresh);
+    setIncidentState(fresh);
     setTimeline(old => append ? [...new Map([...old, ...data.items].map(item => [item.sk, item])).values()] : data.items);
     if (data.incident?.incident_id) setIncidents(old => old.map(item => item.incident_id === data.incident.incident_id ? data.incident : item));
   }
-  async function api(path, options = {}) {
-    const token = await accessToken(config);
-    const send = bearer => fetch(config.apiUrl + path, { ...options, headers: {
-      Authorization: 'Bearer ' + bearer, 'Content-Type': 'application/json' } });
-    let result = await send(token);
-    if (result.status === 401) result = await send(await refreshAccessToken(config));
-    let body;
-    try { body = await result.json(); } catch { body = {}; }
-    if (!result.ok) {
-      const operation = options.method && options.method !== 'GET' ? 'Your change' : 'This request';
-      const detail = body.error || 'The service did not return a usable response.';
-      const recovery = result.status === 401 ? ' Your sign-in has been retained. Reload and retry; sign in again only if the problem continues.' :
-        result.status >= 500 ? ' Nothing was confirmed; wait briefly, then retry.' :
-        options.method && options.method !== 'GET' ? ' Check the current incident before retrying so the action is not duplicated.' : ' Refresh the current view and try again.';
-      const failure = new Error(`${operation} could not complete (${result.status}): ${detail}.${recovery}`); failure.status = result.status; throw failure;
-    }
-    return body;
-  }
+  const api = (path, options) => requestJson(config, path, options);
   async function loadIncidents(cursor = null) {
     setLoadingIncidents(true);
     try {
       const data = await api('/incidents' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
       setIdentity(data.household_id);
+      if (!selectionMade.current && !activeIncident.current) {
+        const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        if (open.length) selectIncident(open[0].incident_id);
+      }
       setIncidents(old => cursor ? [...old, ...data.items] : data.items);
       setIncidentCursor(data.next_cursor);
     } finally { setLoadingIncidents(false); }
@@ -88,9 +83,10 @@ function App() {
     setStudioEpoch(value => value + 1);
   }
   function incidentDeleted(id) {
+    incidentCache.current.remove(id);
     sessionStorage.removeItem(`aenea-note-${identity}-${id}`);
     setIncidents(old => old.filter(item => item.incident_id !== id));
-    if (selected === id) { setSelected(''); setTimeline([]); setIncidentState(null); }
+    if (selected === id) { activeIncident.current = ''; setSelected(''); setTimeline([]); setIncidentState(null); }
     try {
       const run = JSON.parse(sessionStorage.getItem('aenea-trigger-' + identity) || 'null');
       if (run?.incident === id) sessionStorage.removeItem('aenea-trigger-' + identity);
@@ -115,7 +111,7 @@ function App() {
       setPage(currentPage());
     })().catch(e => setError(e.message));
     const onPop = () => setPage(currentPage());
-    const onExpired = () => { setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
+    const onExpired = () => { incidentCache.current.clear(); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
     addEventListener('popstate', onPop); addEventListener('aenea-auth-expired', onExpired);
     return () => { removeEventListener('popstate', onPop); removeEventListener('aenea-auth-expired', onExpired); };
   }, []);
@@ -126,9 +122,10 @@ function App() {
   }, [config, authenticated]);
   useEffect(() => {
     if (!config || !authenticated) return;
+    if (!['command-center', 'alexa-sim', 'incident-history'].includes(page)) return;
     let active = true, running = false, cursor = null;
     const tick = async () => {
-      if (running) return; running = true;
+      if (running || document.hidden) return; running = true;
       try { const data = await api('/incidents' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
         if (!active) return;
         cursor = data.next_cursor;
@@ -138,17 +135,18 @@ function App() {
     };
     const timer = setInterval(tick, 10000);
     return () => { active = false; clearInterval(timer); };
-  }, [config, authenticated]);
+  }, [config, authenticated, page]);
   useEffect(() => {
     if (!selected) sessionStorage.removeItem(incidentStorageKey);
     else sessionStorage.setItem(incidentStorageKey, selected);
-    setTimeline([]); setTimelineCursor(null); setIncidentState(null);
-    if (!config || !selected || !authenticated) return;
+    const cached = incidentCache.current.preview(selected);
+    setTimeline(cached?.items || []); setTimelineCursor(cached?.next_cursor || null); setIncidentState(cached);
+    if (!config || !selected || !authenticated || !['command-center', 'alexa-sim', 'incident-history'].includes(page)) return;
     additionalPages.current = false;
     let active = true;
     let refreshing = false;
     const refresh = async () => {
-      if (refreshing) return;
+      if (refreshing || document.hidden) return;
       refreshing = true;
       try {
         const data = await api('/incidents/' + selected + '/timeline');
@@ -158,8 +156,9 @@ function App() {
     };
     refresh();
     const timer = setInterval(refresh, 10000);
-    return () => { active = false; clearInterval(timer); };
-  }, [config, selected, authenticated]);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [config, selected, authenticated, page]);
   function navigate(next) { const target = ['check-in', 'handoff'].includes(next) ? 'incident-history' : next; history.pushState(null, '', '/' + target); setPage(target); setError(''); setNotice(''); }
   async function copyGuest(value, label) {
     try { await navigator.clipboard.writeText(value); setCopyNotice(label + ' copied.'); }
@@ -167,8 +166,10 @@ function App() {
   }
   return <AppShell page={page} navigate={navigate} authenticated={authenticated} config={config} selected={selected} selectedName={incidentName(incidents.find(item => item.incident_id === selected) || { incident_id: selected })}
     onAuth={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>
+      <Suspense fallback={<div className="card" role="status">Loading workspace…</div>}>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
+      {authenticated && selected && ['command-center', 'alexa-sim', 'incident-history'].includes(page) && (!incidentState || incidentState.refreshing) && <p role="status" className="sync-status">{incidentState ? 'Showing last received data. Updating this incident…' : 'Loading this incident’s latest signals…'}</p>}
       {page === 'guide' && <UserGuide navigate={navigate}/>}
       {!authenticated && page !== 'guide' && <section className="card guest-access"><h2>Welcome to Aenea</h2>
         <p>Sign in with your authorized account, or use the shared guest account to explore this public prototype.</p>
@@ -190,8 +191,8 @@ function App() {
         <IncidentPicker incidents={incidents} selected={selected} onSelect={selectIncident} busy={loadingIncidents}
           onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
       </>}
-      {authenticated && config && identity && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
-        <SimulationStudio key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
+      {authenticated && config && identity && studioMounted && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
+        <SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
           briefing={<IncidentBriefing selected={selected} state={incidentState} timeline={timeline} navigate={navigate}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
@@ -205,6 +206,7 @@ function App() {
         onRefresh={() => loadTimeline(selected).catch(e => setError(e.message))} onMoreEvidence={timelineCursor ? () => loadTimeline(selected, timelineCursor).catch(e => setError(e.message)) : null}
         onDeleted={incidentDeleted} navigate={navigate}/>}
       {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)}/>}
+      </Suspense>
     </AppShell>;
 }
 createRoot(document.getElementById('root')).render(<App/>);
