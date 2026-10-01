@@ -12,8 +12,14 @@ export function describe(tool, data) {
     if (data.incident.resolved_at) return `${data.incident.name || 'Incident'} is resolved by human confirmation. Previous actions cannot execute. This does not verify safety.`;
     const prefix = `${data.incident.name || 'Incident ' + data.incident.incident_id.slice(0, 8)}, evidence revision ${data.incident.event_count}. `;
     const assessment = data.assessment?.assessment;
-    if (!assessment) return prefix + (data.assessment?.message || `Status: ${readable(data.incident.status)}. No validated assessment is available yet.`);
-    return prefix + (data.assessment_current ? '' : 'Previous assessment; newer evidence is awaiting assessment or revision tracking is unavailable. ')
+    const activeDevices = data.active_devices || [];
+    const deviceSummary = activeDevices.length
+      ? ` Active signals: ${activeDevices.map(device => `${device.name || device.device_id}${device.room ? ` in ${device.room}` : ''} (${readable(device.kind)})`).join(', ')}${data.active_device_count > activeDevices.length ? `, and ${data.active_device_count - activeDevices.length} more` : ''}.`
+      : ' No device is currently reporting an active signal.';
+    if (!assessment) return prefix + `Current severity: ${readable(data.severity || 'unknown')}.` + deviceSummary
+      + (data.assessment?.message || `Status: ${readable(data.incident.status)}. No validated assessment is available yet.`);
+    return prefix + `Current severity: ${readable(data.severity || assessment.severity)}.` + deviceSummary
+      + (data.assessment_current ? '' : ' Previous assessment; newer evidence is awaiting assessment or revision tracking is unavailable. ')
       + (data.incident.decision_review === 'rejected' ? 'A reviewer rejected this assessment; its actions cannot execute. ' : '')
       + assessment.summary + (assessment.uncertainties.length ? ' Still uncertain: ' + assessment.uncertainties.join(' ') : '');
   }

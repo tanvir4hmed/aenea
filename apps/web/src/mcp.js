@@ -23,7 +23,14 @@ export function createMcpClient(config) {
     if (!result.ok) {
       const expired = result.status === 404 && Boolean(sessionId);
       if (expired) { initialized = false; sessionId = undefined; }
-      const error = new Error('MCP request failed (' + result.status + '). A write may have completed; check its status before retrying.');
+      let detail = '';
+      if (result.status === 401) {
+        try { detail = (await result.clone().json()).error || ''; } catch { /* Use the safe fallback below. */ }
+      }
+      const message = result.status === 401
+        ? `Alexa+ could not authenticate with the incident service${detail ? `: ${detail}` : ''}. Your session is still saved; reload and retry, and sign in again only if the problem continues.`
+        : 'MCP request failed (' + result.status + '). If you were confirming an action, check its saved outcome before retrying.';
+      const error = new Error(message);
       error.sessionExpired = expired;
       throw error;
     }

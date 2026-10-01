@@ -11,11 +11,11 @@ This page is a browser simulation, not a native Alexa integration. Cloud assessm
 | Replay briefing | Reads the displayed briefing using browser speech | Click to hear it once |
 | Enable / Mute spoken updates | Speaks changed current briefings; ordinary updates are throttled | Enable once on the page; mute when unwanted |
 | Refresh now | Reloads the selected incident | Optional manual refresh |
-| Command + Ask | Supported status, timeline or acknowledgement request; unsupported requests are explained | Type and send; this is not unrestricted action control |
+| Ask in your own words + Ask | The bounded interpreter maps natural questions about incident status, severity, active devices, assessment freshness or changes to a status read; evidence/order questions to the timeline; and an explicit “I acknowledge” to acknowledgement | Type a normal question and send; these do not approve actions |
 | Use / Stop microphone | English browser transcription fills the command field | Review the text, then Ask |
-| What is happening? | Latest assessment, currency and uncertainties | Optional status shortcut |
-| Show the timeline | Reports loaded record count; full evidence is in History | Optional history shortcut |
-| Acknowledge incident | Records acknowledgement | Does not resolve the incident or establish safety |
+| Read incident status | Latest assessment, currency and uncertainties | Optional one-click status shortcut |
+| View evidence and action timeline | Reports loaded record count; full evidence is in History | Optional one-click history shortcut |
+| Acknowledge I have seen this | Records acknowledgement | Does not resolve the incident or establish safety |
 | Conversation | Last 20 replies from this page session | Clears when switching incident |
 | Coordinated actions | Agent proposals, policy status and recorded outcomes for configured outputs | Empty when there are no action records; configure outputs in Settings |
 | Confirm action | Only pending, current, unexpired proposals are eligible | Explicitly approve only the displayed action |

@@ -14,6 +14,7 @@ from cursors import decode_cursor
 from revisions import current_assessment
 from lifecycle import require_active
 from event_contract import timeline_context
+from incident_state import snapshot
 
 WRITE_TOOLS = {
     "report_person_status",
@@ -98,11 +99,15 @@ def dispatch(owner, scopes, name, args):
             if summary.get("latest_assessment")
             else None
         )
+        state = snapshot(table, owner, incident)
         return {
             "incident": summary,
             "assessment": assessment,
             "simulated": True,
             "assessment_current": current_assessment(summary, assessment),
+            "severity": state["severity"],
+            "active_devices": state["active_devices"][:12],
+            "active_device_count": len(state["active_devices"]),
         }
     if name == "get_incident_timeline":
         return page(f"H#{owner}#I#{incident}", cursor=args.get("cursor"))

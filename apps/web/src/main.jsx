@@ -56,7 +56,8 @@ function App() {
     if (!result.ok) {
       const operation = options.method && options.method !== 'GET' ? 'Your change' : 'This request';
       const detail = body.error || 'The service did not return a usable response.';
-      const recovery = result.status >= 500 ? ' Nothing was confirmed; wait briefly, then retry.' :
+      const recovery = result.status === 401 ? ' Your sign-in has been retained. Reload and retry; sign in again only if the problem continues.' :
+        result.status >= 500 ? ' Nothing was confirmed; wait briefly, then retry.' :
         options.method && options.method !== 'GET' ? ' Check the current incident before retrying so the action is not duplicated.' : ' Refresh the current view and try again.';
       const failure = new Error(`${operation} could not complete (${result.status}): ${detail}.${recovery}`); failure.status = result.status; throw failure;
     }

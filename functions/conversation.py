@@ -50,7 +50,7 @@ def message(owner, incident, body, scopes):
             200,
             {
                 "tool": None,
-                "message": "Ask for status or timeline. Device confirmations use explicit buttons; other context can be saved as a note.",
+                "message": "Try asking what happened, which devices reported, whether the assessment is current, or ask to see the evidence timeline. Device actions must be reviewed and confirmed on their action card.",
             },
         )
     return response(

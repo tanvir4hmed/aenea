@@ -14,8 +14,8 @@ from common import response
 PROTOCOLS = {"2025-03-26", "2025-06-18", "2025-11-25"}
 
 
-def authentication_required():
-    result = response(401, {"error": "Sign in again with an Aenea resource-bound access token"})
+def authentication_required(detail="Sign in again with an Aenea resource-bound access token"):
+    result = response(401, {"error": detail})
     metadata = (
         os.environ["MCP_RESOURCE_URL"].removesuffix("/mcp")
         + "/.well-known/oauth-protected-resource/mcp"
@@ -104,7 +104,16 @@ def handler(event, context):
             return {"statusCode": result.status, "headers": outgoing, "body": body.decode()}
     except HTTPError as exc:
         if exc.code == 401:
-            return authentication_required()
+            detail = "MCP runtime rejected the access token"
+            try:
+                upstream_error = json.loads(exc.read(4096).decode())
+                if isinstance(upstream_error, dict):
+                    detail = str(
+                        upstream_error.get("message") or upstream_error.get("error") or detail
+                    )[:300]
+            except (ValueError, UnicodeError):
+                pass
+            return authentication_required(detail)
         return {
             "statusCode": exc.code,
             "headers": {"content-type": "application/json", "cache-control": "no-store"},
