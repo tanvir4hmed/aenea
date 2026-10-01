@@ -216,6 +216,7 @@
         "prevent_user_existence_errors": "ENABLED",
         "enable_token_revocation": true,
         "access_token_validity": 15,
+        "refresh_token_validity": 1,
         "id_token_validity": 15,
         "token_validity_units": {
           "access_token": "minutes",

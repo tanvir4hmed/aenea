@@ -238,6 +238,14 @@ textarea { font: inherit; padding: .75rem; border: 1px solid #aebfc6; border-rad
 button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid #2768ba; outline-offset: 3px; }
 .view-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
 .view-tabs button[aria-current="page"] { background: #155f64; color: #fff; border-color: #155f64; }
+.view-tabs button[aria-pressed="true"] { background: #155f64; color: #fff; border-color: #155f64; }
+.settings-panels form { margin-top: 24px; }
+.settings-panels .catalog-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; }
+.settings-panels .catalog-item h3, .settings-panels .catalog-item p, .settings-panels .catalog-item small { grid-column: 1; overflow-wrap: anywhere; }
+.settings-panels .catalog-item .actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+@media (max-width: 700px) {
+  .settings-panels .catalog-item { display: block; }
+}
 .history-filters { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
 .history-filters input, .history-filters select { width: 100%; }
 .history-list { display: grid; gap: 10px; }

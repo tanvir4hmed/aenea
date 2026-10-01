@@ -1,12 +1,16 @@
 const key = 'aenea-session';
 const oauthKey = 'aenea-oauth';
 const incidentKey = 'aenea-selected-incident';
+const sessionDuration = 24 * 60 * 60 * 1000;
 let refreshPromise;
 let sessionGeneration = 0;
 const resourceFor = config => config.apiUrl.replace(/\/$/, '') + '/mcp';
 
 function savedSession() {
-  try { return JSON.parse(sessionStorage.getItem(key)); }
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value?.sessionExpires > Date.now() ? value : null;
+  }
   catch { return null; }
 }
 
@@ -18,6 +22,7 @@ export function hasSession() { return Boolean(savedSession()?.refreshToken || se
 
 export function expireSession() {
   sessionGeneration += 1;
+  localStorage.removeItem(key);
   sessionStorage.removeItem(key);
   sessionStorage.removeItem(incidentKey);
   dispatchEvent(new CustomEvent('aenea-auth-expired'));
@@ -39,8 +44,9 @@ async function refresh(config, value) {
   const tokens = await result.json();
   if (!tokens.access_token || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new Error('Invalid sign-in response. Please retry.');
   const next = { accessToken: tokens.access_token, refreshToken: tokens.refresh_token || value.refreshToken,
-    expires: Date.now() + tokens.expires_in * 1000, resource: value.resource };
-  sessionStorage.setItem(key, JSON.stringify(next));
+    expires: Date.now() + tokens.expires_in * 1000, resource: value.resource, sessionExpires: value.sessionExpires };
+  if (next.sessionExpires <= Date.now() || localStorage.getItem(key) !== JSON.stringify(value)) throw new Error('Sign-in changed while refreshing. Please retry.');
+  localStorage.setItem(key, JSON.stringify(next));
   return next;
 }
 
@@ -87,11 +93,13 @@ export async function callback(config) {
   if (!result.ok) throw new Error('Sign-in failed. Please retry.');
   const tokens = await result.json();
   if (!tokens.access_token || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new Error('Invalid sign-in response. Please sign in again.');
-  sessionStorage.setItem(key, JSON.stringify({ accessToken: tokens.access_token,
+  sessionStorage.removeItem(key);
+  localStorage.setItem(key, JSON.stringify({ accessToken: tokens.access_token, sessionExpires: Date.now() + sessionDuration,
     refreshToken: tokens.refresh_token, expires: Date.now() + tokens.expires_in * 1000, resource: saved.resource }));
 }
 export function logout(config) {
   sessionGeneration += 1;
+  localStorage.removeItem(key);
   sessionStorage.removeItem(key);
   sessionStorage.removeItem(incidentKey);
   location.assign(config.cognitoDomain + '/logout?' + new URLSearchParams({

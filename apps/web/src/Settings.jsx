@@ -4,7 +4,11 @@ import { deviceTypes, signalPriority } from './devices';
 const emptyLocation = () => ({ id: crypto.randomUUID(), name: '', address: '' });
 const emptyDevice = location => ({ id: crypto.randomUUID(), location_id: location || '', name: '', room: '', type: 'smoke_detector', connection: 'simulation', enabled: true });
 
-export default function Settings({ catalog, save, reload, busy, ready, navigate }) {
+export default function Settings({ catalog, save, reload, busy, ready, navigate, permissions, cleanup }) {
+  const [tab, setTab] = useState('locations');
+  const [devicePage, setDevicePage] = useState(1);
+  const [locationPage, setLocationPage] = useState(1);
+  const [locationQuery, setLocationQuery] = useState('');
   const [location, setLocation] = useState(emptyLocation);
   const [device, setDevice] = useState(() => emptyDevice(catalog.locations[0]?.id));
   const [message, setMessage] = useState('');
@@ -16,6 +20,12 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
     const haystack = `${item.name} ${item.room} ${item.type} ${locationName}`.toLowerCase();
     return (!locationFilter || item.location_id === locationFilter) && haystack.includes(query.trim().toLowerCase());
   }), [catalog.devices, catalog.locations, locationFilter, query]);
+  const locations = catalog.locations.filter(item => (item.name + ' ' + item.address).toLowerCase().includes(locationQuery.trim().toLowerCase()));
+  const page = Math.min(devicePage, Math.max(1, Math.ceil(visibleDevices.length / 10)));
+  const locPage = Math.min(locationPage, Math.max(1, Math.ceil(locations.length / 10)));
+  function pager(current, total, update) {
+    return <div className="actions" aria-label="Pagination"><button disabled={current <= 1} onClick={() => update(current - 1)}>Previous</button><span>Page {current} of {Math.max(1, Math.ceil(total / 10))} · {total} items</span><button disabled={current * 10 >= total} onClick={() => update(current + 1)}>Next</button></div>;
+  }
   async function persist(next, done) {
     setMessage('');
     try { await save(next); done?.(); setMessage('Settings saved.'); }
@@ -28,10 +38,13 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
       {message && <p role="status" className="notice">{message}</p>}
       {!ready && <p>Settings are not loaded yet. Reload before making changes.</p>}
     </section>
-    <div className="columns settings-columns">
-      <section className="card"><h2>Locations</h2>
+    <div className="view-tabs" aria-label="Settings sections">{[['locations', 'Locations'], ['devices', 'Devices'], ['permissions', 'Action permissions'], ['cleanup', 'Data & cleanup']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
+    <div className="settings-panels">
+      <section className="card" hidden={tab !== 'locations'}><h2>Locations</h2>
+        <label>Find a location<input value={locationQuery} onChange={event => { setLocationQuery(event.target.value); setLocationPage(1); }}/></label>
         {catalog.locations.length === 0 && <p>Add your first location to start adding devices.</p>}
-        {catalog.locations.map(item => <article className="catalog-item" key={item.id}><h3>{item.name}</h3><p>{item.address || 'No address added'}</p><div className="actions"><button disabled={busy} onClick={() => setLocation({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'location', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        {locations.slice((locPage - 1) * 10, locPage * 10).map(item => <article className="catalog-item" key={item.id}><h3>{item.name}</h3><p>{item.address || 'No address added'}</p><div className="actions"><button disabled={busy} onClick={() => setLocation({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'location', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        {pager(locPage, locations.length, setLocationPage)}
         <form onSubmit={event => { event.preventDefault(); persist({ ...catalog, locations: [...catalog.locations.filter(x => x.id !== location.id), location] }, () => setLocation(emptyLocation())); }}>
           <fieldset disabled={busy || !ready}><legend>{catalog.locations.some(x => x.id === location.id) ? 'Edit location' : 'Add location'}</legend>
             <label>Name<input required maxLength={80} value={location.name} onChange={field(setLocation, 'name')} placeholder="Lakeside apartment"/></label>
@@ -40,10 +53,11 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
           </fieldset>
         </form>
       </section>
-      <section className="card"><div className="row"><div><h2>Device inventory</h2><p>{visibleDevices.length} of {catalog.devices.length} devices shown</p></div></div>
-        <div className="form-grid"><label>Find a device<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, room or type"/></label><label>Location<select value={locationFilter} onChange={event => setLocationFilter(event.target.value)}><option value="">All locations</option>{catalog.locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label></div>
+      <section className="card" hidden={tab !== 'devices'}><div className="row"><div><h2>Device inventory</h2><p>{visibleDevices.length} of {catalog.devices.length} devices shown</p></div></div>
+        <div className="form-grid"><label>Find a device<input value={query} onChange={event => { setQuery(event.target.value); setDevicePage(1); }} placeholder="Name, room or type"/></label><label>Location<select value={locationFilter} onChange={event => { setLocationFilter(event.target.value); setDevicePage(1); }}><option value="">All locations</option>{catalog.locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label></div>
         {!visibleDevices.length && <p>No devices match this view. Clear the filters or add a simulated device.</p>}
-        {visibleDevices.map(item => <article className="catalog-item" key={item.id}><h3>{item.name} <span className="badge">{item.enabled ? 'Enabled' : 'Disabled'}</span></h3><p>{catalog.locations.find(x => x.id === item.location_id)?.name} · {item.room || 'Unspecified room'} · {deviceTypes[item.type]?.label}</p>{deviceTypes[item.type]?.kinds.length > 0 && <small>Default priority: {signalPriority(deviceTypes[item.type].kinds[0])}</small>}<div className="actions"><button disabled={busy} onClick={() => setDevice({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => persist({ ...catalog, devices: [...catalog.devices, { ...item, id: crypto.randomUUID(), name: (item.name.slice(0, 70) + ' (copy)') }] })}>Duplicate <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'device', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        {visibleDevices.slice((page - 1) * 10, page * 10).map(item => <article className="catalog-item" key={item.id}><h3>{item.name} <span className="badge">{item.enabled ? 'Enabled' : 'Disabled'}</span></h3><p>{catalog.locations.find(x => x.id === item.location_id)?.name} · {item.room || 'Unspecified room'} · {deviceTypes[item.type]?.label}</p>{deviceTypes[item.type]?.kinds.length > 0 && <small>Default priority: {signalPriority(deviceTypes[item.type].kinds[0])}</small>}<div className="actions"><button disabled={busy} onClick={() => setDevice({ ...item })}>Edit <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => persist({ ...catalog, devices: [...catalog.devices, { ...item, id: crypto.randomUUID(), name: (item.name.slice(0, 70) + ' (copy)') }] })}>Duplicate <span className="sr-only">{item.name}</span></button><button disabled={busy} onClick={() => setDeletion({ type: 'device', item })}>Delete <span className="sr-only">{item.name}</span></button></div></article>)}
+        {pager(page, visibleDevices.length, setDevicePage)}
         <details open={catalog.devices.some(x => x.id === device.id)} className="device-editor"><summary>{catalog.devices.some(x => x.id === device.id) ? `Editing ${device.name || 'device'}` : 'Add a simulated device'}</summary>
         <form onSubmit={event => { event.preventDefault(); persist({ ...catalog, devices: [...catalog.devices.filter(x => x.id !== device.id), device] }, () => setDevice(emptyDevice(device.location_id))); }}>
           <fieldset disabled={busy || !ready || !catalog.locations.length}><legend>{catalog.devices.some(x => x.id === device.id) ? 'Edit device' : 'Add device'}</legend>
@@ -58,6 +72,8 @@ export default function Settings({ catalog, save, reload, busy, ready, navigate 
         </form></details>
       </section>
     </div>
+    <div hidden={tab !== 'permissions'}>{permissions}</div>
+    <div hidden={tab !== 'cleanup'}>{cleanup}</div>
     {deletion && <section className="card" role="region" aria-label="Confirm deletion"><h2>Delete {deletion.item.name}?</h2><p>Removes this saved {deletion.type}. Historical incident evidence remains. A location must have no devices before deletion.</p><div className="actions"><button disabled={busy || (deletion.type === 'location' && catalog.devices.some(x => x.location_id === deletion.item.id))} onClick={() => persist({ ...catalog, [deletion.type === 'location' ? 'locations' : 'devices']: catalog[deletion.type === 'location' ? 'locations' : 'devices'].filter(x => x.id !== deletion.item.id) }, () => { setDeletion(null); setLocation(emptyLocation()); setDevice(emptyDevice()); })}>Confirm deletion</button><button disabled={busy} onClick={() => setDeletion(null)}>Cancel</button></div></section>}
     <button onClick={() => navigate('simulation-lab')}>Open Simulation Studio</button>
   </>;

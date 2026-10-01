@@ -6,7 +6,8 @@ import { createMcpClient } from '../apps/web/src/mcp.js';
 const config = { apiUrl: 'https://api.example', cognitoDomain: 'https://login.example', clientId: 'client' };
 function session() {
   const values = new Map([['aenea-session', JSON.stringify({ accessToken: 'test', expires: Date.now() + 600000,
-    resource: config.apiUrl + '/mcp' })]]);
+    resource: config.apiUrl + '/mcp', sessionExpires: Date.now() + 86400000 })]]);
+  globalThis.localStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.sessionStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
 }
 function rpc(id, result, headers = {}) {

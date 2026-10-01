@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { accessToken, login, callback, logout } from '../apps/web/src/auth.js';
+import { accessToken, login, callback, logout, hasSession } from '../apps/web/src/auth.js';
 
 const config = { apiUrl: 'https://api.example', cognitoDomain: 'https://login.example', clientId: 'client' };
 let values, redirected;
 function setup(session = {}) {
   values = new Map([['aenea-session', JSON.stringify({ accessToken: 'old', refreshToken: 'refresh', expires: 1,
-    resource: config.apiUrl + '/mcp', ...session })]]);
+    resource: config.apiUrl + '/mcp', sessionExpires: Date.now() + 86400000, ...session })]]);
+  globalThis.localStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.sessionStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.location = { origin: 'https://aenea.example', pathname: '/command-center', search: '', assign: url => { redirected = url; } };
   globalThis.history = { replaceState: () => {} };
@@ -57,5 +58,21 @@ test('logout during refresh cannot restore the old session', async () => {
   logout(config);
   finish(Response.json({ access_token: 'old-user-new-token', expires_in: 3600 }));
   await assert.rejects(pending, /Sign-in changed/);
+  assert.equal(values.has('aenea-session'), false);
+});
+test('a new tab retains the browser session and refresh does not extend its one-day deadline', async () => {
+  const deadline = Date.now() + 3600000;
+  setup({ sessionExpires: deadline });
+  globalThis.sessionStorage = { getItem: () => null, removeItem: () => {}, setItem: () => {} };
+  assert.equal(hasSession(), true);
+  globalThis.fetch = async () => Response.json({ access_token: 'new', expires_in: 900 });
+  assert.equal(await accessToken(config), 'new');
+  assert.equal(JSON.parse(values.get('aenea-session')).sessionExpires, deadline);
+});
+test('the one-day deadline requires sign-in even if an access token remains valid', async () => {
+  setup({ sessionExpires: Date.now() - 1, expires: Date.now() + 3600000 });
+  assert.equal(hasSession(), false);
+  globalThis.fetch = () => { throw Error('Expired sessions must not refresh'); };
+  await assert.rejects(accessToken(config), /session has ended/);
   assert.equal(values.has('aenea-session'), false);
 });
