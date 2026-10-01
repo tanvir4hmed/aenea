@@ -2,25 +2,26 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { callback, hasSession, login, logout } from './auth';
 import './style.css';
-const IncidentHistory = lazy(() => import('./IncidentHistory'));
+import './experience.css';
 import AlexaSimulator from './AlexaSimulator';
-const ActionSettings = lazy(() => import('./ActionSettings'));
 import IncidentPicker from './IncidentPicker';
 import AppShell from './AppShell';
-const UserGuide = lazy(() => import('./UserGuide'));
-const Settings = lazy(() => import('./Settings'));
-const SimulationStudio = lazy(() => import('./SimulationStudio'));
-const DataControls = lazy(() => import('./DataControls'));
 import DeviceMap, { IncidentBriefing } from './DeviceMap';
 import { incidentName } from './incidentNames';
 import IncidentSummary from './IncidentSummary';
 import { requestJson } from './api';
 import { createIncidentCache } from './incidentCache';
 
+const IncidentHistory = lazy(() => import('./IncidentHistory'));
+const ActionSettings = lazy(() => import('./ActionSettings'));
+const UserGuide = lazy(() => import('./UserGuide'));
+const Settings = lazy(() => import('./Settings'));
+const SimulationStudio = lazy(() => import('./SimulationStudio'));
+const DataControls = lazy(() => import('./DataControls'));
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
-const currentPage = () => { const value = location.pathname.split('/')[1] || 'command-center'; return ['check-in', 'handoff'].includes(value) ? 'incident-history' : value; };
+const currentPage = () => { const value = location.pathname.split('/')[1] || 'alexa-sim'; return ['check-in', 'handoff'].includes(value) ? 'incident-history' : value; };
 function App() {
   const [config, setConfig] = useState(null), [error, setError] = useState('');
   const [authenticated, setAuthenticated] = useState(hasSession());
@@ -205,7 +206,7 @@ function App() {
         onRefreshList={() => loadIncidents().catch(e => setError(e.message))} onMoreIncidents={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}
         onRefresh={() => loadTimeline(selected).catch(e => setError(e.message))} onMoreEvidence={timelineCursor ? () => loadTimeline(selected, timelineCursor).catch(e => setError(e.message)) : null}
         onDeleted={incidentDeleted} navigate={navigate}/>}
-      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)}/>}
+      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)} navigate={navigate} catalog={catalog}/>}
       </Suspense>
     </AppShell>;
 }

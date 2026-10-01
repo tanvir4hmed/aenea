@@ -95,7 +95,7 @@ export async function callback(config) {
   if (location.pathname !== '/auth/callback') return;
   const query = new URLSearchParams(location.search);
   const saved = JSON.parse(sessionStorage.getItem(oauthKey) || 'null');
-  history.replaceState(null, '', '/command-center');
+  history.replaceState(null, '', '/alexa-sim');
   sessionStorage.removeItem(oauthKey);
   if (!saved || saved.resource !== resourceFor(config) || query.get('state') !== saved.state || !query.get('code')) throw new Error('Sign-in could not be verified. Please sign in again.');
   const result = await fetch(config.cognitoDomain + '/oauth2/token', { method: 'POST',

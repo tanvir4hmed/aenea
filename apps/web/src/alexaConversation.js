@@ -1,7 +1,7 @@
 export const commands = [
-  { phrase: 'What is happening?', tool: 'get_incident_status', aliases: ['status', 'incident status'] },
-  { phrase: 'Show the timeline', tool: 'get_incident_timeline', aliases: ['show actions', 'what actions are available'] },
-  { phrase: 'Acknowledge incident', tool: 'acknowledge_incident', aliases: ['acknowledge'] },
+  { phrase: 'What is happening?', label: 'Current status', tool: 'get_incident_status', aliases: ['status', 'incident status'] },
+  { phrase: 'Show the timeline', label: 'Evidence timeline', tool: 'get_incident_timeline', aliases: ['show actions', 'what actions are available'] },
+  { phrase: 'Acknowledge incident', label: 'I have seen this', tool: 'acknowledge_incident', aliases: ['acknowledge'] },
 ];
 const normalize = text => text.toLowerCase().replace(/[?.!]/g, '').trim().replace(/\s+/g, ' ');
 export function commandFor(text) { return commands.find(command => [command.phrase, ...command.aliases].some(value => normalize(value) === normalize(text))); }

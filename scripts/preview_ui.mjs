@@ -14,4 +14,4 @@ createServer((request, response) => {
   if (request.url.startsWith('/fixture')) { response.writeHead(404); response.end('Local fixture has no backend'); return; }
   response.setHeader('Content-Type', 'text/html');
   response.end('<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Aenea local UI check</title><link rel="stylesheet" href="/fixture.css"></head><body><div id="root"></div><script src="/fixture.js"></script></body></html>');
-}).listen(4179, '127.0.0.1', () => console.log('Local UI fixture: http://127.0.0.1:4179'));
+}).listen(Number(process.env.PREVIEW_PORT || 4179), '127.0.0.1', () => console.log(`Local UI fixture: http://127.0.0.1:${process.env.PREVIEW_PORT || 4179}`));
