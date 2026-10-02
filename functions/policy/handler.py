@@ -11,9 +11,12 @@ from safety import decision
 from revisions import actionable
 from lifecycle import deleted
 from action_context import location_evidence
+from runtime_capabilities import device_actions_enabled
 
 
 def handler(event, context):
+    if not device_actions_enabled():
+        return {**event, "action_ids": []}
     owner, incident = event["household_id"], event["incident_id"]
     if deleted(table, owner, incident):
         return {**event, "action_ids": []}

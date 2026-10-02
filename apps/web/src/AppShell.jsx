@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export const pages = [
-  { id: 'alexa-sim', label: 'Live assistance', icon: 'voice', description: 'Understand the current situation and review the response.' },
+  { id: 'alexa-sim', label: 'Live assistance', icon: 'voice', description: 'Understand the situation and ask Alexa+ about your incident.' },
   { id: 'command-center', label: 'Command Center', icon: 'grid', description: 'Explore your device map and run saved simulations.' },
   { id: 'incident-history', label: 'Incident history', icon: 'document', description: 'Browse saved incidents, evidence and decision reviews.' },
   { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Define reusable single alerts and multi-device scenarios.' },
-  { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage locations, simulation devices and action permissions.' },
+  { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage your devices and locations.' },
   { id: 'guide', label: 'User guide', icon: 'help', description: 'A quick guide to your workspace.' },
 ];
 
@@ -22,7 +22,7 @@ export function Icon({ name }) {
   return <svg className="app-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.grid}/></svg>;
 }
 
-export default function AppShell({ page, navigate, authenticated, config, onAuth, children, liveView = 'overview', onLiveView }) {
+export default function AppShell({ page, navigate, authenticated, config, onAuth, children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const heading = useRef(null);
   const previousPage = useRef(page);
@@ -58,11 +58,6 @@ export default function AppShell({ page, navigate, authenticated, config, onAuth
       <header className="page-header"><div><span className="eyebrow">AENEA WORKSPACE</span><h1 ref={heading} tabIndex={-1}>{current?.label || 'Page not found'}</h1><p className="page-description">{current?.description || 'This address does not match a workspace page.'}</p></div>
         <div className="header-actions"><span className="mode-label">Simulated</span><button disabled={!config} onClick={onAuth}>{authenticated ? 'Sign out' : 'Sign in'}</button></div>
       </header>
-      {authenticated && page === 'alexa-sim' && <nav className="live-view-switch" aria-label="Live assistance views">{[['overview', 'Overview', 'grid'], ['ask', 'Ask Alexa+', 'voice']].map(([view, label, icon]) => <a key={view} href={'/alexa-sim' + (view === 'ask' ? '#ask' : '')} aria-current={liveView === view ? 'page' : undefined} onClick={event => {
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
-        if (onLiveView) onLiveView(view); else navigate('alexa-sim', view);
-      }}><Icon name={icon}/>{label}</a>)}</nav>}
       {current ? children : <section className="card empty-state"><h2>Let’s get you back to the workspace</h2><button className="primary" onClick={() => navigate('command-center')}>Open command center</button></section>}
       <footer className="workspace-footer">Simulated incident coordination. Follow official alarms and emergency guidance.</footer>
     </main>

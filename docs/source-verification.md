@@ -1,5 +1,13 @@
 # Source verification — 30 September 2026
 
+## Device-first Alexa+ follow-up — 2 October 2026
+
+Current scope is documented in [device-first experience](device-first-experience.md). Device list/add tabs, inline location creation, compact location management, unified Ask panel, signal-to-selected-map navigation and readable fallback names replace the previous response-control UI. Device execution and new proposals are disabled at the server boundary as well as removed from the UI. Historical records remain readable.
+
+Offline verification: 175 Python tests, 52 JavaScript tests, frontend lint/build, repository Python correctness/format checks, five-module strict typing and Terraform formatting passed. The retained legacy action tests explicitly opt in; new tests verify disabled policy/execution cannot read or mutate device state. UI fixture checks exercised blank setup, atomic device/location creation, edit/delete to empty, typed question rendering, signal-to-map focus, desktop Ask positioning and 390px mobile layout without horizontal overflow or console errors. Fixture replies are labelled, not hosted AI evidence. Initial entry JavaScript is approximately 266.5 kB (84.6 kB gzip), not a measured hosted latency result.
+
+AWS administrator login was expired during this work. No application data was deleted and no infrastructure reset was performed. Hosted deployment, real authentication/microphone and cloud acceptance are not established by these checks; push is the release handoff.
+
 ## UI follow-up — 1 October 2026
 
 Simulation Studio now separates Create and Saved simulations. Incident history opens as a searchable location/status list, ten loaded incidents per page, with separate overview/actions, evidence and decision-review sections after selection. Deletion is available on the incident detail header and uses the existing guarded cleanup API. Evidence renders ten loaded records per page; raw records remain collapsed. Filters and sorting cover loaded records; additional server pages are explicit, not silently represented as a complete global search.

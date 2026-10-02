@@ -30,9 +30,9 @@ export function actionExplanation(action) {
   const labels = {
     'Virtual device is not enabled for this household': 'This output was not enabled when the proposal was checked.',
     'No registered output for this incident location': 'No matching output was registered at this location when the proposal was checked.',
-    'Household has not preauthorized this action': 'Automatic response was not permitted. Configure this output in Settings → Response permissions.',
+    'Household has not preauthorized this action': 'Automatic response was not permitted when this historical proposal was checked.',
     'Actuator no longer belongs to this incident location/capability': 'The output configuration changed; this proposal cannot run.',
-    'Closing virtual valve requires explicit confirmation': 'Review the water leak evidence, then confirm this simulated valve closure.',
+    'Closing virtual valve requires explicit confirmation': 'This historical valve proposal required confirmation. Device controls are now disabled.',
     'Household preauthorization and evidence checks passed': 'Permission and evidence checks passed for this simulated action.',
     'Evidence is missing, stale or future dated': 'The supporting evidence is no longer eligible. A current assessment is needed.',
   };
