@@ -56,3 +56,6 @@ class RoutingDecision(Contract):
 
 class ConversationIntent(Contract):
     intent: Literal["status", "timeline", "acknowledge", "unsupported"]
+    topic: Literal["general", "occupancy", "devices", "assessment", "uncertainty", "changes"] = (
+        "general"
+    )

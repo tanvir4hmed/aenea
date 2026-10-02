@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export const pages = [
-  { id: 'alexa-sim', label: 'Alexa+', icon: 'voice', description: 'Your incident, understood and coordinated.' },
-  { id: 'command-center', label: 'Command center', icon: 'grid', description: 'Review incidents, evidence and coordinated actions.' },
+  { id: 'alexa-sim', label: 'Live assistance', icon: 'voice', description: 'Understand the current situation and review the response.' },
+  { id: 'command-center', label: 'Command Center', icon: 'grid', description: 'Explore your device map and run saved simulations.' },
   { id: 'incident-history', label: 'Incident history', icon: 'document', description: 'Browse saved incidents, evidence and decision reviews.' },
   { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Define reusable single alerts and multi-device scenarios.' },
   { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage locations, simulation devices and action permissions.' },
@@ -22,12 +22,11 @@ export function Icon({ name }) {
   return <svg className="app-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.grid}/></svg>;
 }
 
-export default function AppShell({ page, navigate, authenticated, config, onAuth, children }) {
+export default function AppShell({ page, navigate, authenticated, config, onAuth, children, liveView = 'overview', onLiveView }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const heading = useRef(null);
   const previousPage = useRef(page);
   const current = pages.find(item => item.id === page);
-  const live = ['alexa-sim', 'command-center'].includes(page);
   useEffect(() => {
     document.title = `${current?.label || 'Page not found'} · Aenea`;
     if (previousPage.current !== page) {
@@ -51,7 +50,7 @@ export default function AppShell({ page, navigate, authenticated, config, onAuth
       <nav id="workspace-navigation" className={menuOpen ? 'navigation is-open' : 'navigation'} aria-label="Workspace" onKeyDown={event => {
         if (event.key === 'Escape') { setMenuOpen(false); document.querySelector('.menu-toggle')?.focus(); }
       }}>
-        {pages.filter(item => item.id !== 'command-center').map(item => <React.Fragment key={item.id}>{item.id === 'incident-history' && <span className="nav-section">MANAGE & PRACTICE</span>}<a href={'/' + item.id} aria-current={page === item.id || (item.id === 'alexa-sim' && live) ? 'page' : undefined} onClick={event => follow(event, item.id)}><Icon name={item.icon}/>{item.id === 'alexa-sim' ? 'Live assistance' : item.label}</a></React.Fragment>)}
+        {pages.map(item => <React.Fragment key={item.id}>{item.id === 'incident-history' && <span className="nav-section">MANAGE & PRACTICE</span>}<a href={'/' + item.id} aria-current={page === item.id ? 'page' : undefined} onClick={event => follow(event, item.id)}><Icon name={item.icon}/>{item.label}</a></React.Fragment>)}
       </nav>
       <div className="sidebar-footer"><span className="mode-label">Simulation workspace</span><p>A shared picture.<br/>A coordinated response.</p></div>
     </aside>
@@ -59,10 +58,14 @@ export default function AppShell({ page, navigate, authenticated, config, onAuth
       <header className="page-header"><div><span className="eyebrow">AENEA WORKSPACE</span><h1 ref={heading} tabIndex={-1}>{current?.label || 'Page not found'}</h1><p className="page-description">{current?.description || 'This address does not match a workspace page.'}</p></div>
         <div className="header-actions"><span className="mode-label">Simulated</span><button disabled={!config} onClick={onAuth}>{authenticated ? 'Sign out' : 'Sign in'}</button></div>
       </header>
-      {authenticated && live && <nav className="live-view-switch" aria-label="Live workspace views"><a href="/alexa-sim" aria-current={page === 'alexa-sim' ? 'page' : undefined} onClick={event => follow(event, 'alexa-sim')}><Icon name="voice"/>Alexa+ assistance</a><a href="/command-center" aria-current={page === 'command-center' ? 'page' : undefined} onClick={event => follow(event, 'command-center')}><Icon name="grid"/>Command center · Map</a></nav>}
+      {authenticated && page === 'alexa-sim' && <nav className="live-view-switch" aria-label="Live assistance views">{[['overview', 'Overview', 'grid'], ['ask', 'Ask Alexa+', 'voice']].map(([view, label, icon]) => <a key={view} href={'/alexa-sim' + (view === 'ask' ? '#ask' : '')} aria-current={liveView === view ? 'page' : undefined} onClick={event => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        if (onLiveView) onLiveView(view); else navigate('alexa-sim', view);
+      }}><Icon name={icon}/>{label}</a>)}</nav>}
       {current ? children : <section className="card empty-state"><h2>Let’s get you back to the workspace</h2><button className="primary" onClick={() => navigate('command-center')}>Open command center</button></section>}
       <footer className="workspace-footer">Simulated incident coordination. Follow official alarms and emergency guidance.</footer>
     </main>
-    {authenticated && <nav className="mobile-workspace-nav" aria-label="Quick navigation">{['alexa-sim', 'incident-history', 'settings'].map(id => { const item = pages.find(entry => entry.id === id); return <a key={id} href={'/' + id} aria-current={page === id || (id === 'alexa-sim' && live) ? 'page' : undefined} onClick={event => follow(event, id)}><Icon name={item.icon}/><span>{id === 'alexa-sim' ? 'Live' : id === 'incident-history' ? 'History' : 'Settings'}</span></a>; })}</nav>}
+    {authenticated && <nav className="mobile-workspace-nav" aria-label="Quick navigation">{['alexa-sim', 'command-center', 'incident-history', 'settings'].map(id => { const item = pages.find(entry => entry.id === id); return <a key={id} href={'/' + id} aria-current={page === id ? 'page' : undefined} onClick={event => follow(event, id)}><Icon name={item.icon}/><span>{id === 'alexa-sim' ? 'Live' : id === 'command-center' ? 'Map' : id === 'incident-history' ? 'History' : 'Settings'}</span></a>; })}</nav>}
   </div>;
 }

@@ -268,6 +268,29 @@ class IncidentEngineTests(unittest.TestCase):
         self.assertEqual((severity, devices[0]["level"]), ("urgent", "red"))
         self.assertEqual(assessed_severity(state, {"severity": "informational"})[0], "warning")
 
+    def test_reporting_devices_include_latest_clear_unknown_and_original_metadata(self):
+        clear = self.event("detector-clear", offset=2)
+        unknown = self.event("detector-unknown", offset=3)
+        self.put_state("reports", self.event("detector-clear", offset=1))
+        self.put_state("reports", clear, "clear")
+        self.put_state("reports", unknown, "unknown")
+        state = snapshot(self.table, "owner", "reports")
+        self.assertEqual(len(state["reporting_devices"]), 2)
+        self.assertEqual(len(state["active_devices"]), 1)
+        self.assertEqual(state["unknown_device_count"], 1)
+        self.assertEqual(state["last_reported_at"], unknown.model_dump(mode="json")["occurred_at"])
+        self.assertEqual({row["alarm"] for row in state["reporting_devices"]}, {"clear", "unknown"})
+        self.assertTrue(all(row["room"] == "Kitchen" for row in state["reporting_devices"]))
+
+    def test_multi_signal_device_is_counted_once_and_keeps_all_kinds(self):
+        self.put_state("reports", self.event("camera", "motion", offset=1))
+        self.put_state("reports", self.event("camera", "doorbell", offset=2), "clear")
+        state = snapshot(self.table, "owner", "reports")
+        self.assertEqual(len(state["reporting_devices"]), 1)
+        device = state["reporting_devices"][0]
+        self.assertEqual(device["alarm"], "active")
+        self.assertEqual(set(device["kinds"]), {"motion", "doorbell"})
+
     def test_signal_tiers_keep_normal_ring_context_low_and_escalate_only_defined_cases(self):
         self.put_state("doorbell", self.event("front-ring", "doorbell"))
         low = snapshot(self.table, "owner", "doorbell")

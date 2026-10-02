@@ -92,3 +92,94 @@ class HouseholdRetryTests(unittest.TestCase):
         )
         self.assertFalse(result["resolved"])
         self.client.transact_write_items.assert_not_called()
+
+    def test_evidence_device_name_wins_without_reading_present_catalog(self):
+        device = {
+            "device_id": "source",
+            "name": "Original kitchen detector",
+            "room": "Kitchen",
+            "kind": "smoke",
+        }
+        result = self.module.named_devices("owner", [device])[0]
+        self.assertEqual(result["display_name"], "Original kitchen detector")
+        self.assertEqual(result["display_name_source"], "evidence")
+        self.storage.table.get_item.assert_not_called()
+
+    def test_legacy_catalog_fallback_never_reassigns_historical_context(self):
+        device = {
+            "device_id": "source",
+            "name": "source",
+            "room": "",
+            "location_id": None,
+            "kind": "smoke",
+            "alarm": "unknown",
+            "provenance": "legacy_unverified",
+        }
+        with patch.object(
+            self.module,
+            "read_catalog",
+            return_value={
+                "devices": [
+                    {
+                        "id": "source",
+                        "name": "Renamed detector",
+                        "room": "New room",
+                        "location_id": "other",
+                    }
+                ]
+            },
+        ) as catalog:
+            result = self.module.named_devices("owner", [device])[0]
+        catalog.assert_called_once_with(self.storage.table, "owner")
+        self.assertEqual(result["display_name"], "Renamed detector")
+        self.assertEqual(result["display_name_source"], "current_catalog")
+        self.assertEqual(result["name"], "source")
+        self.assertEqual(result["room"], "")
+        self.assertIsNone(result["location_id"])
+        self.assertEqual(result["alarm"], "unknown")
+        self.assertEqual(result["provenance"], "legacy_unverified")
+        self.assertNotIn("display_name", device)
+
+    def test_missing_legacy_device_uses_human_signal_label(self):
+        device = {"device_id": "source", "name": "source", "kind": "carbon_monoxide"}
+        with patch.object(self.module, "read_catalog", return_value={"devices": []}):
+            result = self.module.named_devices("owner", [device])[0]
+        self.assertEqual(result["display_name"], "Carbon monoxide sensor")
+        self.assertEqual(result["display_name_source"], "fallback")
+
+    def test_status_retains_tool_contract_and_includes_cleared_named_reporters(self):
+        active = {
+            "device_id": "active",
+            "name": "Hall detector",
+            "kind": "smoke",
+            "alarm": "active",
+        }
+        cleared = {
+            "device_id": "clear",
+            "name": "Kitchen detector",
+            "kind": "smoke",
+            "alarm": "clear",
+        }
+        state = {
+            "active_devices": [active],
+            "reporting_devices": [active, cleared],
+            "severity": "warning",
+            "context": {"all_clear": False},
+            "unknown_device_count": 0,
+            "last_reported_at": "2026-10-01T12:00:00Z",
+        }
+        with patch.object(self.module, "snapshot", return_value=state):
+            result = self.module.dispatch(
+                "owner",
+                {"aenea/read"},
+                "get_incident_status",
+                {"incident_id": self.args["incident_id"]},
+            )
+        self.assertEqual(result["active_device_count"], 1)
+        self.assertEqual(result["reporting_device_count"], 2)
+        self.assertEqual(result["active_devices"][0]["display_name"], "Hall detector")
+        self.assertEqual(result["reporting_devices"][1]["alarm"], "clear")
+        self.assertEqual(result["reporting_devices"][1]["display_name_source"], "evidence")
+        self.assertFalse(result["all_clear"])
+        self.assertFalse(result["assessment_current"])
+        self.client.transact_write_items.assert_not_called()

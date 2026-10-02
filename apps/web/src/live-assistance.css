@@ -1,0 +1,28 @@
+.live-overview-grid { grid-template-areas: 'brief response' 'signals response'; }
+.live-ask-grid { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); grid-template-areas: 'conversation note'; }
+.response-panel > p, .response-settings, .response-history p { font-size: 13px; line-height: 1.6; }
+.response-settings { margin-bottom: 0; }
+.inline-button { display: inline; padding: 0; border: 0; background: none; color: #145c57; text-decoration: underline; text-underline-offset: 3px; font-size: inherit; text-align: left; }
+.response-history { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.response-history summary { cursor: pointer; font-size: 13px; color: #425f66; }
+.response-history article { border-top: 1px solid var(--line); padding: 12px 0; }
+.response-history article strong, .response-history article span { display: block; font-size: 12px; }
+.response-history article span { color: #586d74; margin-top: 4px; }
+.signal-tile { align-items: flex-start; }
+.signal-tile small { display: block; margin-top: 6px; font-size: 11px; color: #4a6068; line-height: 1.5; }
+.signal-context-note { font-size: 12px; color: #506970; line-height: 1.6; margin-bottom: 0; }
+.conversation-panel .voice-instruction { margin: 0; font-size: 12px; line-height: 1.6; color: #506970; }
+.conversation-panel .is-listening { border-left: 3px solid #168575; background: #edf9f5; padding: 10px 12px; color: #15594e; }
+.conversation-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
+.conversation-heading h3 { margin: 0; font-size: 15px; }
+.conversation-heading button { font-size: 12px; }
+.conversation-panel .history-notice { font-size: 11px; line-height: 1.6; color: #536a72; margin: 10px 0 0; }
+.live-ask-grid .conversation-log { max-height: 480px; scroll-behavior: smooth; }
+.conversation-turn time { display: block; font-size: 11px; color: #61777f; margin-bottom: 8px; }
+.conversation-turn strong { display: block; font-size: 14px; }
+.conversation-turn p { font-size: 15px; line-height: 1.7; margin-bottom: 0; white-space: pre-line; }
+@media (max-width: 1100px) {
+  .live-overview-grid { grid-template-areas: 'brief' 'response' 'signals'; }
+  .live-ask-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'conversation' 'note'; }
+}
+@media (prefers-reduced-motion: reduce) { .live-ask-grid .conversation-log { scroll-behavior: auto; } }

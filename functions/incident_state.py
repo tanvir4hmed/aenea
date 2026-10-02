@@ -50,6 +50,31 @@ def device_ledger(items: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return latest
 
 
+def device_summary(row: dict[str, Any], severity: str, red: set[str]) -> dict[str, Any]:
+    context, event = row["context"], row["event"]
+    identifier = event["source"]["source_id"]
+    return {
+        "device_id": identifier,
+        "name": context.get("device", {}).get("name", identifier),
+        "kind": event["kind"],
+        "alarm": row["alarm"],
+        "connectivity": context.get("state", {}).get("connectivity", "unknown"),
+        "event_id": event["event_id"],
+        "occurred_at": event["occurred_at"],
+        "room": context.get("device", {}).get("room", ""),
+        "location_id": context.get("location", {}).get("id"),
+        "location_name": context.get("location", {}).get("name"),
+        "provenance": context.get("provenance", "legacy_unverified"),
+        "level": "normal"
+        if row["alarm"] == "clear"
+        else "red"
+        if identifier in red
+        else "amber"
+        if severity != "informational"
+        else "normal",
+    }
+
+
 def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
     total = 0
 
@@ -92,32 +117,29 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
     counts = dict(Counter(row["event"]["kind"] for row in active))
     severity = priority_severity(active)
     red = red_device_ids(active)
-    devices = [
-        {
-            "device_id": row["event"]["source"]["source_id"],
-            "name": row["context"]
-            .get("device", {})
-            .get("name", row["event"]["source"]["source_id"]),
-            "kind": row["event"]["kind"],
-            "alarm": row["alarm"],
-            "connectivity": row["context"].get("state", {}).get("connectivity", "unknown"),
-            "event_id": row["event"]["event_id"],
-            "occurred_at": row["event"]["occurred_at"],
-            "room": row["context"].get("device", {}).get("room", ""),
-            "location_id": row["context"].get("location", {}).get("id"),
-            "level": "red"
-            if row["event"]["source"]["source_id"] in red
-            else "amber"
-            if severity != "informational"
-            else "normal",
-        }
-        for row in active
-    ]
+    devices = [device_summary(row, severity, red) for row in active]
     by_device: dict[str, dict[str, Any]] = {}
     for device in devices:
         previous = by_device.get(device["device_id"])
         if not previous or (device["level"] == "red" and previous["level"] != "red"):
             by_device[device["device_id"]] = device
+    # Keep cleared reporters discoverable without re-reading history or changing the
+    # active-device/policy boundary. A multi-signal device is counted only once.
+    reporting: dict[str, dict[str, Any]] = {}
+    for row in sorted(
+        ledger.values(),
+        key=lambda row: (
+            row["alarm"] == "clear",
+            priority.get(row["event"]["kind"], 4),
+            -row["order"][0],
+        ),
+    ):
+        device = device_summary(row, severity, red)
+        previous = reporting.get(device["device_id"])
+        if previous:
+            previous["kinds"].append(device["kind"])
+        else:
+            reporting[device["device_id"]] = {**device, "kinds": [device["kind"]]}
     digest = hashlib.sha256(
         json.dumps(
             sorted(
@@ -131,6 +153,19 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
         "events": [row["event"] for row in selected],
         "policy_events": [row["event"] for row in active],
         "active_devices": list(by_device.values()),
+        "reporting_devices": list(reporting.values()),
+        "last_reported_at": max(ledger.values(), key=lambda row: row["order"])["event"][
+            "occurred_at"
+        ]
+        if ledger
+        else None,
+        "unknown_device_count": len(
+            {
+                row["event"]["source"]["source_id"]
+                for row in ledger.values()
+                if row["alarm"] == "unknown"
+            }
+        ),
         "severity": severity,
         "fingerprint": digest,
         "context": {

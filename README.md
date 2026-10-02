@@ -41,6 +41,8 @@ This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are
 
 The current [state-driven coordination release](docs/state-driven-coordination.md) describes implemented behavior, capacities and migration. [Source verification](docs/source-verification.md) distinguishes offline checks and local browser fixtures from outstanding hosted acceptance. Earlier dated workspace phases are historical, not current setup instructions. See [check instructions](CONTRIBUTING.md).
 
+The [incident usability follow-up](docs/usability.md) covers focused Live assistance views, readable question answers, response setup and older incident compatibility.
+
 Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Pushes select affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 
 ## Documentation

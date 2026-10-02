@@ -1,6 +1,6 @@
 # Incident-first interface
 
-Alexa+ assistance is the default signed-in landing view. Live assistance has two views: the briefing and response workspace, and the existing Command Center map/trigger workspace. Setup and practice are separate from incident handling.
+Alexa+ assistance is the default signed-in landing view. Live assistance has two views: Overview for briefings and response decisions, and Ask Alexa+ for questions and optional context. Command Center has its own navigation entry for the map and practice runs. See the [2 October usability follow-up](usability.md).
 
 ## Information priorities
 
@@ -9,7 +9,7 @@ Alexa+ assistance is the default signed-in landing view. Live assistance has two
 3. Active device reports and affected rooms.
 4. Optional questions and additional context, not mandatory incident paperwork.
 
-History retains decision reviews, evidence, resolution, rename and deletion. Simulation Studio retains create/saved definitions; only Command Center triggers them. Settings groups locations, devices, response permissions and cleanup. On small screens Live, History and Settings remain reachable from bottom navigation.
+History retains decision reviews, evidence, resolution, rename, deletion and read-only action outcomes. Simulation Studio retains create/saved definitions; only Command Center triggers them. Settings groups locations, devices, response permissions and cleanup. On small screens Live, Map, History and Settings remain reachable from bottom navigation.
 
 Response permissions apply to configured virtual outputs. Non-valve outputs must be enabled and pre-authorized for automatic action. Enabled valves still require explicit approval and policy checks. These controls do not connect physical devices.
 

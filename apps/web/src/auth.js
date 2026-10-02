@@ -1,3 +1,5 @@
+import { clearConversations } from './alexaConversation.js';
+
 const key = 'aenea-session';
 const oauthKey = 'aenea-oauth';
 const incidentKey = 'aenea-selected-incident';
@@ -22,6 +24,7 @@ export function hasSession() { return Boolean(savedSession()?.refreshToken || se
 
 export function expireSession() {
   sessionGeneration += 1;
+  clearConversations(localStorage);
   localStorage.removeItem(key);
   sessionStorage.removeItem(key);
   sessionStorage.removeItem(incidentKey);
@@ -111,6 +114,7 @@ export async function callback(config) {
 }
 export function logout(config) {
   sessionGeneration += 1;
+  clearConversations(localStorage);
   localStorage.removeItem(key);
   sessionStorage.removeItem(key);
   sessionStorage.removeItem(incidentKey);

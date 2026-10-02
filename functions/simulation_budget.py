@@ -92,9 +92,11 @@ def extend(table, owner, incident, body):
                     "Update": {
                         "TableName": table.name,
                         "Key": attrs(key(owner, incident)),
-                        "UpdateExpression": "SET ceiling = :limit",
-                        "ConditionExpression": "used <= :limit AND ceiling < :limit",
-                        "ExpressionAttributeValues": attrs({":limit": value}),
+                        "UpdateExpression": "SET ceiling = :limit, used = if_not_exists(used, :zero)",
+                        # Legacy incidents may have no counter yet. Setting an absolute
+                        # ceiling is retry-safe and must never lower a concurrent increase.
+                        "ConditionExpression": "(attribute_not_exists(used) OR used <= :limit) AND (attribute_not_exists(ceiling) OR ceiling <= :limit)",
+                        "ExpressionAttributeValues": attrs({":limit": value, ":zero": 0}),
                     }
                 },
             ]
@@ -103,6 +105,7 @@ def extend(table, owner, incident, body):
         if exc.response["Error"]["Code"] != "TransactionCanceledException":
             raise
         return response(
-            409, {"error": "Choose a higher limit for an open incident; refresh current usage"}
+            409,
+            {"error": "The incident closed or its limit changed. Refresh to see the saved limit."},
         )
     return response(200, read_budget(table, owner, incident))

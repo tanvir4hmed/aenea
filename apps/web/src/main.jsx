@@ -6,11 +6,12 @@ import './experience.css';
 import AlexaSimulator from './AlexaSimulator';
 import IncidentPicker from './IncidentPicker';
 import AppShell from './AppShell';
-import DeviceMap, { IncidentBriefing } from './DeviceMap';
+import DeviceMap from './DeviceMap';
 import { incidentName } from './incidentNames';
 import IncidentSummary from './IncidentSummary';
 import { requestJson } from './api';
 import { createIncidentCache } from './incidentCache';
+import { clearConversations, conversationKey } from './alexaConversation';
 
 const IncidentHistory = lazy(() => import('./IncidentHistory'));
 const ActionSettings = lazy(() => import('./ActionSettings'));
@@ -22,10 +23,14 @@ const DataControls = lazy(() => import('./DataControls'));
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
 const currentPage = () => { const value = location.pathname.split('/')[1] || 'alexa-sim'; return ['check-in', 'handoff'].includes(value) ? 'incident-history' : value; };
+const currentLiveView = () => location.hash === '#ask' ? 'ask' : 'overview';
+const currentSettingsTab = () => ['devices', 'permissions', 'cleanup'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'locations';
 function App() {
   const [config, setConfig] = useState(null), [error, setError] = useState('');
   const [authenticated, setAuthenticated] = useState(hasSession());
   const [page, setPage] = useState(currentPage);
+  const [liveView, setLiveView] = useState(currentLiveView);
+  const [settingsTab, setSettingsTab] = useState(currentSettingsTab);
   const [identity, setIdentity] = useState(''), [incidents, setIncidents] = useState([]);
   const [selected, setSelected] = useState(() => sessionStorage.getItem(incidentStorageKey) || ''), [timeline, setTimeline] = useState([]);
   const [notice, setNotice] = useState('');
@@ -79,12 +84,14 @@ function App() {
     finally { setCatalogBusy(false); }
   }
   function clearDrafts() {
+    clearConversations(localStorage, identity);
     sessionStorage.removeItem('aenea-studio-' + identity);
     sessionStorage.removeItem('aenea-trigger-' + identity);
     setStudioEpoch(value => value + 1);
   }
   function incidentDeleted(id) {
     incidentCache.current.remove(id);
+    try { localStorage.removeItem(conversationKey(identity, id)); } catch { /* Optional browser history. */ }
     sessionStorage.removeItem(`aenea-note-${identity}-${id}`);
     setIncidents(old => old.filter(item => item.incident_id !== id));
     if (selected === id) { activeIncident.current = ''; setSelected(''); setTimeline([]); setIncidentState(null); }
@@ -111,7 +118,7 @@ function App() {
       await callback(value); setConfig(value); setAuthenticated(hasSession());
       setPage(currentPage());
     })().catch(e => setError(e.message));
-    const onPop = () => setPage(currentPage());
+    const onPop = () => { setPage(currentPage()); setLiveView(currentLiveView()); setSettingsTab(currentSettingsTab()); };
     const onExpired = () => { incidentCache.current.clear(); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
     addEventListener('popstate', onPop); addEventListener('aenea-auth-expired', onExpired);
     return () => { removeEventListener('popstate', onPop); removeEventListener('aenea-auth-expired', onExpired); };
@@ -160,12 +167,17 @@ function App() {
     document.addEventListener('visibilitychange', refresh);
     return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
   }, [config, selected, authenticated, page]);
-  function navigate(next) { const target = ['check-in', 'handoff'].includes(next) ? 'incident-history' : next; history.pushState(null, '', '/' + target); setPage(target); setError(''); setNotice(''); }
+  function navigate(next, view = 'overview') {
+    const target = ['check-in', 'handoff'].includes(next) ? 'incident-history' : next;
+    const fragment = target === 'alexa-sim' && view === 'ask' ? 'ask' : target === 'settings' && ['devices', 'permissions', 'cleanup'].includes(view) ? view : '';
+    history.pushState(null, '', '/' + target + (fragment ? '#' + fragment : ''));
+    setPage(target); setLiveView(target === 'alexa-sim' && view === 'ask' ? 'ask' : 'overview'); setSettingsTab(target === 'settings' && fragment ? fragment : 'locations'); setError(''); setNotice('');
+  }
   async function copyGuest(value, label) {
     try { await navigator.clipboard.writeText(value); setCopyNotice(label + ' copied.'); }
     catch { setCopyNotice('Copy is unavailable. Select the value manually.'); }
   }
-  return <AppShell page={page} navigate={navigate} authenticated={authenticated} config={config} selected={selected} selectedName={incidentName(incidents.find(item => item.incident_id === selected) || { incident_id: selected })}
+  return <AppShell page={page} navigate={navigate} liveView={liveView} onLiveView={view => navigate('alexa-sim', view)} authenticated={authenticated} config={config} selected={selected} selectedName={incidentName(incidents.find(item => item.incident_id === selected) || { incident_id: selected })}
     onAuth={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>
       <Suspense fallback={<div className="card" role="status">Loading workspace…</div>}>
       {error && <div role="alert" className="error">{error}</div>}
@@ -195,18 +207,17 @@ function App() {
       {authenticated && config && identity && studioMounted && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
         <SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
-          briefing={<IncidentBriefing selected={selected} state={incidentState} timeline={timeline} navigate={navigate}/>}
+          briefing={<IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
           selectIncident(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/>
       </div>}
-      {authenticated && config && page === 'settings' && <Settings catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate} permissions={<ActionSettings api={api} catalog={catalog}/>} cleanup={<><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}/>}
-      {authenticated && config && page === 'command-center' && <IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
+      {authenticated && config && page === 'settings' && <Settings initialTab={settingsTab} catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate} permissions={<ActionSettings api={api} catalog={catalog} ready={catalogReady}/>} cleanup={<><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}/>}
       {authenticated && config && page === 'incident-history' && <IncidentHistory api={api} incidents={incidents} catalog={catalog} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} loading={loadingIncidents}
         onRefreshList={() => loadIncidents().catch(e => setError(e.message))} onMoreIncidents={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}
         onRefresh={() => loadTimeline(selected).catch(e => setError(e.message))} onMoreEvidence={timelineCursor ? () => loadTimeline(selected, timelineCursor).catch(e => setError(e.message)) : null}
         onDeleted={incidentDeleted} navigate={navigate}/>}
-      {authenticated && config && page==='alexa-sim' && <AlexaSimulator config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)} navigate={navigate} catalog={catalog}/>}
+      {authenticated && config && page==='alexa-sim' && <AlexaSimulator view={liveView} household={identity} config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)} navigate={navigate} catalog={catalog}/>}
       </Suspense>
     </AppShell>;
 }

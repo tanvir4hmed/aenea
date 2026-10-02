@@ -15,6 +15,7 @@ from revisions import current_assessment
 from lifecycle import require_active
 from event_contract import timeline_context
 from incident_state import snapshot
+from catalog import read_catalog
 
 WRITE_TOOLS = {
     "report_person_status",
@@ -54,6 +55,25 @@ def page(partition, prefix="", cursor=None):
         if result.get("LastEvaluatedKey")
         else None,
     }
+
+
+def named_devices(owner, devices):
+    """Catalog fallback labels are present-day display data, never historical evidence."""
+    catalog_names = {}
+    if any(not item.get("name") or item["name"] == item["device_id"] for item in devices):
+        catalog_names = {item["id"]: item["name"] for item in read_catalog(table, owner)["devices"]}
+    result = []
+    for device in devices:
+        name = device.get("name")
+        source = "evidence"
+        if not name or name == device["device_id"]:
+            name = catalog_names.get(device["device_id"])
+            source = "current_catalog"
+        if not name or name == device["device_id"]:
+            name = device.get("kind", "signal").replace("_", " ").capitalize() + " sensor"
+            source = "fallback"
+        result.append({**device, "display_name": name, "display_name_source": source})
+    return result
 
 
 def dispatch(owner, scopes, name, args):
@@ -100,14 +120,29 @@ def dispatch(owner, scopes, name, args):
             else None
         )
         state = snapshot(table, owner, incident)
+        reporting = named_devices(owner, state["reporting_devices"])
+        labels = {device["device_id"]: device for device in reporting}
+        active = [
+            {
+                **device,
+                "display_name": labels[device["device_id"]]["display_name"],
+                "display_name_source": labels[device["device_id"]]["display_name_source"],
+            }
+            for device in state["active_devices"]
+        ]
         return {
             "incident": summary,
             "assessment": assessment,
             "simulated": True,
             "assessment_current": current_assessment(summary, assessment),
             "severity": state["severity"],
-            "active_devices": state["active_devices"][:12],
-            "active_device_count": len(state["active_devices"]),
+            "active_devices": active[:12],
+            "active_device_count": len(active),
+            "reporting_devices": reporting[:12],
+            "reporting_device_count": len(reporting),
+            "all_clear": state["context"]["all_clear"],
+            "unknown_device_count": state["unknown_device_count"],
+            "last_reported_at": state["last_reported_at"],
         }
     if name == "get_incident_timeline":
         return page(f"H#{owner}#I#{incident}", cursor=args.get("cursor"))

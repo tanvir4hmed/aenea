@@ -258,6 +258,36 @@ class SimulationRunTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_profile({**DEFAULT_PROFILE, "interval_seconds": 1})
 
+    def test_legacy_incident_limit_can_be_created_and_retried(self):
+        incident = str(uuid.uuid4())
+        self.table.put_item(Item={"pk": "H#owner", "sk": "INCIDENT#" + incident})
+        self.assertEqual(read_budget(self.table, "owner", incident)["limit"], 2000)
+        for _ in range(2):
+            result = extend(self.table, "owner", incident, {"limit": 4000})
+            self.assertEqual(result["statusCode"], 200)
+            self.assertEqual(json.loads(result["body"])["limit"], 4000)
+        self.assertEqual(read_budget(self.table, "owner", incident)["used"], 0)
+
+    def test_limit_retry_preserves_charges_and_cannot_lower_newer_limit(self):
+        incident = str(uuid.uuid4())
+        self.table.put_item(Item={"pk": "H#owner", "sk": "INCIDENT#" + incident})
+        self.table.put_item(Item={**budget_key("owner", incident), "used": 2001, "ceiling": 4000})
+        self.assertEqual(extend(self.table, "owner", incident, {"limit": 4000})["statusCode"], 200)
+        self.assertEqual(read_budget(self.table, "owner", incident)["used"], 2001)
+        self.assertEqual(extend(self.table, "owner", incident, {"limit": 6000})["statusCode"], 200)
+        self.assertEqual(extend(self.table, "owner", incident, {"limit": 4000})["statusCode"], 409)
+        self.assertEqual(read_budget(self.table, "owner", incident)["limit"], 6000)
+
+    def test_limit_creation_requires_owned_open_incident(self):
+        incident = str(uuid.uuid4())
+        for marker in ({}, {"resolved_at": 1}, {"deletion_started_at": 1}):
+            if marker:
+                self.table.put_item(Item={"pk": "H#owner", "sk": "INCIDENT#" + incident, **marker})
+            self.assertEqual(
+                extend(self.table, "owner", incident, {"limit": 4000})["statusCode"], 409
+            )
+            self.assertNotIn("Item", self.table.get_item(Key=budget_key("owner", incident)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,24 +1,54 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { deviceTypes } from './devices';
+import { permissionPayload, permissionsChanged } from './responsePermissions';
 
-export default function ActionSettings({ api, catalog }) {
+export default function ActionSettings({ api, catalog = { devices: [], locations: [] }, ready = true, onAddOutput }) {
   const [devices, setDevices] = useState({}), [busy, setBusy] = useState(false), [message, setMessage] = useState('');
   const [revision, setRevision] = useState(null);
+  const [saved, setSaved] = useState({}), [loaded, setLoaded] = useState(false), [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const loadId = useRef(0);
   const outputs = catalog.devices.filter(device => deviceTypes[device.type]?.category === 'actuator');
   const currentPage = Math.min(page, Math.max(1, Math.ceil(outputs.length / 10)));
-  async function load() { const result = await api('/household/devices'); setDevices(result.devices); setRevision(result.revision); }
-  useEffect(() => { load().catch(error => setMessage(error.message)); }, [catalog.revision]);
-  return <section className="card"><h2>How Aenea may respond</h2>
-    <p>Allow lights, sirens and notifications to respond automatically to an eligible agent decision. A water valve always asks for your approval. Disabled or unauthorized outputs cannot act. These outputs are simulated.</p>
-    {!outputs.length && <p>Add virtual lights, sirens, notifications or a valve in the Devices tab, then configure permissions here.</p>}
+  const dirty = loaded && permissionsChanged(outputs, devices, saved);
+  async function load() {
+    const requestId = ++loadId.current;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const result = await api('/household/devices');
+      if (requestId !== loadId.current) return;
+      setDevices(result.devices); setSaved(result.devices); setRevision(result.revision); setLoaded(true);
+    } catch (failure) { if (requestId === loadId.current) setError(failure.message); }
+    finally { if (requestId === loadId.current) setBusy(false); }
+  }
+  useEffect(() => { setLoaded(false); if (ready && outputs.length) load(); return () => { loadId.current += 1; }; }, [catalog.revision, ready]);
+  function change(id, patch) { setDevices(old => ({ ...old, [id]: { ...old[id], ...patch } })); setMessage(''); }
+  async function save() {
+    if (busy || !dirty || !revision) return;
+    setBusy(true); setMessage(''); setError('');
+    try {
+      const result = await api('/household/devices', { method: 'PUT', body: JSON.stringify({ revision, devices: permissionPayload(outputs, devices) }) });
+      setDevices(result.devices); setSaved(result.devices); setRevision(result.revision);
+      setMessage('Response permissions saved. They apply when an eligible action is next checked.');
+    } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+  }
+  return <section className="card" aria-busy={busy}><h2>Response permissions</h2>
+    <p>Sensors report what they detect. Response outputs are separate devices: simulated lights, sirens, notifications and water valves. Receiving a sensor signal does not enable an output.</p>
+    <p>Choose how each registered output may respond at its saved location. Automatic responses still require current evidence and policy checks. Water valves always need your approval in Live assistance.</p>
+    {!ready ? <p role="status">Loading your device inventory…</p> : !outputs.length ? <div className="quiet-state"><h3>No response outputs added</h3><p>Your sensors can report incidents without response outputs. Add an output when you want to test a coordinated response, then return here to set its permission.</p>{onAddOutput && <button className="primary" onClick={onAddOutput}>Add a response output</button>}</div> : <>
+    {!loaded && <p role="status">{error ? 'Saved permissions could not be loaded. Retry before making changes.' : 'Loading saved permissions…'}</p>}
     {outputs.slice((currentPage - 1) * 10, currentPage * 10).map(device => <fieldset key={device.id}><legend>{device.name} · {catalog.locations.find(location => location.id === device.location_id)?.name}</legend>
-      <label className="permission-mode">Response mode<select disabled={busy || !revision} value={!devices[device.id]?.enabled ? 'off' : device.type !== 'water_valve' && devices[device.id]?.preauthorized ? 'automatic' : 'confirm'} onChange={event => { const mode = event.target.value; setDevices(old => ({ ...old, [device.id]: { ...old[device.id], enabled: mode !== 'off', preauthorized: mode === 'automatic' } })); }}><option value="off">Disabled</option><option value="confirm">{device.type === 'water_valve' ? 'Ask for my approval' : 'Not authorized to act'}</option>{device.type !== 'water_valve' && <option value="automatic">Allow automatic response</option>}</select></label>
+      <p>{deviceTypes[device.type]?.label}{device.room ? ' · ' + device.room : ' · No room specified'}</p>
+      {!device.enabled && <p className="notice">This output is disabled in Devices. Enable it there before configuring a response.</p>}
+      <label className="permission-mode">Response mode<select disabled={busy || !loaded || !device.enabled} value={!devices[device.id]?.enabled ? 'off' : device.type !== 'water_valve' && devices[device.id]?.preauthorized ? 'automatic' : 'confirm'} onChange={event => { const mode = event.target.value; change(device.id, { enabled: mode !== 'off', preauthorized: mode === 'automatic' }); }}><option value="off">Off — do not respond</option>{device.type === 'water_valve' ? <option value="confirm">Ask for my approval</option> : <><option value="confirm">Enabled, but not authorized to act</option><option value="automatic">Allow automatic response</option></>}</select></label>
       {device.type === 'water_valve' && <small>Closing a valve always requires your confirmation.</small>}
-      <details><summary>Simulation options</summary><label><input type="checkbox" disabled={busy || !revision} checked={devices[device.id]?.fail_next || false} onChange={event => setDevices(old => ({ ...old, [device.id]: { ...old[device.id], fail_next: event.target.checked } }))}/>Simulate a failure on the next action</label></details>
+      <details><summary>Simulation options</summary><label><input type="checkbox" disabled={busy || !loaded || !device.enabled} checked={devices[device.id]?.fail_next || false} onChange={event => change(device.id, { fail_next: event.target.checked })}/>Simulate a failure on the next action</label></details>
     </fieldset>)}
     {outputs.length > 10 && <div className="actions"><button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {Math.ceil(outputs.length / 10)}</span><button disabled={currentPage * 10 >= outputs.length} onClick={() => setPage(currentPage + 1)}>Next</button></div>}
-    <div className="actions"><button disabled={busy || !outputs.length || !revision} onClick={async () => { setBusy(true); try { await api('/household/devices', { method: 'PUT', body: JSON.stringify({ revision, devices: Object.fromEntries(outputs.map(device => [device.id, Object.fromEntries(['enabled', 'preauthorized', 'fail_next'].map(field => [field, Boolean(devices[device.id]?.[field])]))])) }) }); await load(); setMessage('Permissions saved. Valve closure still requires explicit confirmation.'); } catch (error) { setMessage(error.message); } finally { setBusy(false); } }}>Save permissions</button><button disabled={busy} onClick={() => load().catch(error => setMessage(error.message))}>Reload</button></div>
-    {message && <p role="status">{message}</p>}
+    <div className="actions">{dirty && <button className="primary" disabled={busy || !revision} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>}<button disabled={busy} onClick={load}>{dirty ? 'Discard changes and reload' : error ? 'Retry loading permissions' : 'Refresh saved permissions'}</button></div>
+    {loaded && !dirty && !message && <p className="form-help">Showing saved permissions. Choose a different mode to make a change.</p>}
+    {dirty && <p role="status">You have unsaved permission changes.</p>}
+    </>}
+    {error && <p className="error" role="alert">{error}</p>}{message && <p role="status" className="notice">{message}</p>}
   </section>;
 }
