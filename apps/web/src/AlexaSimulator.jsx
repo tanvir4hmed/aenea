@@ -35,7 +35,7 @@ export default function AlexaSimulator({ config, api, incidents, selected, onSel
   const signals = state?.active_devices?.map(device => ({ ...device, display: signalDetails(device, catalog, timeline) }));
   const missingSignalContext = signals?.some(device => device.display.missingContext);
   const connection = !selected ? 'Ready for a signal' : !state?.receivedAt ? 'Loading incident…'
-    : state.refreshing ? 'Updating saved view…' : now - state.receivedAt > 30000 ? 'Updates delayed' : 'Live updates';
+    : state.refreshing ? 'Saved view · awaiting update' : now - state.receivedAt > 30000 ? 'Updates delayed' : 'Connected · checking every 10s';
 
   function speak(value) { if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(value)); } }
   function stopListening() { const mic = recognition.current; recognition.current = null; mic?.abort(); setListening(false); }
@@ -124,6 +124,7 @@ export default function AlexaSimulator({ config, api, incidents, selected, onSel
           <button aria-pressed={readAloud} onClick={() => { setReadAloud(value => !value); if (readAloud) window.speechSynthesis?.cancel(); }}>{readAloud ? 'Spoken updates on · Mute' : 'Enable spoken updates'}</button>
         </div>
         <p className="hero-footnote">Browser simulation · Spoken updates need this page open.</p>
+        {state?.receivedAt && <p className="hero-footnote">Status received {dateLabel(state.receivedAt)}.{state.last_reported_at ? ` Latest signal occurred ${dateLabel(state.last_reported_at)}.` : ' Latest signal time is unavailable.'} A recent refresh does not verify conditions at the location.</p>}
         {!selected && navigate && <div className="actions"><button onClick={() => navigate(catalog?.devices?.length ? 'command-center' : 'settings')}>{catalog?.devices?.length ? 'Open map & trigger an alert' : 'Set up your devices'}</button></div>}
       </section>
 

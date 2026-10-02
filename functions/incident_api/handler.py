@@ -36,6 +36,9 @@ def handler(request, context):
         owner = household(request)
         params = request.get("queryStringParameters") or {}
         incident_id = (request.get("pathParameters") or {}).get("incident_id")
+        view = params.get("view", "all") if incident_id else "all"
+        if view not in {"all", "status", "records"} or (view == "status" and params.get("cursor")):
+            raise ValueError("Invalid incident view")
         partition = f"H#{owner}"
         prefix = "DELETED#" if request["routeKey"] == "GET /household/deletions" else "INCIDENT#"
         if incident_id:
@@ -44,6 +47,13 @@ def handler(request, context):
                 return response(410, {"error": "Incident is being deleted or has been deleted"})
             partition += f"#I#{incident_id}"
             prefix = ""  # Evidence, assessments, policy decisions and action results share this partition.
+            summary = table.get_item(
+                Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True
+            ).get("Item")
+            if not summary:
+                return response(404, {"error": "Incident not found"})
+            if summary.get("deletion_started_at"):
+                return response(410, {"error": "Incident is being deleted or has been deleted"})
         query = {
             "KeyConditionExpression": key_condition(partition, prefix),
             "Limit": 50,
@@ -53,17 +63,16 @@ def handler(request, context):
             query["FilterExpression"] = Attr("deletion_started_at").not_exists()
         if params.get("cursor"):
             query["ExclusiveStartKey"] = decode_cursor(params["cursor"], partition, prefix)
-        result = table.query(**query)
+        # Live polling needs authoritative current state, not repeated audit pages.
+        # Evidence pagination needs records only, without rebuilding current state.
+        result = {"Items": []} if view == "status" else table.query(**query)
         next_cursor = None
         if result.get("LastEvaluatedKey"):
             next_cursor = base64.urlsafe_b64encode(
                 json.dumps(result["LastEvaluatedKey"]).encode()
             ).decode()
         metadata = {}
-        if incident_id:
-            summary = table.get_item(
-                Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True
-            ).get("Item", {})
+        if incident_id and view != "records":
             latest = (
                 table.get_item(
                     Key={"pk": partition, "sk": "ASSESSMENT#" + summary["latest_assessment"]},
@@ -108,6 +117,8 @@ def handler(request, context):
             after = table.get_item(
                 Key={"pk": f"H#{owner}", "sk": f"INCIDENT#{incident_id}"}, ConsistentRead=True
             ).get("Item", {})
+            if not after or after.get("deletion_started_at"):
+                return response(410, {"error": "Incident is being deleted or has been deleted"})
             if (
                 after.get("event_count") == summary.get("event_count")
                 and after.get("resolved_at") == summary.get("resolved_at")
@@ -127,6 +138,7 @@ def handler(request, context):
                 metadata.update(
                     active_devices=[] if summary.get("resolved_at") else devices,
                     canonical_severity="informational" if summary.get("resolved_at") else severity,
+                    last_reported_at=state.get("last_reported_at"),
                 )
             else:
                 metadata["assessment_current"] = False

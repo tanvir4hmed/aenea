@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { requestJson } from '../apps/web/src/api.js';
 import { createIncidentCache } from '../apps/web/src/incidentCache.js';
 import { canExecute } from '../apps/web/src/alexaConversation.js';
+import { createRequestGate, mergeEvidence } from '../apps/web/src/incidentReads.js';
 
 const config = { apiUrl: 'https://api.example', clientId: 'client', cognitoDomain: 'https://login.example' };
 function signIn() {
@@ -46,4 +47,47 @@ test('incident previews are bounded and cannot authorize cached actions', () => 
   assert.equal(cache.preview('one'), null);
   cache.remove('two'); assert.equal(cache.preview('two'), null);
   cache.clear(); assert.equal(cache.preview('three'), null);
+});
+
+test('post-mutation refresh bypasses an older read still in flight', async () => {
+  signIn();
+  const requests = [];
+  globalThis.fetch = (url, options) => new Promise(resolve => requests.push({ resolve, options }));
+  const old = requestJson(config, '/status');
+  await new Promise(resolve => setImmediate(resolve));
+  const fresh = requestJson(config, '/status', { fresh: true });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 2);
+  assert.equal('fresh' in requests[1].options, false);
+  requests[1].resolve(Response.json({ revision: 2 }));
+  assert.equal((await fresh).revision, 2);
+  requests[0].resolve(Response.json({ revision: 1 }));
+  assert.equal((await old).revision, 1);
+});
+
+test('superseded reads and prior selection/session results cannot replace current state', () => {
+  const status = createRequestGate(), evidence = createRequestGate();
+  const oldStatus = status.start(), currentStatus = status.start(), currentEvidence = evidence.start();
+  assert.equal(oldStatus(), false);
+  assert.equal(currentStatus(), true);
+  assert.equal(currentEvidence(), true);
+  status.invalidate(); evidence.invalidate();
+  assert.equal(currentStatus(), false);
+  assert.equal(currentEvidence(), false);
+  assert.equal(status.start()(), true);
+});
+
+test('evidence pagination deduplicates records independently of current incident state', () => {
+  const first = [{ sk: 'EVENT#one', value: 1 }];
+  assert.deepEqual(mergeEvidence(first, [{ sk: 'EVENT#one', value: 2 }, { sk: 'EVENT#two' }], true),
+    [{ sk: 'EVENT#one', value: 2 }, { sk: 'EVENT#two' }]);
+  assert.deepEqual(mergeEvidence(first, []), []);
+  assert.equal(first[0].value, 1);
+});
+
+test('delayed live updates disable confirmation even before the proposal expires', () => {
+  const context = { receivedAt: 1000, assessment_current: true, incident: { latest_assessment: 'a', event_count: 1 } };
+  const action = { assessment_id: 'a', evidence_revision: 1, expires_at: 500 };
+  assert.equal(canExecute(action, context, 2000), true);
+  assert.equal(canExecute(action, context, 32000), false);
 });

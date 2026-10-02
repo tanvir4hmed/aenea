@@ -25,6 +25,7 @@ export function describe(tool, data) {
 
 export function canExecute(action, context, now = Date.now()) {
   return Boolean(context?.incident && !context.refreshing && context.assessment_current && !context.incident.resolved_at && context.incident.decision_review !== 'rejected'
+    && (context.receivedAt === undefined || now - context.receivedAt <= 30000)
     && context.incident.latest_assessment === action.assessment_id
     && (context.incident.note_revision || 0) === (action.note_revision || 0)
     && context.incident.event_count === action.evidence_revision && now < action.expires_at * 1000);

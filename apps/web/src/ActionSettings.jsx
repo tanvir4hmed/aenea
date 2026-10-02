@@ -21,16 +21,19 @@ export default function ActionSettings({ api, catalog = { devices: [], locations
     } catch (failure) { if (requestId === loadId.current) setError(failure.message); }
     finally { if (requestId === loadId.current) setBusy(false); }
   }
-  useEffect(() => { setLoaded(false); if (ready && outputs.length) load(); return () => { loadId.current += 1; }; }, [catalog.revision, ready]);
+  useEffect(() => { setLoaded(false); if (ready && outputs.length) load(); else setBusy(false); return () => { loadId.current += 1; }; }, [catalog.revision, ready]);
   function change(id, patch) { setDevices(old => ({ ...old, [id]: { ...old[id], ...patch } })); setMessage(''); }
   async function save() {
     if (busy || !dirty || !revision) return;
+    const requestId = ++loadId.current;
     setBusy(true); setMessage(''); setError('');
     try {
       const result = await api('/household/devices', { method: 'PUT', body: JSON.stringify({ revision, devices: permissionPayload(outputs, devices) }) });
+      if (requestId !== loadId.current) return;
       setDevices(result.devices); setSaved(result.devices); setRevision(result.revision);
       setMessage('Response permissions saved. They apply when an eligible action is next checked.');
-    } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+    } catch (failure) { if (requestId === loadId.current) setError(failure.message); }
+    finally { if (requestId === loadId.current) setBusy(false); }
   }
   return <section className="card" aria-busy={busy}><h2>Response permissions</h2>
     <p>Sensors report what they detect. Response outputs are separate devices: simulated lights, sirens, notifications and water valves. Receiving a sensor signal does not enable an output.</p>

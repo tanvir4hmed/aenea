@@ -7,7 +7,7 @@ import HistoryRecord from './HistoryRecord';
 const readable = value => String(value || 'Unknown').replaceAll('_', ' ');
 const stamp = item => item.event?.occurred_at || item.recorded_at || item.reported_at || '';
 
-export default function IncidentHistory({ api, incidents, catalog, selected, onSelect, state, timeline, loading, onRefreshList, onMoreIncidents, onRefresh, onMoreEvidence, onDeleted, navigate }) {
+export default function IncidentHistory({ api, incidents, catalog, selected, onSelect, state, timeline, loading, onRefreshList, onMoreIncidents, onRefresh, onRefreshEvidence = onRefresh, evidenceReady = true, evidenceBusy = false, evidenceError = '', onMoreEvidence, onDeleted, navigate }) {
   const [opened, setOpened] = useState(null), [tab, setTab] = useState('overview');
   const [query, setQuery] = useState(''), [location, setLocation] = useState(''), [status, setStatus] = useState('');
   const [page, setPage] = useState(1), [eventPage, setEventPage] = useState(1), [eventType, setEventType] = useState('');
@@ -23,6 +23,10 @@ export default function IncidentHistory({ api, incidents, catalog, selected, onS
     .slice().sort((a, b) => String(stamp(b)).localeCompare(String(stamp(a))) || String(b.sk).localeCompare(String(a.sk)));
   const eventPages = Math.max(1, Math.ceil(events.length / 10)), currentEventPage = Math.min(eventPage, eventPages);
   function open(id) { onSelect(id); setOpened(id); setTab('overview'); setEventPage(1); setEventType(''); setConfirm(false); setChecked(false); setMessage(''); }
+  function selectTab(next) {
+    setTab(next);
+    if (next !== 'overview' && !evidenceReady && !evidenceBusy) onRefreshEvidence();
+  }
   async function remove() {
     if (!checked || busy || !incident) return;
     setBusy(true); setMessage('');
@@ -40,14 +44,16 @@ export default function IncidentHistory({ api, incidents, catalog, selected, onS
     </section>
     {confirm && <section className="card delete-confirmation" role="region" aria-label="Confirm incident deletion"><h3>Delete {incidentName(incident)}?</h3><p>Evidence, assessments, notes and action records will be removed from active storage. This cannot be undone in the app. Cleanup runs in the background; retained service logs and backups follow their retention periods.</p><label><input type="checkbox" checked={checked} onChange={event => setChecked(event.target.checked)}/>I want to delete this incident and its stored evidence.</label><div className="actions"><button disabled={!checked || busy} onClick={remove}>{busy ? 'Requesting deletion…' : 'Delete permanently'}</button><button disabled={busy} onClick={() => setConfirm(false)}>Cancel</button></div></section>}
     {message && <p role="status" className="notice">{message}</p>}
-    <nav className="view-tabs" aria-label="Incident sections">{[['overview', 'Incident record'], ['evidence', 'Evidence timeline'], ['review', 'Decision review']].map(([value, label]) => <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</button>)}</nav>
+    <nav className="view-tabs" aria-label="Incident sections">{[['overview', 'Incident record'], ['evidence', 'Evidence timeline'], ['review', 'Decision review']].map(([value, label]) => <button key={value} aria-pressed={tab === value} onClick={() => selectTab(value)}>{label}</button>)}</nav>
+    {tab !== 'overview' && evidenceBusy && <p role="status">Loading saved evidence… Current incident updates continue separately.</p>}
+    {tab !== 'overview' && evidenceError && <p className="error" role="alert">Evidence could not be refreshed. {evidenceError} <button disabled={evidenceBusy} onClick={onRefreshEvidence}>Retry evidence</button></p>}
     {!state?.incident || state.incident.incident_id !== opened ? <section className="card" role="status">Loading incident details…</section> : <>
       {tab === 'overview' && <><IncidentSummary key={opened} compact api={api} incident={opened} state={state} navigate={navigate} onRefresh={onRefresh} onRenamed={onRefreshList}/><section className="card"><h2>Recorded response outcomes</h2><p>This is the saved action history. Review current requests for approval in Live assistance.</p>{!(state.actions || []).length ? <p>No action outcomes recorded.</p> : <ul className="outcome-log">{state.actions.map(action => <li key={action.action_id}><strong>{action.proposal?.device_name || ({ virtual_notification: 'In-app notification', virtual_valve: 'Virtual water valve', virtual_lights: 'Virtual lights', virtual_siren: 'Virtual alarm' })[action.proposal?.device_id] || 'Previously recorded output'}</strong><span>{readable(action.status)} · {readable(action.proposal?.action)}</span><p>{action.result || action.policy_reason}</p></li>)}</ul>}</section></>}
-      {tab === 'review' && <DecisionReview key={opened} api={api} timeline={timeline} incident={opened} state={state} onRefresh={onRefresh}/>}
-      {tab === 'evidence' && <section className="card"><div className="row"><h2>Evidence timeline</h2><button onClick={onRefresh}>Refresh evidence</button></div><label>Record type<select value={eventType} onChange={event => { setEventType(event.target.value); setEventPage(1); }}><option value="">All records</option><option value="signals">Device signals</option><option value="decisions">Decisions & notes</option></select></label><p>{events.length} matching loaded records · newest loaded first</p>
-        {!events.length && <p>No matching evidence loaded.</p>}<ol className="timeline">{events.slice((currentEventPage - 1) * 10, currentEventPage * 10).map(item => <HistoryRecord key={item.sk} item={item}/>)}</ol>
+      {tab === 'review' && <><DecisionReview key={opened} api={api} timeline={timeline} incident={opened} state={state} onRefresh={() => Promise.all([onRefresh(), onRefreshEvidence()])}/>{onMoreEvidence && <button disabled={evidenceBusy} onClick={onMoreEvidence}>Load more saved decisions & evidence</button>}</>}
+      {tab === 'evidence' && <section className="card" aria-busy={evidenceBusy}><div className="row"><h2>Evidence timeline</h2><button disabled={evidenceBusy} onClick={onRefreshEvidence}>Refresh evidence</button></div><label>Record type<select value={eventType} onChange={event => { setEventType(event.target.value); setEventPage(1); }}><option value="">All records</option><option value="signals">Device signals</option><option value="decisions">Decisions & notes</option></select></label><p>{events.length} matching loaded records · newest loaded first</p>
+        {evidenceReady && !evidenceBusy && !events.length && <p>No matching evidence loaded.</p>}<ol className="timeline">{events.slice((currentEventPage - 1) * 10, currentEventPage * 10).map(item => <HistoryRecord key={item.sk} item={item}/>)}</ol>
         {eventPages > 1 && <nav className="pagination" aria-label="Evidence pages"><button disabled={currentEventPage === 1} onClick={() => setEventPage(currentEventPage - 1)}>Previous</button><span>{currentEventPage} / {eventPages}</span><button disabled={currentEventPage === eventPages} onClick={() => setEventPage(currentEventPage + 1)}>Next</button></nav>}
-        {onMoreEvidence && <button onClick={onMoreEvidence}>Load more stored evidence</button>}
+        {onMoreEvidence && <button disabled={evidenceBusy} onClick={onMoreEvidence}>Load more stored evidence</button>}
       </section>}
     </>}
   </>;

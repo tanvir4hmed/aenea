@@ -21,6 +21,13 @@ function HumanReview({ api, incident, assessment, enabled, onRefresh }) {
 
 export default function DecisionReview({ api, incident, timeline, state, onRefresh }) {
   const [chosen, setChosen] = useState('');
+  const [refreshing, setRefreshing] = useState(false), [refreshError, setRefreshError] = useState('');
+  async function refresh() {
+    if (refreshing) return;
+    setRefreshing(true); setRefreshError('');
+    try { await onRefresh(); } catch (error) { setRefreshError(error.message); }
+    finally { setRefreshing(false); }
+  }
   const current = state?.latest_assessment;
   const history = [...new Map([...timeline.filter(item => item.sk.startsWith('ASSESSMENT#')), ...(current ? [current] : [])].map(item => [item.assessment_id, item])).values()]
     .sort((a, b) => (b.evidence_revision || 0) - (a.evidence_revision || 0) || b.created_at - a.created_at);
@@ -31,7 +38,8 @@ export default function DecisionReview({ api, incident, timeline, state, onRefre
   const cited = new Set(assessment?.assessment?.evidence_ids || []);
   const priorIds = new Set(previous?.evidence_ids || []);
   return <section className="card">
-    <div className="row"><h2>Decision review</h2><button disabled={!incident} onClick={() => onRefresh()}>Refresh assessment</button></div>
+    <div className="row"><h2>Decision review</h2><button disabled={!incident || refreshing} onClick={refresh}>{refreshing ? 'Refreshing…' : 'Refresh assessment'}</button></div>
+    {refreshError && <p role="alert" className="error">{refreshError}</p>}
     {!incident ? <p>Select an incident to review its decisions.</p> : <>
       <p>Evidence revision <strong>{state?.incident?.event_count ?? '…'}</strong> · Assessed revision <strong>{current?.evidence_revision ?? 'Not available'}</strong></p>
       {state && !state.assessment_current && <p className="notice" role="status">New evidence is awaiting assessment, or only a legacy assessment is available. Previous proposals cannot execute.</p>}

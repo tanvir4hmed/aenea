@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { callback, hasSession, login, logout } from './auth';
 import './style.css';
@@ -6,11 +6,10 @@ import './experience.css';
 import AlexaSimulator from './AlexaSimulator';
 import IncidentPicker from './IncidentPicker';
 import AppShell from './AppShell';
-import DeviceMap from './DeviceMap';
 import { incidentName } from './incidentNames';
-import IncidentSummary from './IncidentSummary';
 import { requestJson } from './api';
 import { createIncidentCache } from './incidentCache';
+import { createRequestGate, mergeEvidence } from './incidentReads';
 import { clearConversations, conversationKey } from './alexaConversation';
 
 const IncidentHistory = lazy(() => import('./IncidentHistory'));
@@ -19,6 +18,8 @@ const UserGuide = lazy(() => import('./UserGuide'));
 const Settings = lazy(() => import('./Settings'));
 const SimulationStudio = lazy(() => import('./SimulationStudio'));
 const DataControls = lazy(() => import('./DataControls'));
+const DeviceMap = lazy(() => import('./DeviceMap'));
+const IncidentSummary = lazy(() => import('./IncidentSummary'));
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
@@ -42,24 +43,34 @@ function App() {
   const [loadingIncidents, setLoadingIncidents] = useState(false);
   const [guestPassVisible, setGuestPassVisible] = useState(false), [copyNotice, setCopyNotice] = useState('');
   const [incidentCursor, setIncidentCursor] = useState(null), [timelineCursor, setTimelineCursor] = useState(null);
-  const additionalPages = useRef(false);
+  const [evidenceReady, setEvidenceReady] = useState(false), [evidenceBusy, setEvidenceBusy] = useState(false), [evidenceError, setEvidenceError] = useState('');
+  const [statusError, setStatusError] = useState('');
+  const statusRequests = useRef(createRequestGate()), evidenceRequests = useRef(createRequestGate());
   const incidentCache = useRef(createIncidentCache());
   const [studioMounted, setStudioMounted] = useState(false);
   const studioActive = ['simulation-lab', 'command-center'].includes(page);
+  const incidentPage = ['command-center', 'alexa-sim', 'incident-history'].includes(page);
   useEffect(() => { if (studioActive) setStudioMounted(true); }, [studioActive]);
   const activeIncident = useRef(selected);
   activeIncident.current = selected;
   const selectionMade = useRef(!!selected);
-  function selectIncident(id) { selectionMade.current = true; if (activeIncident.current === id) return; activeIncident.current = id; setSelected(id); const cached = incidentCache.current.preview(id); setIncidentState(cached); setTimeline(cached?.items || []); }
+  function selectIncident(id) {
+    selectionMade.current = true;
+    if (activeIncident.current === id) return;
+    statusRequests.current.invalidate(); evidenceRequests.current.invalidate();
+    activeIncident.current = id; setSelected(id);
+    setIncidentState(incidentCache.current.preview(id)); setTimeline([]); setTimelineCursor(null);
+    setEvidenceReady(false); setEvidenceBusy(false); setEvidenceError(''); setStatusError('');
+  }
   const [incidentState, setIncidentState] = useState(null);
-  function receiveTimeline(data, append = false) {
+  function receiveStatus(data) {
     const fresh = { ...data, receivedAt: Date.now(), refreshing: Boolean(data.refreshing) };
-    if (data.incident?.incident_id && !append && !data.refreshing) incidentCache.current.remember(data.incident.incident_id, fresh);
+    if (data.incident?.incident_id && !data.refreshing) incidentCache.current.remember(data.incident.incident_id, fresh);
     setIncidentState(fresh);
-    setTimeline(old => append ? [...new Map([...old, ...data.items].map(item => [item.sk, item])).values()] : data.items);
+    setStatusError('');
     if (data.incident?.incident_id) setIncidents(old => old.map(item => item.incident_id === data.incident.incident_id ? data.incident : item));
   }
-  const api = (path, options) => requestJson(config, path, options);
+  const api = useCallback((path, options) => requestJson(config, path, options), [config]);
   async function loadIncidents(cursor = null) {
     setLoadingIncidents(true);
     try {
@@ -83,8 +94,11 @@ function App() {
     try { const data = await api('/household/catalog', { method: 'PUT', body: JSON.stringify(next) }); setCatalog(data); }
     finally { setCatalogBusy(false); }
   }
-  function clearDrafts() {
-    clearConversations(localStorage, identity);
+  function clearDrafts(includeHistory = true) {
+    if (includeHistory) {
+      clearConversations(localStorage, identity);
+      sessionStorage.removeItem('aenea-run-request-' + identity);
+    }
     sessionStorage.removeItem('aenea-studio-' + identity);
     sessionStorage.removeItem('aenea-trigger-' + identity);
     setStudioEpoch(value => value + 1);
@@ -94,21 +108,42 @@ function App() {
     try { localStorage.removeItem(conversationKey(identity, id)); } catch { /* Optional browser history. */ }
     sessionStorage.removeItem(`aenea-note-${identity}-${id}`);
     setIncidents(old => old.filter(item => item.incident_id !== id));
-    if (selected === id) { activeIncident.current = ''; setSelected(''); setTimeline([]); setIncidentState(null); }
+    if (selected === id) selectIncident('');
     try {
       const run = JSON.parse(sessionStorage.getItem('aenea-trigger-' + identity) || 'null');
       if (run?.incident === id) sessionStorage.removeItem('aenea-trigger-' + identity);
       const drafts = JSON.parse(sessionStorage.getItem('aenea-studio-' + identity) || '[]');
-      if (drafts.some(row => row.payload?.incident_id === id)) clearDrafts();
+      if (drafts.some(row => row.payload?.incident_id === id)) clearDrafts(false);
       else setStudioEpoch(value => value + 1);
-    } catch { clearDrafts(); }
+    } catch { clearDrafts(false); }
   }
-  async function loadTimeline(id, cursor = null) {
-    additionalPages.current = !!cursor;
-    const data = await api('/incidents/' + id + '/timeline' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
-    if (activeIncident.current !== id) return;
-    receiveTimeline(data, !!cursor);
-    setTimelineCursor(data.next_cursor);
+  async function loadStatus(id, fresh = true, isActive = () => true) {
+    if (!id) return;
+    const latest = statusRequests.current.start();
+    const current = () => latest() && isActive() && activeIncident.current === id;
+    if (fresh) setIncidentState(old => old ? { ...old, refreshing: true, assessment_current: false } : old);
+    try {
+      const data = await api('/incidents/' + id + '/timeline?view=status', { fresh });
+      if (current()) receiveStatus(data);
+    } catch (failure) {
+      if (!current()) return;
+      setStatusError(failure.message);
+      setIncidentState(old => old ? { ...old, refreshing: true, assessment_current: false } : old);
+      throw failure;
+    }
+  }
+  async function loadEvidence(id, cursor = null) {
+    if (!id) return;
+    const latest = evidenceRequests.current.start();
+    const current = () => latest() && activeIncident.current === id;
+    setEvidenceBusy(true); setEvidenceError('');
+    try {
+      const data = await api('/incidents/' + id + '/timeline?view=records' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''), { fresh: !cursor });
+      if (!current()) return;
+      setTimeline(old => mergeEvidence(old, data.items, !!cursor));
+      setTimelineCursor(data.next_cursor); setEvidenceReady(true);
+    } catch (failure) { if (current()) setEvidenceError(failure.message); }
+    finally { if (current()) setEvidenceBusy(false); }
   }
   useEffect(() => {
     (async () => {
@@ -119,7 +154,7 @@ function App() {
       setPage(currentPage());
     })().catch(e => setError(e.message));
     const onPop = () => { setPage(currentPage()); setLiveView(currentLiveView()); setSettingsTab(currentSettingsTab()); };
-    const onExpired = () => { incidentCache.current.clear(); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
+    const onExpired = () => { statusRequests.current.invalidate(); evidenceRequests.current.invalidate(); incidentCache.current.clear(); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
     addEventListener('popstate', onPop); addEventListener('aenea-auth-expired', onExpired);
     return () => { removeEventListener('popstate', onPop); removeEventListener('aenea-auth-expired', onExpired); };
   }, []);
@@ -130,7 +165,7 @@ function App() {
   }, [config, authenticated]);
   useEffect(() => {
     if (!config || !authenticated) return;
-    if (!['command-center', 'alexa-sim', 'incident-history'].includes(page)) return;
+    if (!incidentPage) return;
     let active = true, running = false, cursor = null;
     const tick = async () => {
       if (running || document.hidden) return; running = true;
@@ -143,30 +178,28 @@ function App() {
     };
     const timer = setInterval(tick, 10000);
     return () => { active = false; clearInterval(timer); };
-  }, [config, authenticated, page]);
+  }, [config, authenticated, incidentPage]);
   useEffect(() => {
     if (!selected) sessionStorage.removeItem(incidentStorageKey);
     else sessionStorage.setItem(incidentStorageKey, selected);
-    const cached = incidentCache.current.preview(selected);
-    setTimeline(cached?.items || []); setTimelineCursor(cached?.next_cursor || null); setIncidentState(cached);
-    if (!config || !selected || !authenticated || !['command-center', 'alexa-sim', 'incident-history'].includes(page)) return;
-    additionalPages.current = false;
+  }, [selected]);
+  useEffect(() => {
+    if (!config || !selected || !authenticated || !incidentPage) return;
     let active = true;
     let refreshing = false;
     const refresh = async () => {
       if (refreshing || document.hidden) return;
       refreshing = true;
       try {
-        const data = await api('/incidents/' + selected + '/timeline');
-        if (active && activeIncident.current === selected) { receiveTimeline(data, additionalPages.current); if (!additionalPages.current) setTimelineCursor(data.next_cursor); }
-      } catch(e) { if(active) setError(e.message); }
+        await loadStatus(selected, false, () => active);
+      } catch { /* The status lane keeps its own recoverable error. */ }
       finally { refreshing = false; }
     };
     refresh();
     const timer = setInterval(refresh, 10000);
     document.addEventListener('visibilitychange', refresh);
-    return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
-  }, [config, selected, authenticated, page]);
+    return () => { active = false; statusRequests.current.invalidate(); clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [config, selected, authenticated, incidentPage]);
   function navigate(next, view = 'overview') {
     const target = ['check-in', 'handoff'].includes(next) ? 'incident-history' : next;
     const fragment = target === 'alexa-sim' && view === 'ask' ? 'ask' : target === 'settings' && ['devices', 'permissions', 'cleanup'].includes(view) ? view : '';
@@ -179,10 +212,11 @@ function App() {
   }
   return <AppShell page={page} navigate={navigate} liveView={liveView} onLiveView={view => navigate('alexa-sim', view)} authenticated={authenticated} config={config} selected={selected} selectedName={incidentName(incidents.find(item => item.incident_id === selected) || { incident_id: selected })}
     onAuth={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>
-      <Suspense fallback={<div className="card" role="status">Loading workspace…</div>}>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
-      {authenticated && selected && ['command-center', 'alexa-sim', 'incident-history'].includes(page) && (!incidentState || incidentState.refreshing) && <p role="status" className="sync-status">{incidentState ? 'Showing last received data. Updating this incident…' : 'Loading this incident’s latest signals…'}</p>}
+      {authenticated && selected && incidentPage && statusError && <div role="alert" className="error">Current incident updates are unavailable. {statusError} <button onClick={() => loadStatus(selected).catch(() => {})}>Retry incident update</button></div>}
+      {authenticated && selected && incidentPage && (!incidentState || incidentState.refreshing) && <p role="status" className="sync-status">{statusError ? 'Showing last received data only. Response approval is unavailable until fresh state is received.' : incidentState ? 'Showing last received data. Updating this incident…' : 'Loading this incident’s latest signals…'}</p>}
+      <Suspense fallback={<div className="card" role="status">Loading this view…</div>}>
       {page === 'guide' && <UserGuide navigate={navigate}/>}
       {!authenticated && page !== 'guide' && <section className="card guest-access"><h2>Welcome to Aenea</h2>
         <p>Sign in with your authorized account, or use the shared guest account to explore this public prototype.</p>
@@ -205,19 +239,20 @@ function App() {
           onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
       </>}
       {authenticated && config && identity && studioMounted && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
-        <SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
+        <Suspense fallback={<div className="card" role="status">Loading Command Center…</div>}><SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} navigate={navigate} onDevice={setDeviceSelection}/>}
-          briefing={<IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadTimeline(selected)} onRenamed={() => loadIncidents()}/>}
+          briefing={<IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadStatus(selected)} onRenamed={() => loadIncidents()}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
           selectIncident(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
-        }}/>
+        }}/></Suspense>
       </div>}
       {authenticated && config && page === 'settings' && <Settings initialTab={settingsTab} catalog={catalog} ready={catalogReady} busy={catalogBusy || studioBusy} save={saveCatalog} reload={loadCatalog} navigate={navigate} permissions={<ActionSettings api={api} catalog={catalog} ready={catalogReady}/>} cleanup={<><DataControls api={api} incidents={incidents} onDeleted={incidentDeleted} onClearDrafts={clearDrafts} disabled={studioBusy}/>{incidentCursor && <button onClick={() => loadIncidents(incidentCursor).catch(error => setError(error.message))}>Load more incidents for cleanup</button>}</>}/>}
       {authenticated && config && page === 'incident-history' && <IncidentHistory api={api} incidents={incidents} catalog={catalog} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} loading={loadingIncidents}
         onRefreshList={() => loadIncidents().catch(e => setError(e.message))} onMoreIncidents={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}
-        onRefresh={() => loadTimeline(selected).catch(e => setError(e.message))} onMoreEvidence={timelineCursor ? () => loadTimeline(selected, timelineCursor).catch(e => setError(e.message)) : null}
+        onRefresh={() => loadStatus(selected)} onRefreshEvidence={() => loadEvidence(selected)} evidenceReady={evidenceReady} evidenceBusy={evidenceBusy} evidenceError={evidenceError}
+        onMoreEvidence={timelineCursor ? () => loadEvidence(selected, timelineCursor) : null}
         onDeleted={incidentDeleted} navigate={navigate}/>}
-      {authenticated && config && page==='alexa-sim' && <AlexaSimulator view={liveView} household={identity} config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadTimeline(selected)} navigate={navigate} catalog={catalog}/>}
+      {authenticated && config && page==='alexa-sim' && <AlexaSimulator view={liveView} household={identity} config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadStatus(selected)} navigate={navigate} catalog={catalog}/>}
       </Suspense>
     </AppShell>;
 }
