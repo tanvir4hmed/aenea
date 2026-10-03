@@ -25,7 +25,7 @@ npm --prefix apps/web test
 npm --prefix apps/web run build
 ```
 
-`Source quality` runs these checks without AWS credentials. It is independent of deployment, not a post-deploy test or a configured merge protection rule.
+`Source quality` runs these checks without AWS credentials for pull requests and manual checks. It is independent of deployment, not a post-deploy test or a configured merge protection rule.
 
 ## Coding standard
 

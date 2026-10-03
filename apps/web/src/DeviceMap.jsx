@@ -5,7 +5,7 @@ import { alertStates } from './simulations';
 
 const symbols = { smoke_detector: '◉', co_detector: 'CO', leak_sensor: '≈', camera: '◧', medical_button: '+', weather_feed: '☁', heat_detector: '♨', gas_detector: 'G', freeze_sensor: '❄', power_monitor: 'ϟ', security_contact: '⌑', glass_break_sensor: '◇', security_panel: '!', smart_lock: '⌾' };
 
-export default function DeviceMap({ catalog, ready, timeline, state, selected, onDevice, navigate, focusedDevice }) {
+export default function DeviceMap({ catalog, ready, timeline, state, selected, summary, onDevice, navigate, focusedDevice }) {
   const map = useRef(null);
   const focusedOnce = useRef(null);
   const [locationId, setLocationId] = useState('');
@@ -23,14 +23,17 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, o
     const button = [...map.current.querySelectorAll('[data-device-id]')].find(element => element.dataset.deviceId === focused.id);
     if (button) { focusedOnce.current = focusedDevice.nonce; button.focus({ preventScroll: true }); button.scrollIntoView({ block: 'nearest' }); }
   }, [locationId, room, focusedDevice?.nonce, focused?.id, expanded]);
-  const site = catalog.locations.find(item => item.id === (locationId || state?.incident?.location_id)) || catalog.locations[0];
+  const currentState = state?.incident?.incident_id === selected ? state : null;
+  const currentIncident = currentState?.incident || summary;
+  const site = catalog.locations.find(item => item.id === (locationId || currentIncident?.location_id)) || catalog.locations[0];
   const devices = catalog.devices.filter(item => item.location_id === site?.id);
   const rooms = [...new Set(devices.map(item => item.room || 'Unassigned area'))];
-  const reporting = reportingDevices(timeline, state);
-  const states = alertStates(catalog, timeline, state);
+  const reporting = reportingDevices(timeline, currentState);
+  const states = alertStates(catalog, timeline, currentState);
   return <section ref={map} className="card device-map" aria-busy={!ready}>
     <div className="row"><h2>Household Overview</h2><span className="mode-label">Simulation</span></div>
     <div className="map-toolbar"><label>Location<select value={site?.id || ''} onChange={event => { setLocationId(event.target.value); setRoom(''); }}><option value="" disabled>Choose location</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button onClick={() => navigate('settings')}>Manage devices</button></div>
+    {selected && (!currentState || currentState.refreshing) && <p className="sync-status" role="status">Loading the selected incident’s device reports…</p>}
     {ready && focusedDevice?.inspect && !focused && <p className="notice">This report’s device is no longer in your device list. Its recorded evidence remains in History.</p>}
     {!ready ? <p role="status">Loading saved devices…</p> : !devices.length ? <div className="empty-state"><h3>{site ? 'No devices at this location' : 'Set up your first location'}</h3><p>Add named rooms and devices in Settings to populate this view.</p></div> : <>
       <p className="map-caption">Select a device to inspect its alert state. Trigger saved simulations in the panel on the right.</p>

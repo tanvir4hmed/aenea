@@ -50,13 +50,20 @@ function App() {
   const activeIncident = useRef(selected);
   activeIncident.current = selected;
   const selectionMade = useRef(!!selected);
-  function selectIncident(id) {
+  function selectIncident(id, summary = null) {
     selectionMade.current = true;
     if (activeIncident.current === id) return;
     setDeviceSelection(null);
     statusRequests.current.invalidate(); evidenceRequests.current.invalidate();
     activeIncident.current = id; setSelected(id);
-    setIncidentState(incidentCache.current.preview(id)); setTimeline([]); setTimelineCursor(null);
+    const preview = incidentCache.current.preview(id);
+    const listed = summary || incidents.find(item => item.incident_id === id);
+    // Keep the selected incident's location and name on screen while its live
+    // status request starts. Device evidence is intentionally not carried over.
+    setIncidentState(preview || (listed ? {
+      household_id: identity, incident: listed, actions: [], assessment_current: false, refreshing: true,
+    } : null));
+    setTimeline([]); setTimelineCursor(null);
     setEvidenceReady(false); setEvidenceBusy(false); setEvidenceError(''); setStatusError('');
   }
   const [incidentState, setIncidentState] = useState(null);
@@ -79,7 +86,7 @@ function App() {
       }
       if (!selectionMade.current && !activeIncident.current) {
         const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-        if (open.length) selectIncident(open[0].incident_id);
+        if (open.length) selectIncident(open[0].incident_id, open[0]);
       }
       setIncidents(old => cursor ? [...old, ...data.items] : data.items);
       setIncidentCursor(data.next_cursor);
@@ -179,7 +186,7 @@ function App() {
         }
         cursor = data.next_cursor;
         setIncidents(old => [...new Map([...old, ...data.items].map(item => [item.incident_id, item])).values()]);
-        if (!selectionMade.current && !activeIncident.current) { const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); if (open.length) selectIncident(open[0].incident_id); }
+        if (!selectionMade.current && !activeIncident.current) { const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); if (open.length) selectIncident(open[0].incident_id, open[0]); }
       } catch (failure) { if (active) setError(failure.message); } finally { running = false; }
     };
     const timer = setInterval(tick, 10000);
@@ -246,7 +253,7 @@ function App() {
       </>}
       {authenticated && config && identity && studioMounted && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
         <Suspense fallback={<div className="card" role="status">Loading Command Center…</div>}><SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
-          map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} focusedDevice={deviceSelection} navigate={navigate} onDevice={setDeviceSelection}/>}
+          map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} summary={incidents.find(item => item.incident_id === selected)} focusedDevice={deviceSelection} navigate={navigate} onDevice={setDeviceSelection}/>}
           briefing={<IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadStatus(selected)} onRenamed={() => loadIncidents()}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
           selectIncident(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));

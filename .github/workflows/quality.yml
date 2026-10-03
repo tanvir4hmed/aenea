@@ -1,7 +1,5 @@
 name: Source quality
 on:
-  push:
-    paths: ["apps/web/**", "functions/**", "shared/**", "agent/**", "services/**", "scripts/**", "tests/**", "workflows/**", "pyproject.toml", "requirements-dev.txt", ".github/workflows/quality.yml"]
   pull_request:
     paths: ["apps/web/**", "functions/**", "shared/**", "agent/**", "services/**", "scripts/**", "tests/**", "workflows/**", "pyproject.toml", "requirements-dev.txt", ".github/workflows/quality.yml"]
   workflow_dispatch:

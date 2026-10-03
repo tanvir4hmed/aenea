@@ -9,7 +9,7 @@ Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. 
 1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit deployment policies.
 2. Follow [CloudShell bootstrap](cloudshell-bootstrap.md). It creates/adopts the private state bucket and GitHub OIDC role, then stores bootstrap state in `bootstrap/terraform.tfstate` in that bucket. Never commit state.
 3. In GitHub create environment `dev`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
-5. Dispatch **Deploy changed components** with `all` once. Subsequent main pushes deploy affected components automatically.
+5. Dispatch **Deploy changed components** with `all` once. Subsequent qualifying main-branch pushes deploy affected components automatically. The separate source-quality workflow runs on pull requests, so a release push creates one deployment workflow run.
 6. Create a synthetic-test Cognito user as an account administrator. Self-registration is disabled. Hosted UI uses authorization code + PKCE and API routes require access-token scopes.
 
 The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted `dev` environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.

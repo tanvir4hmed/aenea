@@ -43,7 +43,7 @@ The current [state-driven coordination release](docs/state-driven-coordination.m
 
 The [current device-first experience](docs/device-first-experience.md) supersedes the earlier response-permission and separate Ask-tab design.
 
-Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Pushes select affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
+Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Each qualifying main-branch push starts one automatic deployment that selects the affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 
 ## Documentation
 
