@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { incidentName } from './incidentNames';
 
-export default function SimulationRuns({ api, household, started, onSelect, active = true }) {
+export default function SimulationRuns({ api, household, started, onSelect, active = true, incidents = [] }) {
   const [runs, setRuns] = useState([]), [cursor, setCursor] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const lock = useRef(false), pageCursor = useRef(null);
   const known = useRef([]);
@@ -23,7 +24,9 @@ export default function SimulationRuns({ api, household, started, onSelect, acti
       if (last && !result.items.some(run => run.id === last)) {
         try { result.items.unshift(await api('/household/runs/' + last)); } catch (failure) { if (failure.status !== 404) throw failure; localStorage.removeItem('aenea-last-run-' + household); }
       }
-      setRuns(old => [...new Map([...old, ...result.items].map(run => [run.id, run])).values()].sort((a, b) => b.created_at - a.created_at));
+      const cleared = !more && !result.items.length && !result.next_cursor;
+      setRuns(old => cleared ? [] : [...new Map([...old, ...result.items].map(run => [run.id, run])).values()].sort((a, b) => b.created_at - a.created_at));
+      if (cleared) { pageCursor.current = ''; setCursor(null); setVisibleCount(20); }
       if (more || pageCursor.current === null) { pageCursor.current = result.next_cursor || ''; setCursor(result.next_cursor); }
       setError('');
     } catch (failure) { setError(failure.message); }
@@ -38,7 +41,7 @@ export default function SimulationRuns({ api, household, started, onSelect, acti
   return <details className="simulation-runs" open={runs.some(run => ['running', 'paused'].includes(run.status))}><summary>Simulation runs</summary>
     {error && <p role="alert" className="error">{error}</p>}
     {!runs.length && <p>No runs yet.</p>}
-    {runs.slice(0, visibleCount).map(run => <article key={run.id} className="catalog-item"><strong>{run.names.join(' + ')}</strong><p>{run.status} · {run.accepted}/{run.expected} published</p><small>{run.message}</small><div className="actions">{run.incident_ids.map(id => <button key={id} onClick={() => onSelect(id)}>View incident {id.slice(0, 8)}</button>)}{['running', 'paused'].includes(run.status) && <button disabled={busy} onClick={() => control(run, 'stop')}>Stop run</button>}{run.status === 'paused' && <button disabled={busy} onClick={() => control(run, 'resume')}>Resume pending</button>}</div></article>)}
+    {runs.slice(0, visibleCount).map(run => <article key={run.id} className="catalog-item"><strong>{run.names.join(' + ')}</strong><p>{run.status} · {run.accepted}/{run.expected} published</p><small>{run.message}</small><div className="actions">{run.incident_ids.map(id => <button key={id} onClick={() => onSelect(id)}>View {incidentName(incidents.find(item => item.incident_id === id))}</button>)}{['running', 'paused'].includes(run.status) && <button disabled={busy} onClick={() => control(run, 'stop')}>Stop run</button>}{run.status === 'paused' && <button disabled={busy} onClick={() => control(run, 'resume')}>Resume pending</button>}</div></article>)}
     {(cursor || runs.length > visibleCount) && <button onClick={() => { setVisibleCount(value => value + 20); if (cursor) refresh(true); }}>Load more runs</button>}
   </details>;
 }

@@ -197,7 +197,7 @@ def message(owner, incident, body, scopes):
             200,
             {
                 "tool": None,
-                "message": "Try asking what happened, which devices reported, whether the assessment is current, or ask to see the evidence timeline. Device actions must be reviewed and confirmed on their action card.",
+                "message": "I can explain this incident’s reported signals, assessment, changes and timeline. Try asking which devices reported or what changed.",
             },
         )
     tool = allowed[interpreted.intent]

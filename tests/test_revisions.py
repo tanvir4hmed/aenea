@@ -25,6 +25,7 @@ def load(name, path):
     return module
 
 
+@patch.dict("os.environ", {"DEVICE_ACTIONS_ENABLED": "true"})
 class RevisionTests(unittest.TestCase):
     def test_current_requires_published_identity_and_exact_evidence_revision(self):
         summary = {"event_count": 2, "latest_assessment": "new"}
@@ -234,6 +235,7 @@ class PublicationTests(unittest.TestCase):
             self.module.reused_assessment(previous, [{**events[0], "kind": "water_leak"}])
 
 
+@patch.dict("os.environ", {"DEVICE_ACTIONS_ENABLED": "true"})
 class RecoveryPolicyTests(unittest.TestCase):
     def test_same_revision_fresh_assessment_replaces_expired_pending_proposal(self):
         proposal = {

@@ -149,7 +149,8 @@ class IncidentEngineTests(unittest.TestCase):
     def test_routing_outage_marks_fallback_instead_of_inventing_model_result(self):
         with patch.object(engine.boto3, "client", side_effect=TimeoutError("offline")):
             name, routing = self.real_propose(self.event(), self.context())
-        self.assertIn("smoke", name)
+        self.assertIn("smoke", name.lower())
+        self.assertIn("Kitchen", name)
         self.assertEqual(routing["mode"], "deterministic_fallback")
         self.assertNotIn("model_id", routing)
 

@@ -2,7 +2,7 @@
 
 Shared household context, accountable incident coordination.
 
-Aenea explores an Alexa+-centered response to disconnected household alerts. Scheduled simulated device states enter a shared cloud incident pipeline; a Strands/Bedrock agent assesses evidence, while deterministic policy controls location-scoped virtual actions. The Alexa+ browser experience reads the same incidents through MCP and application APIs, with persisted briefings and optional notes.
+Aenea explores Alexa+-centered coordination of disconnected household alerts. Scheduled simulated device states enter a shared cloud incident pipeline; a Strands/Bedrock agent assesses evidence. The Alexa+ browser experience reads the same incidents through MCP and application APIs, with persisted briefings and incident questions. Device-response controls are retired in the current experience; no automatic device actuation is enabled.
 
 > Hackathon prototype, not a certified alarm, medical device or monitoring service. Follow official alarms and emergency guidance. Devices and actions are simulated; Aenea does not dispatch responders or provide a verified native Alexa/Ring integration.
 
@@ -10,15 +10,15 @@ Aenea explores an Alexa+-centered response to disconnected household alerts. Sch
 
 Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
 
-- **Settings:** name locations, manage simulated devices and set virtual action permissions.
+- **Settings:** separate Device list and Add device views, inline location creation, compact location management and data cleanup.
 - **Simulation Studio:** save named single alerts and scenarios with state, repeat interval, duration and optional clear; edit/delete reusable definitions.
 - **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.
 - **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
-- **Alexa+ coordination:** automatically refreshed briefings, active devices, actual virtual outcomes, optional speech/text notes and explicit eligible-action approvals.
+- **Alexa+ coordination:** automatically refreshed briefings, clickable active devices and a compact Ask Alexa+ panel with optional browser speech.
 - **Cloud simulation runs:** continue without an open tab; show scheduled/published counts, pause/resume/stop and per-incident generation allowance.
 - **Data controls:** request guarded incident cleanup and track its status.
 
-New evidence makes an older assessment ineligible for new actions. Human agreement does not bypass policy or replace explicit action approval. Camera motion does not establish occupancy or safety.
+New evidence makes an older assessment stale until reassessment. Human review is not verification of physical safety. Camera motion does not establish occupancy or safety. Historical action records remain read-only; device-response execution is disabled.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are
 
 The current [state-driven coordination release](docs/state-driven-coordination.md) describes implemented behavior, capacities and migration. [Source verification](docs/source-verification.md) distinguishes offline checks and local browser fixtures from outstanding hosted acceptance. Earlier dated workspace phases are historical, not current setup instructions. See [check instructions](CONTRIBUTING.md).
 
-The [incident usability follow-up](docs/usability.md) covers focused Live assistance views, readable question answers, response setup and older incident compatibility.
+The [current device-first experience](docs/device-first-experience.md) supersedes the earlier response-permission and separate Ask-tab design.
 
 Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Pushes select affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 

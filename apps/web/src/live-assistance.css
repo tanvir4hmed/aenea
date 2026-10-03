@@ -1,4 +1,4 @@
-.live-overview-grid { grid-template-areas: 'brief response' 'signals response'; }
+.live-grid.live-overview-grid { grid-template-areas: 'brief conversation' 'signals conversation'; }
 .live-ask-grid { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); grid-template-areas: 'conversation note'; }
 .response-panel > p, .response-settings, .response-history p { font-size: 13px; line-height: 1.6; }
 .response-settings { margin-bottom: 0; }
@@ -22,7 +22,41 @@
 .conversation-turn strong { display: block; font-size: 14px; }
 .conversation-turn p { font-size: 15px; line-height: 1.7; margin-bottom: 0; white-space: pre-line; }
 @media (max-width: 1100px) {
-  .live-overview-grid { grid-template-areas: 'brief' 'response' 'signals'; }
+  .live-grid.live-overview-grid { grid-template-areas: 'brief' 'signals' 'conversation'; }
   .live-ask-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'conversation' 'note'; }
 }
 @media (prefers-reduced-motion: reduce) { .live-ask-grid .conversation-log { scroll-behavior: auto; } }
+.ask-heading { display: flex; align-items: center; gap: 10px; }
+.ask-heading .app-icon { width: 26px; height: 26px; color: #156d68; }
+.conversation-panel .ask-intro { font-size: 13px; margin: 8px 0 16px; }
+.conversation-panel .alexa-command { display: block; }
+.conversation-panel .alexa-command > input { width: 100%; margin: 0; }
+.live-experience .conversation-panel .alexa-command .actions { margin-top: 10px; }
+.conversation-panel .voice-instruction:empty { display: none; }
+.conversation-panel .conversation-log { max-height: 340px; margin-top: 12px; }
+.conversation-panel .conversation-heading { margin-top: 20px; }
+.conversation-panel .conversation-turn { padding: 12px; }
+.conversation-panel .conversation-turn p { font-size: 13px; line-height: 1.6; }
+.conversation-panel .conversation-empty { font-size: 13px; color: #536a72; padding: 16px 0; }
+.signal-grid button.signal-tile { width: 100%; text-align: left; color: inherit; white-space: normal; }
+.signal-grid button.signal-tile:hover { border-color: #167a72; }
+.selected-device { outline: 3px solid #168578; outline-offset: 3px; }
+.settings-location-row { display: flex; align-items: end; gap: 12px; }
+.settings-location-row label { display: grid; gap: 6px; margin: 0; width: min(100%, 360px); }
+.settings-location-row select { margin: 0; width: 100%; }
+.settings-toolbar .row { margin-bottom: 14px; }
+.location-manager { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.location-manager fieldset, .settings-workspace .settings-form fieldset { padding: 0; border: 0; }
+.location-list { max-height: 260px; overflow-y: auto; margin-top: 16px; }
+.location-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding: 12px 0; }
+.location-row small { display: block; margin-top: 4px; }
+.settings-workspace .form-grid label { display: grid; gap: 7px; margin: 0; }
+.settings-workspace .form-grid small { display: inline; color: #536a72; font-weight: 400; }
+.settings-workspace .form-grid input, .settings-workspace .form-grid select { width: 100%; margin: 0; }
+.settings-workspace .form-grid { gap: 18px; margin-bottom: 18px; }
+.settings-workspace .device-enabled { display: flex !important; flex-direction: row; align-items: center; gap: 10px; }
+.settings-workspace .device-enabled input { width: auto; }
+.inline-location { border: 1px solid var(--line); background: #f2f8f6; padding: 16px; border-radius: 10px; }
+.device-search { display: grid; gap: 6px; max-width: 420px; margin-bottom: 18px; }
+.device-search input { margin: 0; width: 100%; }
+@media (max-width: 600px) { .settings-location-row { flex-wrap: wrap; } .settings-location-row label { flex: 1 1 100%; } .location-row { align-items: start; flex-wrap: wrap; } }
