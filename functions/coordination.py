@@ -19,7 +19,6 @@ from lifecycle import deleted
 from incident_state import snapshot
 from catalog import read_catalog, ACTUATORS
 from action_context import location_evidence
-from runtime_capabilities import device_actions_enabled
 
 table = boto3.resource("dynamodb").Table(table_name())
 serializer = TypeSerializer()
@@ -97,13 +96,6 @@ def action_id(incident, proposal):
 
 
 def execute(owner, incident, identifier, confirmed=False, expected_assessment=None):
-    if not device_actions_enabled():
-        return {
-            "action_id": identifier,
-            "status": "blocked",
-            "result": "Device response controls have been retired. No action performed.",
-            "execution_performed": False,
-        }
     if deleted(table, owner, incident):
         return {
             "action_id": identifier,

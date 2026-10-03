@@ -230,7 +230,6 @@
           "variables": {
               "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
               "INGESTION_ENABLED": "${tostring(var.ingestion_enabled)}",
-            "DEVICE_ACTIONS_ENABLED": "false",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
             "INGEST_FUNCTION": "aenea-ingest",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",

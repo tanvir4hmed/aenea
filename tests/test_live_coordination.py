@@ -19,7 +19,6 @@ from briefings import record
 from revisions import current_assessment
 
 
-@patch.dict("os.environ", {"DEVICE_ACTIONS_ENABLED": "true"})
 class LiveCoordinationTests(unittest.TestCase):
     setUp = fixture.SimulationRunTests.setUp
     setup_run = fixture.SimulationRunTests.setup_run

@@ -33,7 +33,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   }
   useEffect(() => { reload().catch(e => setError(e.message)); }, [household]);
   useEffect(() => {
-    if (!deviceSelection || deviceSelection.inspect) return;
+    if (!deviceSelection) return;
     const item = catalog.devices.find(item => item.id === deviceSelection.id);
     if (!item || !loaded) return;
     const matching = selectionForDevice(library.items, item.id);
@@ -134,7 +134,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
     <button className="primary" disabled={busy || disabled || !ready || !loaded || (!pending && !request && (!rows.length || !!selectionError))} onClick={trigger}>{busy ? 'Scheduling…' : request ? 'Retry run request' : pending ? 'Retry previous delivery' : single ? 'Send single alert' : chosen.length === 1 ? 'Send scenario' : 'Send selected alerts & scenarios'}</button>
     {pending && <p>{run.rows.filter(row => row.accepted).length} of {run.rows.length} accepted. Retry keeps the same event identities; accepted alerts are skipped.</p>}
     {feedback}
-    <SimulationRuns api={api} household={household} started={started} onSelect={onAccepted} active={active} incidents={incidents}/>
+    <SimulationRuns api={api} household={household} started={started} onSelect={onAccepted} active={active}/>
   </section>;
   if (embedded) return <div className="command-workbench">{map}<div className="command-rail">{briefing}{triggerPanel}</div></div>;
   return <>

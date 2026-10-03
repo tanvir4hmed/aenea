@@ -1,7 +1,5 @@
 # Incident usability follow-up — 2 October 2026
 
-> Historical iterations below. The [device-first experience](device-first-experience.md) supersedes response permissions, separate Ask views and optional context entry.
-
 ## Requested corrections
 
 Live assistance has two views: **Overview** for the current briefing, active signals and response decisions, and **Ask Alexa+** for questions and optional context. **Command Center** is a separate navigation entry for the device map and practice runs. Incident history retains evidence, assessment review and recorded outcomes; it links to Live assistance for response decisions.

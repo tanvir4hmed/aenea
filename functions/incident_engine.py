@@ -55,16 +55,7 @@ def propose_name(
     fallback = (
         str(candidate["name"])
         if candidate
-        else " · ".join(
-            filter(
-                None,
-                [
-                    context["location"]["name"],
-                    context["device"].get("room"),
-                    event.kind.replace("_", " ").capitalize(),
-                ],
-            )
-        )[:120]
+        else f"{context['location']['name']} · {event.kind.replace('_', ' ')} alerts"[:120]
     )
     try:
         runtime = boto3.client(
