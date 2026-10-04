@@ -4,7 +4,7 @@ Current product: one fixed fictional family home, not a property/room management
 
 ## Product and data contract
 
-- Maple House has 10 fixed rooms in five categories: Living & Entrance (Entrance, Living Room), Kitchen & Dining (Kitchen, Dining Room), Bedrooms (Master Bedroom, Family Bedroom), Washrooms (Bathroom 1–3), and Garage. Other rooms/outdoor areas are intentionally omitted. Category and room widths respond to device counts; compact tiles wrap without equal-height room cards.
+- Maple House has 10 fixed rooms in five categories: Living & Entrance (Entrance, Living Room), Kitchen & Dining (Kitchen, Dining Room), Bedrooms (Master Bedroom, Family Bedroom), Washrooms (Master Washroom, Family Washroom, Living Room Washroom), and Garage. Other rooms/outdoor areas are intentionally omitted. Category widths respond to device counts; a measured dense grid repacks shorter categories into available space. Washrooms share one sensor box, while room/device tiles wrap proportionally. The house always stays visible without category tabs.
 - The canonical definition is `functions/house_layout.json`, imported by the web app and packaged with every Lambda. Explicit, permanent device seed numbers preserve IDs when rooms are reordered, removed or renamed. Never reuse a removed seed number for another device.
 - A new dataset starts with 24 simulated devices covering the supported safety/security sensor types. No incident, event, conversation, run or saved simulation is manufactured at startup.
 - A missing catalog reads the furnished defaults. Saving uses the existing conditional revision write. A deliberately emptied saved catalog stays empty; deleted devices do not reappear on reload. Rooms remain visible even with no devices.

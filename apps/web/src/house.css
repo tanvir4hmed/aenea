@@ -1,30 +1,27 @@
 .device-map { container-type: inline-size; }
-.house-level-switch { display: flex; flex-wrap: wrap; gap: .35rem; }
-.house-level-switch button { padding: .4rem .6rem; min-height: 36px; font-size: .75rem; }
-.house-level-switch button[aria-pressed=true] { background: #263c4a; color: white; border-color: #263c4a; }
-.house-cutaway { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .6rem; margin-top: .75rem; }
-/* Categories and rooms use their device count as a preferred width, never a
-   fixed height. Small rooms stay small; populated rooms wrap compact tiles. */
-.house-cutaway > .house-level { flex: 0 1 var(--group-width); width: var(--group-width); max-width: 100%; min-width: 0; box-sizing: border-box; }
-.house-level { border: 1px solid #cdd8dc; border-top: 3px solid #8ca7b3; border-radius: 7px; background: #f1f5f5; padding: .55rem; }
-.house-level-label { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 0 .15rem .5rem; color: #49616d; }
-.house-level-label h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; margin: 0; }
-.house-level-label span { font-size: .7rem; white-space: nowrap; }
-.house-level .room-map { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
-.house-level .map-room { flex: 1 1 min(var(--room-width), max(min(100%, 9rem), calc(var(--room-share) - .5rem))); max-width: var(--room-width); min-width: 0; box-sizing: border-box; padding: .45rem; border: 1px solid #ced8dc; border-radius: 5px; background: #fff; }
-.house-level .room-title { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; padding: 0 0 .4rem; width: 100%; text-align: left; }
-.house-level .room-title strong { font-size: .8rem; }
-.house-level .room-title small { font-size: .67rem; }
-.house-level .map-devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr)); gap: .3rem; margin-top: 0; }
-.house-level .map-device { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; min-width: 0; min-height: 44px; padding: .35rem; gap: .15rem .3rem; text-align: left; border-radius: 4px; }
-.house-level .map-device .device-symbol { grid-row: 1 / 3; font-size: .85rem; width: 20px; height: 20px; border-radius: 4px; }
-.house-level .map-device strong { font-size: .74rem; overflow-wrap: anywhere; line-height: 1.3; }
+.device-map > .row h2 { margin: 0; }
+.house-cutaway { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-flow: dense; align-items: start; gap: 8px; margin-top: .7rem; }
+.house-cutaway.packed { grid-auto-rows: 4px; }
+.house-level { grid-column: span var(--group-span, 6); min-width: 0; border: 1px solid #cdd8dc; border-top: 3px solid #8ca7b3; border-radius: 7px; background: #f1f5f5; padding: .5rem; }
+.house-level-label { display: flex; justify-content: space-between; align-items: center; gap: .4rem; padding: 0 .1rem .4rem; color: #49616d; }
+.house-level-label h3 { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+.house-level-label span { font-size: .67rem; white-space: nowrap; }
+.house-level .room-map { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .4rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.house-level .map-room { flex: var(--room-weight, 1) 1 100px; min-width: 0; padding: .4rem; border: 1px solid #ced8dc; border-radius: 5px; background: #fff; }
+.house-level .room-title { display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; padding: 0 0 .35rem; width: 100%; text-align: left; }
+.house-level .room-title strong { font-size: .78rem; }
+.house-level .room-title small { font-size: .65rem; }
+.house-level .map-devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr)); gap: .3rem; margin-top: 0; }
+.house-level .map-device { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; min-width: 0; min-height: 44px; padding: .35rem; gap: .15rem .25rem; text-align: left; border-radius: 4px; }
+.house-level .map-device .device-symbol { grid-row: 1 / 3; font-size: .8rem; width: 18px; height: 18px; border-radius: 4px; }
+.house-level .map-device strong { font-size: .73rem; overflow-wrap: anywhere; line-height: 1.3; }
 .house-level .map-device small { font-size: .65rem; grid-column: 2; line-height: 1.3; }
 .house-level .map-room.reporting { border-color: #c79935; background: #fff9eb; }
 .house-level .map-room.urgent-room { border-color: #be4242; background: #fff2f0; }
 .house-level .map-room.focused { outline: 2px solid #37798a; outline-offset: 1px; }
 .house-level button:focus-visible { outline: 3px solid #247b91; outline-offset: 2px; }
-@container (max-width: 350px) {
-  .house-level-label h3 { letter-spacing: 0; }
-  .house-level .map-room { max-width: 100%; }
-}
+/* Washrooms share one category box; each sensor carries its room name. */
+.washroom-group .room-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr)); }
+.washroom-group .map-room, .washroom-group .map-devices { display: contents; }
+.washroom-group .room-title { display: none; }
+@container (max-width: 480px) { .house-level { grid-column: span 12; } }

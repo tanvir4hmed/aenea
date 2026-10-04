@@ -1,0 +1,43 @@
+.command-workbench { grid-template-columns: minmax(0, 1fr) clamp(280px, 28vw, 384px); gap: 16px; }
+.command-rail { display: grid; gap: 12px; }
+.command-rail > .card { margin: 0; padding: 16px; }
+.command-rail h2 { margin: 0 0 12px; font-size: 18px; }
+.command-rail .incident-management p { margin: 8px 0; font-size: 12px; }
+.command-rail .incident-tools { margin-top: 10px; }
+.command-rail .actions button { padding: 7px 10px; font-size: 12px; }
+.incident-picker-inline { margin: 0 0 12px; }
+.incident-picker-inline .row { display: flex; align-items: flex-end; gap: 6px; flex-wrap: nowrap; }
+.incident-picker-inline label { flex: 1; min-width: 0; margin: 0; font-size: 12px; }
+.incident-picker-inline select { display: block; width: 100%; margin: 4px 0 0; padding: 8px; font-size: 12px; }
+.incident-picker-inline .actions { flex-shrink: 0; margin: 0; gap: 4px; }
+.incident-picker-inline button { display: inline-flex; align-items: center; justify-content: center; padding: 8px; }
+.command-rail .alert-composer fieldset { padding: 0; border: 0; }
+.command-rail .alert-composer select[multiple] { min-height: 80px; }
+.simulation-editor { max-width: 880px; }
+.simulation-editor > .row { margin-bottom: 12px; }
+.simulation-editor > .row h2 { margin: 0; }
+.simulation-editor fieldset { border: 0; margin: 0; padding: 0; }
+.definition-meta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 10px 14px; }
+.simulation-editor .definition-meta label { margin: 0; font-size: 13px; }
+.simulation-editor .definition-meta input, .simulation-editor .definition-meta select { margin-top: 4px; padding: 8px 10px; }
+.room-availability { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin: 14px 0 8px; font-size: 12px; }
+.available-device-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 6px; }
+.simulation-editor .device-choice { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; min-height: 44px; font-size: 13px; }
+.simulation-editor .device-choice.chosen { border-color: #237c79; background: #edf7f5; }
+.simulation-editor .device-choice input { flex: 0 0 17px; width: 17px; height: 17px; min-height: 17px; margin: 0; }
+.pending-device-alerts { display: grid; gap: 6px; margin: 10px 0; }
+.pending-device-alert { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px; background: #f1f6f5; border-radius: 6px; }
+.pending-device-alert strong { font-size: 12px; overflow-wrap: anywhere; }
+.pending-device-alert label { font-size: 11px; margin: 0; }
+.pending-device-alert select { font-size: 12px; padding: 6px; margin-top: 3px; }
+.pending-device-alert .signal-kind { font-size: 12px; }
+.simulation-note { margin: 8px 0; font-size: 12px; }
+.definition-count { font-size: 12px; margin: 12px 0 6px; }
+.simulation-editor .signal-queue { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 6px; padding: 0; margin: 0 0 12px; list-style: none; }
+.simulation-editor .signal-queue li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
+.simulation-editor .signal-queue li strong { overflow-wrap: anywhere; }
+.simulation-editor .signal-queue small { font-size: 11px; }
+.simulation-editor .signal-queue button { padding: 6px; font-size: 11px; }
+.simulation-feedback .notice, .simulation-feedback .error { margin: 8px 0 0; }
+@media (max-width: 1100px) { .command-workbench { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .definition-meta { grid-template-columns: 1fr; } .pending-device-alert { grid-template-columns: 1fr 1fr; } .pending-device-alert > strong { grid-column: 1 / -1; } }

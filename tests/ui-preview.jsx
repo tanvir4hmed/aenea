@@ -9,6 +9,7 @@ import Settings from '../apps/web/src/Settings';
 import UserGuide from '../apps/web/src/UserGuide';
 import DeviceMap from '../apps/web/src/DeviceMap';
 import IncidentSummary from '../apps/web/src/IncidentSummary';
+import IncidentPicker from '../apps/web/src/IncidentPicker';
 import { furnishedCatalog, house } from '../apps/web/src/house';
 import '../apps/web/src/style.css';
 import '../apps/web/src/experience.css';
@@ -40,9 +41,9 @@ function Preview() {
     <p className="notice">LOCAL UI FIXTURE — no cloud data or model results. Choose Command center, Simulation Studio or Alexa+.</p>
     {page === 'settings' ? <Settings catalog={settings} ready save={async next => setSettings({ ...next, revision: crypto.randomUUID() })} reload={async () => {}} cleanup={<p>Local fixture: no stored cloud data.</p>}/> : page === 'guide' ? <UserGuide navigate={navigate}/> : page === 'alexa-sim' ? <AlexaSimulator household="ui-fixture" navigate={navigate} catalog={settings} config={{ apiUrl: '/fixture', clientId: 'fixture', cognitoDomain: 'fixture' }} api={api} incidents={items} selected={selected} onSelect={setSelected} state={selected ? state : null} timeline={[]} onRefresh={async () => {}} onViewDevice={id => { setDevice({ id, nonce: Date.now(), inspect: true }); navigate('command-center'); }}/> : page === 'incident-history' ?
       <IncidentHistory api={api} incidents={items} catalog={catalog} selected={selected} onSelect={setSelected} state={state} timeline={Array.from({ length: 23 }, (_, index) => ({ sk: `note-${index}`, kind: 'note', recorded_at: '2026-09-30T09:00:00Z', data: { text: `Fixture evidence ${index}` } }))} loading={false} onRefreshList={async () => {}} onRefresh={async () => {}} onDeleted={id => setItems(old => old.filter(item => item.incident_id !== id))} navigate={navigate}/> :
-      <SimulationStudio key={page} api={api} household="ui-fixture" catalog={settings} ready selected={selected} incidents={items} onAccepted={setSelected} onBusy={() => {}} navigate={navigate} deviceSelection={device} embedded={page === 'command-center'}
+      <SimulationStudio api={api} household="ui-fixture" catalog={settings} ready selected={selected} incidents={items} onAccepted={setSelected} onBusy={() => {}} navigate={navigate} deviceSelection={device} embedded={page === 'command-center'}
         map={<DeviceMap catalog={settings} ready timeline={[]} state={selected ? state : null} selected={selected} onDevice={setDevice} navigate={navigate} focusedDevice={device}/>}
-        briefing={<IncidentSummary api={api} incident={selected} state={state} timeline={[]} navigate={navigate} onRefresh={async () => {}} onRenamed={async () => {}}/>}/>}
+        briefing={<IncidentSummary picker={<IncidentPicker compact incidents={items} selected={selected} onSelect={setSelected} onRefresh={async () => {}}/>} api={api} incident={selected} state={state} timeline={[]} navigate={navigate} onRefresh={async () => {}} onRenamed={async () => {}}/>}/>}
   </AppShell>;
 }
 createRoot(document.getElementById('root')).render(<Preview/>);

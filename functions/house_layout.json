@@ -4,7 +4,7 @@
     {"name": "Living & Entrance", "rooms": ["Entrance", "Living Room"]},
     {"name": "Kitchen & Dining", "rooms": ["Kitchen", "Dining Room"]},
     {"name": "Bedrooms", "rooms": ["Master Bedroom", "Family Bedroom"]},
-    {"name": "Washrooms", "rooms": ["Bathroom 1", "Bathroom 2", "Bathroom 3"]},
+    {"name": "Washrooms", "rooms": ["Master Washroom", "Family Washroom", "Living Room Washroom"]},
     {"name": "Garage", "rooms": ["Garage"]}
   ],
   "devices": [
@@ -25,9 +25,9 @@
     ["Master Bedroom", "security_contact", "Window contact", 20],
     ["Family Bedroom", "smoke_detector", "Smoke detector", 21],
     ["Family Bedroom", "security_contact", "Window contact", 22],
-    ["Bathroom 1", "leak_sensor", "Water leak sensor", 13],
-    ["Bathroom 2", "leak_sensor", "Water leak sensor", 25],
-    ["Bathroom 3", "leak_sensor", "Water leak sensor", 26],
+    ["Living Room Washroom", "leak_sensor", "Water leak sensor", 13],
+    ["Master Washroom", "leak_sensor", "Water leak sensor", 25],
+    ["Family Washroom", "leak_sensor", "Water leak sensor", 26],
     ["Garage", "heat_detector", "Heat detector", 31],
     ["Garage", "security_contact", "Garage door contact", 32],
     ["Garage", "freeze_sensor", "Temperature sensor", 33],

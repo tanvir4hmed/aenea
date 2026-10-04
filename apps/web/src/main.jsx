@@ -250,14 +250,10 @@ function App() {
         <p className="guest-warning">Shared demo account: use fictional data only. Activity may be visible to other demo visitors.</p>
         {copyNotice && <p role="status" className="notice">{copyNotice}</p>}
       </section>}
-      {authenticated && config && page === 'command-center' && <>
-        <IncidentPicker incidents={incidents} selected={selected} onSelect={selectIncident} busy={loadingIncidents}
-          onRefresh={() => loadIncidents().catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>
-      </>}
       {authenticated && config && identity && studioMounted && <div id="device-alert-composer" key={studioEpoch} hidden={!['simulation-lab', 'command-center'].includes(page)}>
         <Suspense fallback={<div className="card" role="status">Loading Command Center…</div>}><SimulationStudio active={studioActive} key={identity} deviceSelection={deviceSelection} embedded={page === 'command-center'}
           map={<DeviceMap catalog={catalog} ready={catalogReady} timeline={timeline} state={incidentState} selected={selected} summary={incidents.find(item => item.incident_id === selected)} focusedDevice={deviceSelection} navigate={navigate} onDevice={setDeviceSelection}/>}
-          briefing={<IncidentSummary key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadStatus(selected)} onRenamed={() => loadIncidents()}/>}
+          briefing={<IncidentSummary picker={<IncidentPicker compact incidents={incidents} selected={selected} onSelect={selectIncident} busy={loadingIncidents} onRefresh={() => Promise.all([loadIncidents(), ...(selected ? [loadStatus(selected)] : [])]).catch(e => setError(e.message))} onMore={incidentCursor ? () => loadIncidents(incidentCursor).catch(e => setError(e.message)) : null}/>} key={selected} api={api} incident={selected} state={incidentState} timeline={timeline} navigate={navigate} onRefresh={() => loadStatus(selected)} onRenamed={() => loadIncidents()}/>}
           api={api} household={identity} catalog={catalog} ready={catalogReady && !catalogBusy} selected={selected} incidents={incidents} navigate={navigate} onBusy={setStudioBusy} onAccepted={id => {
           selectIncident(id); loadIncidents().catch(e => setError('Signal accepted; incident list refresh failed: ' + e.message));
         }}/></Suspense>
