@@ -98,6 +98,14 @@ def record(table, owner, incident):
     item = {
         **key,
         **material,
+        # Persist the read projection in the same revision-checked transaction.
+        # Incident reads do not need to replay all historical events or call AI.
+        "device_state": {
+            "version": 1,
+            "severity": state["severity"],
+            "active_devices": state["active_devices"],
+            "last_reported_at": state.get("last_reported_at"),
+        },
         "fingerprint": fingerprint,
         "id": previous["id"] if unchanged else str(uuid.uuid4()),
         "kind": "briefing",
@@ -157,7 +165,16 @@ def record(table, owner, incident):
                 {
                     "Put": {
                         "TableName": table.name,
-                        "Item": attrs({**item, "sk": "AUDIT#briefing#" + item["id"]}),
+                        "Item": attrs(
+                            {
+                                **{
+                                    key: value
+                                    for key, value in item.items()
+                                    if key != "device_state"
+                                },
+                                "sk": "AUDIT#briefing#" + item["id"],
+                            }
+                        ),
                     }
                 }
             )

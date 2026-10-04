@@ -30,7 +30,9 @@ export default function AlexaSimulator({ config, api, incidents, selected, onSel
   const signals = state?.active_devices?.map(device => ({ ...device, display: signalDetails(device, catalog, timeline) }));
   const missingSignalContext = signals?.some(device => device.display.missingContext);
   const connection = !selected ? 'Ready for a signal' : !state?.receivedAt ? 'Loading incident…'
-    : state.refreshing ? 'Saved view · awaiting update' : now - state.receivedAt > 30000 ? 'Updates delayed' : 'Connected · checking every 10s';
+    : state.refreshing ? 'Saved view · awaiting update' : state.incident?.resolved_at
+      ? now - state.receivedAt > 90000 ? 'Updates delayed' : 'Resolved · checking every minute'
+      : now - state.receivedAt > 30000 ? 'Updates delayed' : 'Connected · checking every 10s';
 
   function speak(value) { if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(value)); } }
   function stopListening() { const mic = recognition.current; recognition.current = null; mic?.abort(); setListening(false); }

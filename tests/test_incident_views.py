@@ -23,6 +23,7 @@ class IncidentViewTests(unittest.TestCase):
             "status": "assessed",
             "assessment": {"severity": "warning", "evidence_ids": []},
         }
+        self.briefing = {}
         self.module.table.get_item.side_effect = self.get_item
         self.module.table.query.return_value = {"Items": []}
         self.state = {
@@ -36,6 +37,8 @@ class IncidentViewTests(unittest.TestCase):
         self.enterContext(patch.object(self.module, "read_budget", return_value={"used": 1}))
 
     def get_item(self, Key, **kwargs):
+        if Key == {"pk": "H#owner#I#" + INCIDENT, "sk": "BRIEFING"}:
+            return {"Item": self.briefing} if self.briefing else {}
         if Key["pk"] == "H#owner" and Key["sk"] == "INCIDENT#" + INCIDENT:
             return {"Item": dict(self.summary)}
         if Key["pk"] == "H#owner#I#" + INCIDENT and Key["sk"] == "ASSESSMENT#one":
@@ -86,6 +89,19 @@ class IncidentViewTests(unittest.TestCase):
         self.assertIn("items", body)
         self.assertEqual(self.module.table.query.call_count, 2)
 
+    def test_clean_reset_guards_are_not_listed_as_deleted_incidents(self):
+        result = self.module.handler(
+            {
+                "routeKey": "GET /household/deletions",
+                "requestContext": {"authorizer": {"jwt": {"claims": {"sub": "owner"}}}},
+            },
+            None,
+        )
+        self.assertEqual(result["statusCode"], 200)
+        condition = self.module.table.query.call_args.kwargs["FilterExpression"]
+        self.assertEqual(condition.get_expression()["operator"], "attribute_not_exists")
+        self.assertEqual(condition.get_expression()["values"][0].name, "reset_marker")
+
     def test_other_household_and_deleting_incident_cannot_be_read(self):
         self.assertEqual(self.read("records", owner="other")[0], 404)
         self.summary["deletion_started_at"] = 1
@@ -116,3 +132,22 @@ class IncidentViewTests(unittest.TestCase):
         self.assertEqual(self.read("unsupported")[0], 400)
         self.assertEqual(self.read("status", cursor="invalid")[0], 400)
         self.module.table.query.assert_not_called()
+
+    def test_persisted_projection_avoids_replaying_historical_events(self):
+        self.briefing = {"evidence_revision": 1, "device_state": {"version": 1, **self.state}}
+        status, body = self.read("status")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["last_reported_at"], self.state["last_reported_at"])
+        self.snapshot.assert_not_called()
+
+    def test_old_projection_falls_back_to_current_evidence(self):
+        self.briefing = {"evidence_revision": 0, "device_state": {"version": 1, **self.state}}
+        self.assertEqual(self.read("status")[0], 200)
+        self.snapshot.assert_called_once()
+
+    def test_resolved_projection_cannot_show_active_alerts(self):
+        self.summary["resolved_at"] = 123
+        self.briefing = {"evidence_revision": 1, "device_state": {"version": 1, **self.state}}
+        _, body = self.read("status")
+        self.assertEqual(body["active_devices"], [])
+        self.assertEqual(body["canonical_severity"], "informational")

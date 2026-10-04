@@ -10,11 +10,12 @@ from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "functions"))
 from catalog import read_catalog, save_catalog, validate_catalog
+from maple_house import HOUSE, ROOMS, furnished_catalog
 
 
 class CatalogTests(unittest.TestCase):
     def setUp(self):
-        self.location = {"id": str(uuid.uuid4()), "name": "Home A", "address": "Fictional street"}
+        self.location = dict(HOUSE)
         self.device = {
             "id": str(uuid.uuid4()),
             "name": "Kitchen smoke",
@@ -29,9 +30,7 @@ class CatalogTests(unittest.TestCase):
     def test_read_is_scoped_to_authenticated_owner(self):
         table = Mock()
         table.get_item.return_value = {}
-        self.assertEqual(
-            read_catalog(table, "owner-a"), {"revision": None, "locations": [], "devices": []}
-        )
+        self.assertEqual(read_catalog(table, "owner-a"), furnished_catalog())
         table.get_item.assert_called_once_with(
             Key={"pk": "H#owner-a", "sk": "CATALOG"}, ConsistentRead=True
         )
@@ -87,3 +86,28 @@ class CatalogTests(unittest.TestCase):
         self.body["devices"] = [{**self.device, "id": str(uuid.uuid4())} for _ in range(31)]
         with self.assertRaisesRegex(ValueError, "30 devices"):
             validate_catalog(self.body)
+
+    def test_defaults_are_valid_and_cover_every_room(self):
+        body = furnished_catalog()
+        validate_catalog(body)
+        self.assertEqual({device["room"] for device in body["devices"]}, ROOMS)
+        self.assertEqual(len(body["devices"]), 37)
+
+    def test_arbitrary_room_and_location_are_rejected(self):
+        self.body["devices"][0]["room"] = "Kitchen typo"
+        with self.assertRaisesRegex(ValueError, "existing Maple House room"):
+            validate_catalog(self.body)
+        self.body["devices"][0]["room"] = "Kitchen"
+        self.body["locations"][0]["name"] = "Another house"
+        with self.assertRaisesRegex(ValueError, "fixed Maple House"):
+            validate_catalog(self.body)
+
+    def test_saved_empty_and_legacy_catalogs_are_not_overwritten(self):
+        table = Mock()
+        for body in [
+            {"revision": str(uuid.uuid4()), "locations": [HOUSE], "devices": []},
+            {"revision": str(uuid.uuid4()), "locations": [{"id": "legacy"}], "devices": []},
+        ]:
+            table.get_item.return_value = {"Item": body}
+            self.assertEqual(read_catalog(table, "owner-a"), body)
+        table.put_item.assert_not_called()

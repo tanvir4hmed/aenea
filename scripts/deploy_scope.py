@@ -52,7 +52,11 @@ def select_scope(paths: Sequence[str], selected: str = "") -> DeploymentScope:
         for p in paths
     )
     all_components = selected == "all" or (not paths and not selected)
-    web = all_components or selected == "web" or any(p.startswith("apps/web/") for p in paths)
+    web = (
+        all_components
+        or selected == "web"
+        or any(p.startswith("apps/web/") or p == "functions/house_layout.json" for p in paths)
+    )
     infra_all = all_components or selected == "infrastructure" or deployment_changed
     mcp = (
         infra_all

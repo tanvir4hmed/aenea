@@ -11,6 +11,17 @@ from deploy_scope import select_scope
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts"
+WEB_ROUTES = (
+    "command-center",
+    "simulation-lab",
+    "auth/callback",
+    "alexa-sim",
+    "incident-history",
+    "settings",
+    "guide",
+    "check-in",
+    "handoff",
+)
 
 
 def run(*args, cwd=ROOT):
@@ -111,6 +122,7 @@ def package_functions(names):
         shutil.copytree(dependencies, target, dirs_exist_ok=True)
         for shared in (ROOT / "functions").glob("*.py"):
             shutil.copy2(shared, target / shared.name)
+        shutil.copy2(ROOT / "functions/house_layout.json", target / "house_layout.json")
         shutil.copy2(ROOT / "shared/assessment.py", target / "assessment.py")
         shutil.copy2(ROOT / f"functions/{name}/handler.py", target / "handler.py")
         shutil.make_archive(str(ARTIFACTS / name), "zip", target)
@@ -260,17 +272,20 @@ def main():
                 "--cache-control",
                 "public,max-age=31536000,immutable",
             )
-            run(
-                "aws",
-                "s3",
-                "cp",
-                "apps/web/dist/index.html",
-                f"s3://{platform['web_bucket']}/index.html",
-                "--cache-control",
-                "no-cache",
-                "--content-type",
-                "text/html",
-            )
+            # Serve known SPA routes directly, avoiding an S3 error lookup on
+            # each login/deep link. No paid edge compute is needed for aliases.
+            for path in ("index.html", *WEB_ROUTES):
+                run(
+                    "aws",
+                    "s3",
+                    "cp",
+                    "apps/web/dist/index.html",
+                    f"s3://{platform['web_bucket']}/{path}",
+                    "--cache-control",
+                    "no-cache",
+                    "--content-type",
+                    "text/html",
+                )
         run(
             "aws",
             "s3",
@@ -292,12 +307,7 @@ def main():
             "/index.html",
             "/config.json",
             "/",
-            "/command-center",
-            "/simulation-lab",
-            "/auth/callback",
-            "/alexa-sim",
-            "/check-in",
-            "/handoff",
+            *("/" + path for path in WEB_ROUTES),
         )
 
 

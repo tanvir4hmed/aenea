@@ -10,7 +10,8 @@ Aenea explores Alexa+-centered coordination of disconnected household alerts. Sc
 
 Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
 
-- **Settings:** separate Device list and Add device views, inline location creation, compact location management and data cleanup.
+- **Maple House:** a fixed three-bedroom duplex with 19 rooms/areas and 37 simulated safety/security devices; add or edit devices using the shared room dropdown.
+- **Settings:** searchable device inventory, room filters, add/edit/duplicate/delete and data cleanup. House and room creation are not part of the app.
 - **Simulation Studio:** save named single alerts and scenarios with state, repeat interval, duration and optional clear; edit/delete reusable definitions.
 - **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.
 - **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
@@ -41,7 +42,7 @@ This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are
 
 The current [state-driven coordination release](docs/state-driven-coordination.md) describes implemented behavior, capacities and migration. [Source verification](docs/source-verification.md) distinguishes offline checks and local browser fixtures from outstanding hosted acceptance. Earlier dated workspace phases are historical, not current setup instructions. See [check instructions](CONTRIBUTING.md).
 
-The [current device-first experience](docs/device-first-experience.md) supersedes the earlier response-permission and separate Ask-tab design.
+The [Maple House handover](docs/maple-house-handover.md) is the current product/setup reference. Earlier multi-location, response-permission and separate Ask-tab designs are historical.
 
 Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Each qualifying main-branch push starts one automatic deployment that selects the affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
 

@@ -9,6 +9,12 @@ from deploy_scope import FUNCTIONS, select_scope
 
 
 class DeploymentScopeTests(unittest.TestCase):
+    def test_house_definition_rebuilds_web_and_functions(self):
+        scope = select_scope(["functions/house_layout.json"])
+        self.assertTrue(scope.web)
+        self.assertEqual(scope.packages, FUNCTIONS)
+        self.assertFalse(scope.reasoner or scope.mcp or scope.layers)
+
     def test_web_only_does_not_deploy_backend(self):
         scope = select_scope(["apps/web/src/App.jsx"])
         self.assertTrue(scope.web)

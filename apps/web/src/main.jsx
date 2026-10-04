@@ -10,6 +10,7 @@ import { requestJson } from './api';
 import { createIncidentCache } from './incidentCache';
 import { createRequestGate, mergeEvidence } from './incidentReads';
 import { clearConversations, conversationKey } from './alexaConversation';
+import { pageForPath } from './routes';
 
 const IncidentHistory = lazy(() => import('./IncidentHistory'));
 const UserGuide = lazy(() => import('./UserGuide'));
@@ -21,10 +22,11 @@ const IncidentSummary = lazy(() => import('./IncidentSummary'));
 
 const guestAccess = { email: 'guest@aenea.qleam.com', password: 'AeneaGuest@1234' };
 const incidentStorageKey = 'aenea-selected-incident';
-const currentPage = () => { const value = location.pathname.split('/')[1] || 'alexa-sim'; return ['check-in', 'handoff'].includes(value) ? 'incident-history' : value; };
-const currentSettingsTab = () => ['locations', 'cleanup'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'devices';
+const currentPage = () => pageForPath(location.pathname);
+const currentSettingsTab = () => location.hash === '#cleanup' ? 'cleanup' : 'devices';
 function App() {
   const [config, setConfig] = useState(null), [error, setError] = useState('');
+  const [booting, setBooting] = useState(true);
   const [authenticated, setAuthenticated] = useState(hasSession());
   const [page, setPage] = useState(currentPage);
   const [settingsTab, setSettingsTab] = useState(currentSettingsTab);
@@ -161,9 +163,9 @@ function App() {
       const value = await result.json();
       await callback(value); setConfig(value); setAuthenticated(hasSession());
       setPage(currentPage());
-    })().catch(e => setError(e.message));
+    })().catch(e => setError(e.message)).finally(() => { setPage(currentPage()); setBooting(false); });
     const onPop = () => { setPage(currentPage()); setSettingsTab(currentSettingsTab()); };
-    const onExpired = () => { statusRequests.current.invalidate(); evidenceRequests.current.invalidate(); incidentCache.current.clear(); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
+    const onExpired = () => { statusRequests.current.invalidate(); evidenceRequests.current.invalidate(); incidentCache.current.clear(); activeIncident.current = ''; setSelected(''); setIncidents([]); setIdentity(''); setCatalogReady(false); setCatalog({ revision: null, locations: [], devices: [] }); setIncidentState(null); setTimeline([]); setAuthenticated(false); setError('Your session has ended. Please sign in again.'); };
     addEventListener('popstate', onPop); addEventListener('aenea-auth-expired', onExpired);
     return () => { removeEventListener('popstate', onPop); removeEventListener('aenea-auth-expired', onExpired); };
   }, []);
@@ -189,7 +191,7 @@ function App() {
         if (!selectionMade.current && !activeIncident.current) { const open = data.items.filter(item => !item.resolved_at).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); if (open.length) selectIncident(open[0].incident_id, open[0]); }
       } catch (failure) { if (active) setError(failure.message); } finally { running = false; }
     };
-    const timer = setInterval(tick, 10000);
+    const timer = setInterval(tick, 30000);
     return () => { active = false; clearInterval(timer); };
   }, [config, authenticated, incidentPage]);
   useEffect(() => {
@@ -209,13 +211,13 @@ function App() {
       finally { refreshing = false; }
     };
     refresh();
-    const timer = setInterval(refresh, 10000);
+    const timer = setInterval(refresh, incidentState?.incident?.resolved_at ? 60000 : 10000);
     document.addEventListener('visibilitychange', refresh);
     return () => { active = false; statusRequests.current.invalidate(); clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
-  }, [config, selected, authenticated, incidentPage]);
+  }, [config, selected, authenticated, incidentPage, !!incidentState?.incident?.resolved_at]);
   function navigate(next, view = 'overview') {
     const target = ['check-in', 'handoff'].includes(next) ? 'incident-history' : next;
-    const fragment = target === 'settings' && ['devices', 'locations', 'cleanup'].includes(view) ? view : '';
+    const fragment = target === 'settings' && ['devices', 'cleanup'].includes(view) ? view : '';
     history.pushState(null, '', '/' + target + (fragment ? '#' + fragment : ''));
     setPage(target); setSettingsTab(target === 'settings' && fragment ? fragment : 'devices'); setError(''); setNotice('');
   }
@@ -227,8 +229,9 @@ function App() {
     onAuth={async () => { try { if (authenticated) logout(config); else await login(config); } catch(e) { setError(e.message); } }}>
       {error && <div role="alert" className="error">{error}</div>}
       {notice && <div role="status" className="notice">{notice}</div>}
+      {booting ? <section className="card workspace-loading" role="status" aria-live="polite"><h2>Opening your workspace…</h2><p>Connecting your session and loading Maple House.</p></section> : !config ? <section className="card"><h2>Workspace could not load</h2><button onClick={() => location.reload()}>Try again</button></section> : <>
       {authenticated && selected && incidentPage && statusError && <div role="alert" className="error">Current incident updates are unavailable. {statusError} <button onClick={() => loadStatus(selected).catch(() => {})}>Retry incident update</button></div>}
-      {authenticated && selected && incidentPage && (!incidentState || incidentState.refreshing) && <p role="status" className="sync-status">{statusError ? 'Showing last received data. Live updates are temporarily unavailable.' : incidentState ? 'Showing last received data. Updating this incident…' : 'Loading this incident’s latest signals…'}</p>}
+      {authenticated && selected && incidentPage && (!incidentState || incidentState.refreshing) && <p role="status" className="sync-status">{statusError ? 'Incident updates are temporarily unavailable. Retry to load the latest data.' : incidentState?.receivedAt ? 'Showing the saved view while checking for updates…' : 'Loading this incident’s latest signals…'}</p>}
       <Suspense fallback={<div className="card" role="status">Loading this view…</div>}>
       {page === 'guide' && <UserGuide navigate={navigate}/>}
       {!authenticated && page !== 'guide' && <section className="card guest-access"><h2>Welcome to Aenea</h2>
@@ -268,6 +271,7 @@ function App() {
       {authenticated && config && page==='alexa-sim' && <AlexaSimulator household={identity} config={config} api={api} incidents={incidents} selected={selected} onSelect={selectIncident} state={incidentState} timeline={timeline} onRefresh={() => loadStatus(selected)} navigate={navigate} catalog={catalog}
         onViewDevice={id => { setDeviceSelection({ id, nonce: Date.now(), inspect: true }); navigate('command-center'); }} />}
       </Suspense>
+      </>}
     </AppShell>;
 }
 createRoot(document.getElementById('root')).render(<App/>);

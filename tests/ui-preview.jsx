@@ -9,12 +9,13 @@ import Settings from '../apps/web/src/Settings';
 import UserGuide from '../apps/web/src/UserGuide';
 import DeviceMap from '../apps/web/src/DeviceMap';
 import IncidentSummary from '../apps/web/src/IncidentSummary';
+import { furnishedCatalog, house } from '../apps/web/src/house';
 import '../apps/web/src/style.css';
 import '../apps/web/src/experience.css';
 
-const catalog = { revision: 'fixture', locations: [{ id: 'home', name: 'Example home', address: 'Fictional address' }], devices: [...[1, 2].map(index => ({ id: `sensor-${index}`, name: `Kitchen smoke detector ${index}`, type: 'smoke_detector', room: 'Kitchen', location_id: 'home', enabled: true, connection: 'simulation' })), { id: 'siren-1', name: 'Hall alarm', type: 'siren', room: 'Hall', location_id: 'home', enabled: true, connection: 'simulation' }] };
-const incident = { incident_id: '11111111-1111-4111-8111-111111111111', name: 'Example home · kitchen smoke', location_id: 'home', created_at: '2026-09-30T09:00:00Z', event_count: 2, status: 'collecting_evidence' };
-let library = { revision: null, items: [1, 2].map(index => ({ id: `single-${index}`, name: `Kitchen detector ${index}`, type: 'single', signals: [{ deviceId: `sensor-${index}`, kind: 'smoke', observation: 'Synthetic test input' }] })) };
+const catalog = furnishedCatalog('fixture');
+const incident = { incident_id: '11111111-1111-4111-8111-111111111111', name: 'Maple House · kitchen alert', location_id: house.id, created_at: '2026-09-30T09:00:00Z', event_count: 2, status: 'collecting_evidence' };
+let library = { revision: null, items: catalog.devices.filter(device => device.room === 'Kitchen').slice(0, 2).map((device, index) => ({ id: `single-${index}`, name: device.name, type: 'single', signals: [{ deviceId: device.id, kind: device.type === 'heat_detector' ? 'heat' : 'gas_leak', observation: 'Synthetic test input' }] })) };
 const empty = new URLSearchParams(location.search).has('empty');
 async function api(path, options) {
   if (path === '/household/simulations') { if (options) library = { ...JSON.parse(options.body), revision: crypto.randomUUID() }; return library; }
@@ -29,12 +30,12 @@ async function api(path, options) {
   throw new Error('Local fixture: no cloud request performed');
 }
 function Preview() {
-  const [settings, setSettings] = useState(empty ? { revision: null, locations: [], devices: [] } : catalog);
+  const [settings, setSettings] = useState(empty ? { ...catalog, devices: [] } : catalog);
   const [page, setPage] = useState(empty ? 'settings' : 'alexa-sim'), [selected, setSelected] = useState(empty ? '' : incident.incident_id), [device, setDevice] = useState(null);
   function navigate(next) { setPage(next); }
-  const [items, setItems] = useState(() => empty ? [] : Array.from({ length: 23 }, (_, index) => ({ ...incident, incident_id: index ? `fixture-${index}` : incident.incident_id, name: `Example home · incident ${index + 1}`, resolved_at: index % 2 ? 100 : null })));
+  const [items, setItems] = useState(() => empty ? [] : Array.from({ length: 23 }, (_, index) => ({ ...incident, incident_id: index ? `fixture-${index}` : incident.incident_id, name: `Maple House · incident ${index + 1}`, resolved_at: index % 2 ? 100 : null })));
   const current = items.find(item => item.incident_id === selected) || incident;
-  const state = { household_id: 'ui-fixture', incident: current, receivedAt: Date.now(), active_devices: catalog.devices.filter(device => device.type === 'smoke_detector').map(device => ({ device_id: device.id, name: device.name, room: device.room, location_id: 'home', kind: 'smoke', alarm: 'active', connectivity: 'online', provenance: 'authenticated_simulator' })), canonical_severity: 'warning', notes: { items: [] }, actions: [{ action_id: 'legacy', proposal: { device_id: 'virtual_lights', action: 'lights_on' }, status: 'blocked', policy_reason: 'Virtual device is not enabled for this household' }], simulation_budget: { used: 0, limit: 2000, maximum: 10000 } };
+  const state = { household_id: 'ui-fixture', incident: current, receivedAt: Date.now(), active_devices: catalog.devices.filter(device => device.type === 'smoke_detector').map(device => ({ device_id: device.id, name: device.name, room: device.room, location_id: house.id, kind: 'smoke', alarm: 'active', connectivity: 'online', provenance: 'authenticated_simulator' })), canonical_severity: 'warning', notes: { items: [] }, actions: [{ action_id: 'legacy', proposal: { device_id: 'virtual_lights', action: 'lights_on' }, status: 'blocked', policy_reason: 'Virtual device is not enabled for this household' }], simulation_budget: { used: 0, limit: 2000, maximum: 10000 } };
   return <AppShell page={page} navigate={navigate} authenticated config={{}} selected={selected} selectedName={current.name} onAuth={() => {}}>
     <p className="notice">LOCAL UI FIXTURE — no cloud data or model results. Choose Command center, Simulation Studio or Alexa+.</p>
     {page === 'settings' ? <Settings catalog={settings} ready save={async next => setSettings({ ...next, revision: crypto.randomUUID() })} reload={async () => {}} cleanup={<p>Local fixture: no stored cloud data.</p>}/> : page === 'guide' ? <UserGuide navigate={navigate}/> : page === 'alexa-sim' ? <AlexaSimulator household="ui-fixture" navigate={navigate} catalog={settings} config={{ apiUrl: '/fixture', clientId: 'fixture', cognitoDomain: 'fixture' }} api={api} incidents={items} selected={selected} onSelect={setSelected} state={selected ? state : null} timeline={[]} onRefresh={async () => {}} onViewDevice={id => { setDevice({ id, nonce: Date.now(), inspect: true }); navigate('command-center'); }}/> : page === 'incident-history' ?

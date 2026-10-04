@@ -5,7 +5,7 @@ export const pages = [
   { id: 'command-center', label: 'Command Center', icon: 'grid', description: 'Explore your device map and run saved simulations.' },
   { id: 'incident-history', label: 'Incident history', icon: 'document', description: 'Browse saved incidents, evidence and decision reviews.' },
   { id: 'simulation-lab', label: 'Simulation Studio', icon: 'signal', description: 'Define reusable single alerts and multi-device scenarios.' },
-  { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage your devices and locations.' },
+  { id: 'settings', label: 'Settings', icon: 'grid', description: 'Manage devices in Maple House.' },
   { id: 'guide', label: 'User guide', icon: 'help', description: 'A quick guide to your workspace.' },
 ];
 

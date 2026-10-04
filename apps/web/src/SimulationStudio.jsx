@@ -3,6 +3,7 @@ import { deviceTypes, humanize, signalPayload, signalPriority } from './devices'
 import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
 import SimulationRuns from './SimulationRuns';
+import { houseRooms, isMapleHouse } from './house';
 
 const defaultProfile = { mode: 'on_change', interval_seconds: 60, duration_seconds: 300, alarm: 'active', connectivity: 'online', clear_at_end: false };
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
@@ -25,6 +26,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const [request, setRequest] = useState(() => { try { return JSON.parse(sessionStorage.getItem(requestKey)); } catch { return null; } });
   const pending = run?.rows?.some(row => !row.accepted);
   const device = catalog.devices.find(item => item.id === deviceId);
+  const mappedDevice = catalog.devices.find(item => item.id === deviceSelection?.id);
   const editing = library.items.some(item => item.id === draft.id);
   const requiredSignals = draft.type === 'single' ? 1 : 2;
   const canSave = draft.name.trim() && draft.signals.length >= requiredSignals;
@@ -64,9 +66,10 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   try { rows = selectedSignals(library.items, selection, catalog); } catch (e) { selectionError = e.message; }
   const chosen = library.items.filter(item => selection.includes(item.id));
   const expected = chosen.reduce((sum, item) => { const profile = { ...defaultProfile, ...item.profile }; return sum + item.signals.length * ((profile.mode === 'repeat' && profile.alarm === 'active' ? Math.ceil(profile.duration_seconds / profile.interval_seconds) : 1) + (profile.clear_at_end && profile.alarm !== 'clear' ? 1 : 0)); }, 0);
-  const rooms = [...new Set(catalog.devices.filter(item => !locationId || item.location_id === locationId).map(item => item.room || 'Unassigned area'))];
+  const fixedHouse = isMapleHouse(catalog);
+  const rooms = fixedHouse ? houseRooms : [...new Set(catalog.devices.filter(item => !locationId || item.location_id === locationId).map(item => item.room || 'Unassigned area'))];
   const eligibleDevices = catalog.devices.filter(item => deviceTypes[item.type]?.kinds.length && (!locationId || item.location_id === locationId) && (!roomFilter || (item.room || 'Unassigned area') === roomFilter));
-  const savedRooms = [...new Set(catalog.devices.filter(item => !savedLocation || item.location_id === savedLocation).map(item => item.room || 'Unassigned area'))];
+  const savedRooms = fixedHouse ? houseRooms : [...new Set(catalog.devices.filter(item => !savedLocation || item.location_id === savedLocation).map(item => item.room || 'Unassigned area'))];
   const filteredItems = useMemo(() => library.items.filter(item => {
     const sources = item.signals.map(signal => catalog.devices.find(device => device.id === signal.deviceId)).filter(Boolean);
     const text = `${item.name} ${sources.map(source => `${source.name} ${source.room || ''}`).join(' ')}`.toLowerCase();
@@ -124,6 +127,11 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   }
   const feedback = <>{error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}</>;
   const triggerPanel = <section className="card alert-composer"><h2>Trigger Alert / Scenario</h2>
+    {mappedDevice && deviceTypes[mappedDevice.type]?.kinds.length > 0 && <div className="selected-device-summary"><p><strong>{mappedDevice.name}</strong><br/>{mappedDevice.room}</p><button disabled={busy || !ready || !mappedDevice.enabled} onClick={() => {
+      const signal = deviceTypes[mappedDevice.type].kinds[0];
+      setDraft({ ...blank(), name: mappedDevice.name, signals: [{ deviceId: mappedDevice.id, kind: signal, observation: '' }] });
+      setDeviceId(mappedDevice.id); setKind(signal); setRoomFilter(mappedDevice.room); setView('create'); navigate('simulation-lab');
+    }}>Create alert for this device</button></div>}
     <fieldset disabled={!loaded || busy || pending || !!request || !ready || disabled}>
       <label>Saved alert or scenario<select multiple size={Math.min(5, Math.max(2, library.items.length))} value={selection} onChange={e => setSelection([...e.target.selectedOptions].map(option => option.value))}>{library.items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.type === 'single' ? 'Single · 1 device' : `Scenario · ${item.signals.length} devices`}</option>)}</select></label>
       {!library.items.length && <p>No saved alerts or scenarios. Create one in Simulation Studio.</p>}
@@ -155,7 +163,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
           <label>Duration (seconds)<input type="number" min="60" max="3600" required value={draft.profile?.duration_seconds ?? 300} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, duration_seconds: Number(e.target.value) } }))}/></label>
           <label>Repeat interval (seconds)<input type="number" min="60" max="900" disabled={draft.profile?.mode !== 'repeat'} value={draft.profile?.interval_seconds ?? 60} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, interval_seconds: Number(e.target.value) } }))}/></label></div>
           <label><input type="checkbox" checked={draft.profile?.clear_at_end || false} onChange={e => setDraft(old => ({ ...old, profile: { ...defaultProfile, ...old.profile, clear_at_end: e.target.checked } }))}/>Send a clear state at the end</label>
-          <div className="form-grid"><label>Location<select value={locationId} onChange={e => { setLocationId(e.target.value); setRoomFilter(''); setDeviceId(''); setKind(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <div className="form-grid">{!fixedHouse && <label>Location<select value={locationId} onChange={e => { setLocationId(e.target.value); setRoomFilter(''); setDeviceId(''); setKind(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
           <label>Room / area<select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setDeviceId(''); setKind(''); }}><option value="">All rooms / areas</option>{rooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
           <label>Device<select value={deviceId} onChange={e => { const source = catalog.devices.find(item => item.id === e.target.value); setDeviceId(source?.id || ''); setKind(deviceTypes[source?.type]?.kinds[0] || ''); }}><option value="">Choose a device</option>{eligibleDevices.map(item => <option key={item.id} value={item.id} disabled={!item.enabled}>{catalog.locations.find(site => site.id === item.location_id)?.name} / {item.room || 'Unassigned'} / {item.name}{item.enabled ? '' : ' (disabled)'}</option>)}</select></label>
           <label>Signal type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">Choose a signal</option>{(deviceTypes[device?.type]?.kinds || []).map(value => <option key={value} value={value}>{humanize(value)} · {signalPriority(value)}</option>)}</select></label>
@@ -172,7 +180,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
       <div className="saved-filters">
         <label>Search<input value={savedQuery} onChange={e => setSavedQuery(e.target.value)} placeholder="Name, room or device"/></label>
         <label>Type<select value={savedType} onChange={e => setSavedType(e.target.value)}><option value="">All types</option><option value="single">Single alerts</option><option value="scenario">Scenarios</option></select></label>
-        <label>Location<select value={savedLocation} onChange={e => { setSavedLocation(e.target.value); setSavedRoom(''); setSavedDevice(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        {!fixedHouse && <label>Location<select value={savedLocation} onChange={e => { setSavedLocation(e.target.value); setSavedRoom(''); setSavedDevice(''); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         <label>Room / area<select value={savedRoom} onChange={e => { setSavedRoom(e.target.value); setSavedDevice(''); }}><option value="">All rooms / areas</option>{savedRooms.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <label>Device<select value={savedDevice} onChange={e => setSavedDevice(e.target.value)}><option value="">All devices</option>{catalog.devices.filter(item => (!savedLocation || item.location_id === savedLocation) && (!savedRoom || (item.room || 'Unassigned area') === savedRoom)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       </div>

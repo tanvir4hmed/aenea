@@ -3,6 +3,7 @@ import { incidentName } from './incidentNames';
 import IncidentSummary from './IncidentSummary';
 import DecisionReview from './DecisionReview';
 import HistoryRecord from './HistoryRecord';
+import { isMapleHouse } from './house';
 
 const readable = value => String(value || 'Unknown').replaceAll('_', ' ');
 const stamp = item => item.event?.occurred_at || item.recorded_at || item.reported_at || '';
@@ -59,7 +60,7 @@ export default function IncidentHistory({ api, incidents, catalog, selected, onS
   </>;
   return <section className="card" aria-busy={loading}><div className="row"><div><h2>Incident history</h2><p>Find an incident, review its response or manage its records.</p></div><button disabled={loading} onClick={onRefreshList}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>
     {message && <p role="status" className="notice">{message}</p>}
-    <div className="history-filters"><label>Search<input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="Incident name, location or ID"/></label><label>Location<select value={location} onChange={event => { setLocation(event.target.value); setPage(1); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option></select></label></div>
+    <div className="history-filters"><label>Search<input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="Incident name or ID"/></label>{!isMapleHouse(catalog) && <label>Location<select value={location} onChange={event => { setLocation(event.target.value); setPage(1); }}><option value="">All locations</option>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}<label>Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option></select></label></div>
     <p>{filtered.length} matching / {incidents.length} loaded · newest loaded first</p>
     {!filtered.length && <p>{loading ? 'Loading incidents…' : 'No incidents match. Adjust filters or load more records.'}</p>}
     <div className="history-list">{filtered.slice((current - 1) * 10, current * 10).map(item => <button className="history-row" key={item.incident_id} onClick={() => open(item.incident_id)}><span><strong>{incidentName(item)}</strong><small>{site(item)}{item.rooms?.length ? ' · ' + item.rooms.join(', ') : ''}</small></span><span><span className="badge">{item.resolved_at ? 'Resolved' : 'Open'}</span><small>{readable(item.status)} · {item.event_count || 0} signals</small></span><time>{item.created_at ? new Date(item.created_at).toLocaleString() : 'Date unavailable'}</time><span aria-hidden="true">→</span></button>)}</div>

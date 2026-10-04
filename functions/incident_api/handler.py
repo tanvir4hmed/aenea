@@ -61,6 +61,8 @@ def handler(request, context):
         }
         if prefix == "INCIDENT#":
             query["FilterExpression"] = Attr("deletion_started_at").not_exists()
+        elif prefix == "DELETED#":
+            query["FilterExpression"] = Attr("reset_marker").not_exists()
         if params.get("cursor"):
             query["ExclusiveStartKey"] = decode_cursor(params["cursor"], partition, prefix)
         # Live polling needs authoritative current state, not repeated audit pages.
@@ -110,7 +112,14 @@ def handler(request, context):
                     break
                 action_query["ExclusiveStartKey"] = action_page["LastEvaluatedKey"]
             metadata["actions"] = actions
-            state = evidence_cache.get(owner, incident_id, summary.get("event_count"))
+            briefing = metadata.get("briefing") or {}
+            projection = briefing.get("device_state") or {}
+            state = (
+                projection
+                if projection.get("version") == 1
+                and briefing.get("evidence_revision") == summary.get("event_count")
+                else evidence_cache.get(owner, incident_id, summary.get("event_count"))
+            )
             cache_miss = state is None
             if cache_miss:
                 state = snapshot(table, owner, incident_id)

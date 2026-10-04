@@ -6,6 +6,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from common import response
+from maple_house import HOUSE, ROOMS, furnished_catalog
 
 DEVICE_KINDS = {
     "smoke_detector": ["smoke"],
@@ -34,7 +35,7 @@ ACTUATORS = {
     "water_valve": "virtual_valve",
 }
 
-MAX_LOCATIONS = 50
+MAX_LOCATIONS = 1
 MAX_DEVICES = 200
 MAX_DEVICES_PER_ROOM = 30
 
@@ -51,6 +52,8 @@ def validate_catalog(body):
     if body["revision"] is not None:
         uuid.UUID(body["revision"])
     locations, devices = body["locations"], body["devices"]
+    if locations != [HOUSE]:
+        raise ValueError("Use the fixed Maple House location")
     if (
         not isinstance(locations, list)
         or not isinstance(devices, list)
@@ -87,6 +90,8 @@ def validate_catalog(body):
         device_ids.add(device["id"])
         device["name"] = text(device["name"], 80)
         device["room"] = text(device["room"], 80, False)
+        if device["room"] not in ROOMS:
+            raise ValueError("Choose an existing Maple House room or area")
         room_key = (device["location_id"], device["room"].casefold())
         rooms[room_key] = rooms.get(room_key, 0) + 1
         if rooms[room_key] > MAX_DEVICES_PER_ROOM:
@@ -104,6 +109,8 @@ def read_catalog(table: Any, owner: str) -> dict[str, Any]:
     item = table.get_item(Key={"pk": f"H#{owner}", "sk": "CATALOG"}, ConsistentRead=True).get(
         "Item", {}
     )
+    if not item:
+        return furnished_catalog()
     return {
         "revision": item.get("revision"),
         "locations": item.get("locations", []),
