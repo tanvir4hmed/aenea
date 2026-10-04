@@ -3,7 +3,7 @@ import React from 'react';
 export default function UserGuide({ navigate }) {
   return <div className="guide-grid"><section className="card"><span className="eyebrow">GET STARTED</span><h2>From device signal to coordinated response</h2>
     <ol className="guide-steps">
-      <li><h3>Explore Maple House</h3><p>Your three-bedroom duplex has 19 fixed rooms and areas with 37 simulated safety/security devices. Settings lets you add, edit or remove devices. Select an existing room from the dropdown; the house layout stays in place.</p></li>
+      <li><h3>Explore Maple House</h3><p>Your two-bedroom home has 10 fixed rooms in five compact categories, with 24 simulated safety/security devices. Settings lets you add, edit or remove devices. Select an existing room from the dropdown; the house layout stays in place.</p></li>
       <li><h3>Define a simulation</h3><p>In Simulation Studio save a single alert or scenario. Select its initial alarm/connectivity, reporting mode, duration and optional final clear. Saving never triggers an alert.</p></li>
       <li><h3>Start from the map</h3><p>Open Command Center from the navigation. Select saved definitions or click a mapped device. Overlap warnings name conflicting definitions. Send schedules a cloud run; it does not mean every signal is published yet. Run status shows expected and published counts.</p></li>
       <li><h3>Let incident coordination run</h3><p>Automatic assignment creates a named incident or joins a related open incident in Maple House. Unrelated hazards remain separate. Accepted signals share the ingestion, assessment and policy pipeline.</p></li>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { deviceTypes, humanize } from './devices';
 import { incidentBriefing, reportingDevices } from './commandCenter';
 import { alertStates } from './simulations';
-import { house, floors, isMapleHouse } from './house';
+import { house, roomGroups, isMapleHouse } from './house';
 import './house.css';
 
 const symbols = { smoke_detector: '◉', co_detector: 'CO', leak_sensor: '≈', camera: '◧', medical_button: '+', weather_feed: '☁', heat_detector: '♨', gas_detector: 'G', freeze_sensor: '❄', power_monitor: 'ϟ', security_contact: '⌑', glass_break_sensor: '◇', security_panel: '!', smart_lock: '⌾' };
@@ -31,27 +31,28 @@ export default function DeviceMap({ catalog, ready, timeline, state, selected, s
   const site = catalog.locations.find(item => item.id === (locationId || currentIncident?.location_id)) || catalog.locations[0];
   const devices = catalog.devices.filter(item => item.location_id === site?.id);
   const fixed = isMapleHouse(catalog);
-  const levels = fixed ? [floors[1], floors[0], floors[2]] : [{ name: 'Existing setup', rooms: [...new Set(devices.map(item => item.room || 'Unassigned area'))] }];
+  const levels = fixed ? roomGroups : [{ name: 'Existing setup', rooms: [...new Set(devices.map(item => item.room || 'Unassigned area'))] }];
+  const roomWidth = count => 152 * Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
+  const membersIn = name => devices.filter(item => (item.room || 'Unassigned area') === name);
   const reporting = reportingDevices(timeline, currentState);
   const states = alertStates(catalog, timeline, currentState);
   return <section ref={map} className="card device-map" aria-busy={!ready}>
-    <div className="row"><div><h2>{fixed ? house.name : 'Household Overview'}</h2><p className="map-caption">{fixed ? 'Three-bedroom duplex · Device overview' : 'Existing setup · Maple House reset pending'}</p></div><button onClick={() => navigate('settings')}>Manage devices</button></div>
+    <div className="row"><div><h2>{fixed ? house.name : 'Household Overview'}</h2><p className="map-caption">{fixed ? 'Two bedrooms · Room-by-room device overview' : 'Existing setup · Maple House reset pending'}</p></div><button onClick={() => navigate('settings')}>Manage devices</button></div>
     {!fixed && <div className="map-toolbar"><label>Existing location<select value={site?.id || ''} onChange={event => { setLocationId(event.target.value); setRoom(''); }}>{catalog.locations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>}
     {selected && (!currentState || currentState.refreshing) && <p className="sync-status" role="status">Loading the selected incident’s device reports…</p>}
     {ready && focusedDevice?.inspect && !focused && <p className="notice">This report’s device is no longer in your device list. Its recorded evidence remains in History.</p>}
     {!ready ? <p role="status">Loading saved devices…</p> : <>
       <p className="map-caption">Select a device to inspect its alert state. Trigger saved simulations in the panel on the right.</p>
-      {fixed && <div className="house-level-switch" role="group" aria-label="House floors">{['', 'First floor', 'Ground floor', 'Outdoor'].map(value => <button key={value} aria-pressed={levelFilter === value} onClick={() => setLevelFilter(value)}>{value || 'Whole house'}</button>)}</div>}
+      {fixed && <div className="house-level-switch" role="group" aria-label="Room categories">{['', ...roomGroups.map(group => group.name)].map(value => <button key={value} aria-pressed={levelFilter === value} onClick={() => setLevelFilter(value)}>{value || 'Whole house'}</button>)}</div>}
       <div className={fixed ? 'house-cutaway' : ''}>
-      {fixed && <div className="house-roof" aria-hidden="true"><span>MAPLE HOUSE</span></div>}
-      {levels.filter(level => !fixed || !levelFilter || level.name === levelFilter).map(level => <section className={'house-level ' + (level.name === 'Outdoor' ? 'house-outdoor' : '')} key={level.name} aria-label={level.name}>
+      {levels.filter(level => !fixed || !levelFilter || level.name === levelFilter).map(level => <section className="house-level" style={{ '--group-width': `${level.rooms.reduce((width, name) => width + roomWidth(membersIn(name).length), 24) + (level.rooms.length - 1) * 8}px`, '--room-share': `${100 / level.rooms.length}%` }} key={level.name} aria-label={level.name}>
       <div className="house-level-label"><h3>{level.name}</h3><span>{level.rooms.reduce((count, name) => count + devices.filter(device => device.room === name).length, 0)} devices</span></div>
       <div className="room-map">{level.rooms.map(name => {
-        const members = devices.filter(item => (item.room || 'Unassigned area') === name);
+        const members = membersIn(name);
         const active = members.filter(item => reporting.has(item.id));
         const visible = expanded[name] || members.length <= 12 ? members : members.filter(item => reporting.has(item.id));
         const red = members.some(item => states.get(item.id)?.level === 'red');
-        return <section key={name} className={'map-room ' + (room === name ? 'focused ' : '') + (red ? 'urgent-room' : active.length ? 'reporting' : '')} aria-label={name}>
+        return <section key={name} style={{ '--room-width': `${roomWidth(members.length)}px` }} className={'map-room ' + (room === name ? 'focused ' : '') + (red ? 'urgent-room' : active.length ? 'reporting' : '')} aria-label={name}>
           <button className="room-title" aria-pressed={room === name} onClick={() => { setRoom(name); setExpanded(old => ({ ...old, [name]: true })); }}><strong>{name}</strong><small>{members.length} devices{active.length ? ` · ${active.length} with evidence` : ''}</small></button>
           <div className="map-devices">{visible.map(device => <button key={device.id} data-device-id={device.id} aria-pressed={focusedDevice?.id === device.id} className={'map-device ' + (focusedDevice?.id === device.id ? 'selected-device ' : '') + (states.get(device.id)?.level === 'red' ? 'red-alert' : reporting.has(device.id) ? 'has-evidence' : '')} onClick={() => { setRoom(name); if (deviceTypes[device.type]?.category === 'actuator') { navigate('settings'); return; } onDevice({ id: device.id, nonce: Date.now() }); }} aria-label={`${device.name}, ${states.get(device.id)?.reason || (device.enabled ? 'no evidence loaded' : 'disabled')}`} title={states.get(device.id)?.reason}>
             <span className="device-symbol" aria-hidden="true">{symbols[device.type] || '◉'}</span><strong>{device.name.startsWith(name + ' · ') ? device.name.slice(name.length + 3) : device.name}</strong><small>{states.get(device.id)?.level === 'red' ? 'Red alert' : !device.enabled ? 'Disabled' : reporting.has(device.id) ? 'Evidence recorded' : 'No incident report'}</small>

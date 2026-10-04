@@ -5,7 +5,7 @@ from pathlib import Path
 
 LAYOUT = json.loads(Path(__file__).with_name("house_layout.json").read_text(encoding="utf-8"))
 HOUSE = LAYOUT["location"]
-ROOMS = frozenset(room for floor in LAYOUT["floors"] for room in floor["rooms"])
+ROOMS = frozenset(room for group in LAYOUT["groups"] for room in group["rooms"])
 
 
 def furnished_catalog():
@@ -22,6 +22,6 @@ def furnished_catalog():
                 "connection": "simulation",
                 "enabled": True,
             }
-            for index, (room, kind, label) in enumerate(LAYOUT["devices"], start=1)
+            for room, kind, label, index in LAYOUT["devices"]
         ],
     }

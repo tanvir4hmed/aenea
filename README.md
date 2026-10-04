@@ -10,7 +10,7 @@ Aenea explores Alexa+-centered coordination of disconnected household alerts. Sc
 
 Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
 
-- **Maple House:** a fixed three-bedroom duplex with 19 rooms/areas and 37 simulated safety/security devices; add or edit devices using the shared room dropdown.
+- **Maple House:** a fixed two-bedroom home with 10 rooms in five compact categories and 24 simulated safety/security devices; add or edit devices using the shared room dropdown.
 - **Settings:** searchable device inventory, room filters, add/edit/duplicate/delete and data cleanup. House and room creation are not part of the app.
 - **Simulation Studio:** save named single alerts and scenarios with state, repeat interval, duration and optional clear; edit/delete reusable definitions.
 - **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.

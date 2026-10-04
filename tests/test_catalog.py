@@ -91,7 +91,11 @@ class CatalogTests(unittest.TestCase):
         body = furnished_catalog()
         validate_catalog(body)
         self.assertEqual({device["room"] for device in body["devices"]}, ROOMS)
-        self.assertEqual(len(body["devices"]), 37)
+        self.assertEqual(len(body["devices"]), 24)
+        self.assertEqual(len(ROOMS), 10)
+        self.assertEqual(len([room for room in ROOMS if "Bedroom" in room]), 2)
+        self.assertEqual(len([room for room in ROOMS if "Bathroom" in room]), 3)
+        self.assertEqual(len({device["id"] for device in body["devices"]}), 24)
 
     def test_arbitrary_room_and_location_are_rejected(self):
         self.body["devices"][0]["room"] = "Kitchen typo"

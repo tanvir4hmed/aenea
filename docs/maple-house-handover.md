@@ -4,9 +4,9 @@ Current product: one fixed fictional family home, not a property/room management
 
 ## Product and data contract
 
-- Maple House is a three-bedroom duplex with 19 fixed areas: ground floor, first floor and outdoors. All three bathrooms, kitchen, laundry, study, stairs, landing, balcony, garage, driveway and gardens are represented.
-- The canonical definition is `functions/house_layout.json`, imported by the web app and packaged with every Lambda. Stable default device IDs allow simulation references to survive reloads.
-- A new dataset starts with 37 simulated devices covering the supported safety/security sensor types. No incident, event, conversation, run or saved simulation is manufactured at startup.
+- Maple House has 10 fixed rooms in five categories: Living & Entrance (Entrance, Living Room), Kitchen & Dining (Kitchen, Dining Room), Bedrooms (Master Bedroom, Family Bedroom), Washrooms (Bathroom 1–3), and Garage. Other rooms/outdoor areas are intentionally omitted. Category and room widths respond to device counts; compact tiles wrap without equal-height room cards.
+- The canonical definition is `functions/house_layout.json`, imported by the web app and packaged with every Lambda. Explicit, permanent device seed numbers preserve IDs when rooms are reordered, removed or renamed. Never reuse a removed seed number for another device.
+- A new dataset starts with 24 simulated devices covering the supported safety/security sensor types. No incident, event, conversation, run or saved simulation is manufactured at startup.
 - A missing catalog reads the furnished defaults. Saving uses the existing conditional revision write. A deliberately emptied saved catalog stays empty; deleted devices do not reappear on reload. Rooms remain visible even with no devices.
 - The API only accepts Maple House and the canonical room names. Settings, the map and simulation filters use the same room list. Device names default to `Room · Device type` and remain editable.
 - Existing non-Maple catalogs are retained read-only pending an explicit administrator reset. Deployment never silently deletes application data.
@@ -38,6 +38,8 @@ Before handing over a clean cloud dataset, verify the AWS account and the exact 
 The administrator utility is `scripts/reset_demo.py --profile <profile> --confirm-account <account-id>` (dry-run by default). Only append `--execute` after explicit deletion authorization and inventory review. It requires Aenea resource tags, checks evidence ownership, pauses write-capable Lambdas and existing schedules, drains in-flight calls, and restores the previous service settings in a `finally` block. Missing schedules are reported, not silently created. Never run this utility from deployment. Minimal incident/event replay guards remain as system metadata so delayed retries cannot recreate removed incidents; reset guards are excluded from the user-facing deletion list.
 
 Sign out/clear local drafts on demo browsers so old conversation snippets and pending client requests are not carried into handover. Use fictional data for any subsequent acceptance exercise, then remove it explicitly.
+
+Cloud checkpoint (2026-10-04): the authorized reset removed the prior incident/application records and 13 evidence object versions. Both household catalogs were then conditionally updated to the compact 10-room/24-device layout. Read-back found zero incident summaries, zero evidence versions/delete markers, the cleanup schedule enabled and all paused writers restored. Only house catalogs and minimal replay guards remained. This is a data verification checkpoint, not authenticated UI or deployment acceptance.
 
 ## Validation boundaries
 
