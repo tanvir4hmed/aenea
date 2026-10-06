@@ -92,7 +92,6 @@ def main():
                     {"Key": "Environment", "Value": "dev"},
                     {"Key": "ManagedBy", "Value": "AWSCLI"},
                     {"Key": "Repository", "Value": "tanvir4hmed/aenea"},
-                    {"Key": "Lifecycle", "Value": "Hackathon2026"},
                 ]
             }
         ),

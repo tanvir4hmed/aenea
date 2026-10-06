@@ -18,7 +18,7 @@ variable "bedrock_model_id" {
 }
 provider "aws" {
   region = var.region
-  default_tags { tags = { Project = "Aenea", Name = "Aenea", Environment = "dev", ManagedBy = "Terraform", Repository = "tanvir4hmed/aenea", Lifecycle = "Hackathon2026" } }
+  default_tags { tags = { Project = "Aenea", Name = "Aenea", Environment = "dev", ManagedBy = "Terraform", Repository = "tanvir4hmed/aenea" } }
 }
 data "aws_caller_identity" "current" {}
 

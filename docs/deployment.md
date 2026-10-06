@@ -1,51 +1,133 @@
-# Cloud deployment
+# Deployment and development
 
-Source implementation covers Phases 2–7. Phases 2–3 have a recorded successful deployment; hosted acceptance and Phase 4–7 deployment results remain unverified. The assistant pushes implementation; GitHub Actions owns build/deploy execution. Bootstrap-policy synchronization requires a refreshed AWS administrator login; see [Phase 5 rollout](alexa-mcp.md). Phase 7 adds optional `INGESTION_ENABLED` configuration, described in [operations](operations.md); no new secret is required.
+Aenea deploys to AWS through GitHub Actions using Terraform. Configuration and state are separate from application data. Use an AWS account you administer and a GitHub repository/environment you control.
 
-## First-time AWS setup
+## Prerequisites
 
-Use an authorized AWS CloudShell session for the one-time state/OIDC bootstrap. No AWS credential is committed or pasted into application configuration.
+- Python 3.12, Node.js 22, AWS CLI v2, Git and Terraform 1.10 or later within the declared <2.0 range.
+- AWS authority to create project IAM/OIDC resources, state storage and the services declared under `infra`.
+- Amazon Bedrock/AgentCore availability and model access in the selected region; the project defaults to `us-east-1` and Amazon Nova Lite.
+- Access to manage GitHub Actions, the `dev` environment and variables.
+- DNS control for `aenea.qleam.com` when using the configured custom domain. For another domain, change the domain definitions and associated redirects/origins before deployment.
 
-1. Choose the AWS account and region. Bootstrap uses us-east-1 by default and creates the explicit deployment policies.
-2. Follow [CloudShell bootstrap](cloudshell-bootstrap.md). It creates/adopts the private state bucket and GitHub OIDC role, then stores bootstrap state in `bootstrap/terraform.tfstate` in that bucket. Never commit state.
-3. In GitHub create environment `dev`, limit deployment branches to main, and set environment variables `AWS_REGION`, `TF_STATE_BUCKET`, and `AWS_ROLE_ARN` from bootstrap output.
-5. Dispatch **Deploy changed components** with `all` once. Subsequent qualifying main-branch pushes deploy affected components automatically. The separate source-quality workflow runs on pull requests, so a release push creates one deployment workflow run.
-6. Create a synthetic-test Cognito user as an account administrator. Self-registration is disabled. Hosted UI uses authorization code + PKCE and API routes require access-token scopes.
+Clone the repository and install dependencies using the commands in [CONTRIBUTING](../CONTRIBUTING.md). No real sensor, Ring account or Echo is required.
 
-The initial bootstrap requires existing AWS authority: a GitHub role cannot create itself before it exists. The bootstrap role has no default AdministratorAccess policy. Environment protection must restrict the OIDC trust to the intended branch. This account's GitHub subject template includes stable repository/owner IDs, so the role trusts the exact emitted `dev` environment subject. Configuration values in the frontend (API URL, user-pool client ID and Cognito domain) are public identifiers, not secrets.
+## 1. Bootstrap state and deployment identity
 
-The bootstrap script initializes the declared S3 backend directly with the retained bucket and `bootstrap/terraform.tfstate`. No extra backend file or local-state migration is required. Keep state private. For an account with manually created roles/policies not yet in bootstrap state, follow the reconciliation section in the bootstrap guide instead of importing blindly.
+Bootstrap uses an authenticated AWS CLI session. In CloudShell or Git Bash, from the repository root:
 
-## State layers
+```sh
+aws sts get-caller-identity
+bash scripts/bootstrap-cloudshell.sh
+```
 
-- bootstrap: CLI-managed retained state bucket plus Terraform-managed deployment OIDC role.
-- tls: ACM certificate for aenea.qleam.com in us-east-1; DNS validation records are output for manual entry at Namecheap.
-- data: DynamoDB state and versioned evidence S3; protected against routine destroy.
-- platform: private web S3, CloudFront origin access, Cognito, API Gateway JWT auth/logging, EventBridge bus, delivery DLQ and operations SNS.
-- app: function roles/code/environment, Step Functions, EventBridge delivery, API integrations and execution-failure alarm.
-- reasoner: private code bucket and AgentCore Strands/Bedrock runtime; deployed before app.
-- mcp: private code bucket, JWT AgentCore MCP runtime and SSM ARN parameter; deployed after app.
+The script creates/adopts `aenea-<account-id>-terraform-state` through AWS CLI, enables encryption/versioning, blocks public access, then initializes `bootstrap/terraform.tfstate` and creates/adopts the OIDC deployment identity and project policies.
 
-Each regular layer uses its own S3 state key and native S3 locking. Terraform owns infrastructure/configuration. The deployment script owns subsequent Lambda code updates; Terraform ignores package filename/hash changes to avoid restoring old code. Step Functions-only changes update the workflow directly; its source remains the Terraform template.
+Verify the account before running. Terraform 1.10+ must already be installed. A normal Terraform destroy cannot remove this CLI-owned bucket. Keep it while any layer uses its state.
 
-## Selective deployment
+PowerShell does not include Bash by default. With Python, AWS CLI and Terraform available, use:
 
-- Web changes build/deploy the frontend only.
-- One function directory updates that function only.
-- Shared function code/dependencies update their consuming functions.
-- State-machine changes update only that workflow.
-- A Terraform layer change applies that layer; data/platform changes also refresh dependent app wiring.
-- Platform changes refresh public web configuration without rebuilding unchanged frontend code.
-- MCP source/infrastructure changes package and deploy MCP only; platform changes also refresh MCP wiring.
-- Deployer-only changes (`scripts/deploy.py`, `scripts/deploy_scope.py` or the deploy workflow) refresh infrastructure and backend packages/configuration; unchanged web assets are not rebuilt. Mixed component changes retain component-based selection. An explicit `all` dispatch includes the frontend build. Bootstrap/reconciliation scripts do not trigger application deployment.
-- Documentation and planning changes do not trigger deployment.
+```powershell
+$env:AWS_REGION = 'us-east-1'
+python scripts/bootstrap.py
+```
 
-Builds run on GitHub Linux runners. No test suite, browser verification or post-deploy health probe is invoked by this workflow. AWS wait-for-update calls sequence Lambda deployments; they are not application tests.
+The bootstrap trust is configured for this repository's exact GitHub `dev` environment subject, including stable owner/repository IDs. For a fork, review `infra/bootstrap/main.tf.json` and replace the trust with that repository's actual emitted OIDC subject before applying. Do not broaden it to arbitrary repositories.
 
-Python dependencies are assembled on the runner with the pinned IncidentBridge commit. Frontend builds use the committed npm lockfile through `npm ci`. Complete runtime/transitive Python locking and Terraform provider-lock coverage remain audit items. The separate read-only `Source quality` workflow runs offline checks; it does not perform hosted acceptance or gate deployment completion.
+For existing IAM resources/policies, use an administrator session to reconcile them:
 
-## Operational boundaries
+```powershell
+aws login
+$env:AWS_REGION = 'us-east-1'
+$env:TF_STATE_BUCKET = 'aenea-YOUR_ACCOUNT_ID-terraform-state'
+aws sts get-caller-identity
+python scripts/reconcile_bootstrap.py
+```
 
-The default `dev` deployment maps one Cognito identity to one household. Shared membership invitations come later. SNS has no recipient until a verified subscription is added. EventBridge DLQ captures delivery failures; failed Step Functions executions trigger a separate alarm and require operator investigation/re-drive. A bucket write or publish failure can be retried using the same event ID and payload.
+This imports recognized resources missing from bootstrap state and applies current policy templates. It is a cloud IAM mutation, not a local test. Review shared OIDC ownership first. Bootstrap policy edits do not automatically update the deployed policy.
 
-No real device, Ring account or external weather feed is required. The selected domain is aenea.qleam.com; see [custom-domain setup](custom-domain.md). CloudFront's AWS hostname is used until the certificate is issued. HTTP API does not have a direct WAF association in this implementation.
+## 2. Configure GitHub
+
+Create environment **dev** and restrict deployment to **main**. Set these environment variables (repository variables are also supported; environment values override them):
+
+| Variable | Value |
+| --- | --- |
+| `AWS_REGION` | `us-east-1` |
+| `TF_STATE_BUCKET` | State bucket printed by bootstrap |
+| `AWS_ROLE_ARN` | GitHub deployment role ARN printed by bootstrap |
+| `INGESTION_ENABLED` | `true`; optional operator pause control |
+
+Normal deployment uses OIDC, not AWS access-key secrets. Do not store browser credentials, Terraform state or cloud tokens in source.
+
+## 3. Deploy and configure HTTPS
+
+Run **Deploy changed components** manually with **all** for initial deployment. Later qualifying main pushes select affected components automatically.
+
+The deployment sequence packages the reasoner before dependent app resources, applies data/platform/app layers, packages MCP after app wiring exists, and uploads web assets/configuration. The workflow prepares the ACM certificate and prints DNS records.
+
+At your DNS provider:
+
+1. Add the ACM validation CNAME records exactly as printed.
+2. Keep validation records for certificate renewal.
+3. After certificate issuance, dispatch component **domain** to attach HTTPS configuration.
+4. Point the `aenea` CNAME to the CloudFront hostname printed by the workflow.
+
+Until the custom certificate is attached, the CloudFront AWS hostname is the configured origin. `/config.json` contains the deployed API URL, public Cognito client ID and Cognito domain; it must come from the matching platform outputs.
+
+## 4. Provision sign-in accounts
+
+Cognito self-signup is disabled. Get `user_pool_id` from the platform Terraform outputs and create an account using the Cognito console or AWS CLI:
+
+```sh
+aws cognito-idp admin-create-user --region us-east-1 \
+  --user-pool-id USER_POOL_ID --username USER_EMAIL \
+  --user-attributes Name=email,Value=USER_EMAIL Name=email_verified,Value=true \
+  --message-action SUPPRESS
+```
+
+Set a permanent policy-compliant password with the console or `admin-set-user-password`. Keep real passwords out of logs/source. The shared guest login displayed by `apps/web/src/main.jsx` is intentional public test access; provision that matching test account or change its displayed credentials for your deployment. Never attach private household data to a shared account.
+
+Open the configured web origin, sign in and use [the user guide](user-guide.md). A missing catalog supplies Maple House's initial devices; no incidents or saved definitions are created automatically.
+
+## Terraform layers
+
+| Layer | State key and responsibility |
+| --- | --- |
+| bootstrap | `bootstrap/terraform.tfstate`: GitHub OIDC role and deployment policies |
+| tls | `tls/terraform.tfstate`: ACM certificate in us-east-1 |
+| data | `data/terraform.tfstate`: DynamoDB and versioned evidence S3 |
+| platform | `platform/terraform.tfstate`: web hosting, Cognito, API Gateway, event bus, DLQ and operations topic |
+| reasoner | `reasoner/terraform.tfstate`: code bucket and IAM AgentCore runtime |
+| app | `app/terraform.tfstate`: Lambda, APIs, workflows, schedules and application roles |
+| mcp | `mcp/terraform.tfstate`: MCP code/runtime and SSM discovery parameter |
+
+State uses private S3 with native lockfiles. Terraform manages resource configuration; the deployment script updates Lambda code separately, with Terraform ignoring subsequent package filename/hash changes. Never upload local state or secrets.
+
+## Selective releases
+
+| Changed source | Deployment scope |
+| --- | --- |
+| `apps/web/**` | Web build/upload |
+| One `functions/<name>/**` | That Lambda |
+| Shared `functions/*.py`, dependencies, or `shared/**` | Dependent Lambda packages; shared model contracts also update reasoner |
+| `agent/reasoner/**` | Reasoner runtime |
+| `services/mcp/**` | MCP runtime |
+| `workflows/**` | State-machine definition |
+| `infra/<layer>/**` | Layer and required dependencies |
+| Platform/TLS | App/config/domain wiring and MCP dependency refresh |
+| README/docs only | No application deployment |
+
+A change to the canonical house JSON also rebuilds web and shared consumers. The source-quality workflow runs on pull requests or manual dispatch. Deployment does not run browser tests or post-release acceptance checks. Lambda wait calls only serialize AWS updates.
+
+## Local development
+
+The frontend can build independently. For live authenticated use it needs an already-deployed backend:
+
+1. Get the correct public configuration from your deployed origin's `/config.json`.
+2. Put it in ignored `apps/web/public/config.json`.
+3. Add the exact local origin, callback and logout URL to Cognito and API/MCP allowed origins through the platform configuration.
+4. Start `npm --prefix apps/web run dev` and open its reported URL.
+
+The current platform defaults do not allow localhost OAuth/MCP origins. A local build alone does not provide authentication or AWS services.
+
+For offline layout work, `node scripts/preview_ui.mjs` serves clearly labelled fixtures at `http://127.0.0.1:4179`. It cannot test real authentication or models. Stop it after inspection. Run the checks in [CONTRIBUTING](../CONTRIBUTING.md) before releasing source changes.

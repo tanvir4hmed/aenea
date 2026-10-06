@@ -1,40 +1,63 @@
-# Operations and cost boundaries
+# Operations
 
-Source updated 30 September 2026. Operational checks remain separate. No live budget, billing recipient, IAM reconciliation or account cleanup was performed by this source change.
+Operate the deployed components with project-scoped AWS credentials. Account/environment isolation, a successful deployment and a working application are separate concerns.
 
-## Spend controls
+## Monitoring and recovery
 
-Existing controls include an authenticated API with request throttling, disabled self-signup, bounded evidence/tool pages, bounded model input, 14-day application/workflow log retention and short AgentCore runtime idle/lifetime settings. These reduce exposure; they are **not a dollar spending cap**. Model calls, idle resources, object versions, traces and retained state can still incur charges. AgentCore runtime-created logs need a separate retention review; the application's 14-day setting does not cover every service automatically.
+| Symptom | Inspect | Recovery |
+| --- | --- | --- |
+| Deployment AccessDenied | GitHub run logs, exact action/resource, deployment-role policy | Update the scoped bootstrap template, reconcile IAM with administrator credentials, rerun the failed deployment |
+| Signal accepted but no assessment | EventBridge delivery, SQS DLQ, Step Functions and reasoner logs | Diagnose delivery/model failure; use Retry assessment for an open incident |
+| Simulation remains paused | Run message, pending identity, published counts and worker logs | Fix delivery/allowance problem, then Resume pending |
+| Definition/catalog save conflicts | Current revision and other active sessions | Refresh before saving; do not overwrite blindly |
+| Sign-in repeatedly fails | Matching config/origin, Cognito callback, resource-bound token and browser session | Reload matching frontend/config; sign in again if session revoked or expired |
+| MCP request fails | API Gateway, fixed proxy, SSM runtime ARN, AgentCore/tool logs | Check token/audience/scopes and runtime permissions; uncertain writes require a status read before retry |
+| Cleanup remains pending | Cleanup rule/target, Lambda logs, job phase and IAM | Correct scheduling/access; pending is not proof of completed deletion |
 
-An operator can set GitHub variable `INGESTION_ENABLED=false` in the `dev` environment and dispatch `Deploy changed components` with `app`. This refreshes app configuration without rebuilding the frontend or either AgentCore runtime. After that configuration successfully deploys, new `POST /events` requests return 503 before database/S3/EventBridge writes. Set it back to `true` and deploy to resume. Changing the GitHub variable alone does not pause the deployed Lambda. This does not stop in-flight workflows, MCP reads/writes, other API requests or storage charges. Verify the pause later; it was not exercised here.
+CloudWatch records application/service logs and metrics. Application/workflow log retention is fourteen days; runtime-created logs need their own retention review. An SQS DLQ retains failed event deliveries. The operations SNS topic has no recipient until a subscription is configured and confirmed.
 
-Before opening judge access, the account owner must select a monthly budget and notification address and configure/verify AWS billing alerts. Alerts are not hard caps. Do not stop or destroy judge access without confirming the required availability period. No automatic destroy job is installed. Terraform state/evidence are retained; the CLI-owned state bucket must not be deleted while referenced by any layer.
+GitHub deployment errors do not imply application data is deleted. Terraform may have applied only part of a failed plan. Preserve remote state and retry from the reported state; never clear state to hide an error.
 
-## Failure and retry
+## Pausing new signals
 
-### Incident cleanup
+Set GitHub `INGESTION_ENABLED=false` and deploy component **app**. After the configuration deploys, new ingress returns 503 before accepting evidence. Restore `true` and deploy to resume.
 
-Before rolling out scheduling, reconcile bootstrap policy with an authorized administrator session using `python scripts/reconcile_bootstrap.py`. Exact default-bus rule ARNs include `aenea-cleanup` and the new `aenea-simulation`; custom-bus-only patterns do not cover them. Re-run app deployment after reconciliation if necessary. No new secret is required. Live IAM synchronization is not performed by a source push.
+Changing a GitHub variable alone does not change a running Lambda. This control does not stop in-flight workflows, reads, scheduled-worker attempts or storage charges. Stop individual simulation runs through Command Center when appropriate.
 
-User-requested deletion blocks new work and queues cleanup after a 15-minute drain window. The worker runs every five minutes with concurrency one. Monitor pending/retrying jobs and the cleanup Lambda log/error metrics if a request stays incomplete. Failure to invoke the worker leaves requests pending; it must not be described as successful physical deletion. Inspect IAM and rule/target configuration before retrying deployment. Deletion never removes Terraform state or shared resources.
+## Simulation and processing bounds
 
-The worker removes active DynamoDB incident data, associated receipts, applicable virtual output state and every version/delete marker of the incident's S3 evidence. It retains a minimal permanent deletion marker. PITR backups, workflow execution history, service logs and exported copies are outside this API's purge boundary; retention must be managed separately. No operator cleanup or user-data deletion was executed as part of Phase 8 implementation.
+- Up to 200 catalog devices, 30 per room, 250 saved definitions and 2,000 saved signal references.
+- Up to 200 distinct sensors per run; duplicate batch selections and concurrent device ownership are rejected.
+- Each incident starts with 2,000 practice signals, extendable deliberately to 10,000. Exhaustion pauses new generation, not the incident or accepted evidence processing.
+- Scheduled generation is checked once per minute. The worker uses a lease, bounded invocation and fairness cursor; delivery can be later than its scheduled timestamp.
+- New Studio definitions use active/online state, Once or a finite repeat interval, and no automatic clear. Stop does not clear a reported alarm.
+- Model input contains at most 32 representative evidence events with aggregates; evidence storage has no twenty-report incident cutoff.
+- Changed evidence can invalidate a previous assessment. Unchanged state may reuse an eligible result. Reassessment attempts are bounded and failure is visible.
 
-### Event and action retries
+These controls are not a monetary spending cap. Configure AWS billing budgets/alerts and watch model calls, polling, logs, object versions and stored data. Browser closure stops visible polling/speech, not durable runs.
 
-- Signal ingress uses a stable event ID and payload; an identical retry is accepted without another correlated event. Changed payload with the same identity is rejected.
-- New person reporting is retired. Optional notes and cloud runs use stable UUID request identities; retry unchanged requests, not newly identified duplicates. Read current state after uncertain writes.
-- Acknowledgment and its unique audit commit together. Repeated acknowledgment does not resolve the incident or duplicate the audit.
-- Virtual actions retain the existing deterministic action identity and transactional policy/execution checks. Concurrent settings/evidence changes fail closed.
-- MCP proxy timeout does not prove failure: read saved state before retrying a mutation. Private Lambda invocation disables SDK automatic retries; the browser does not automatically replay writes.
-- Delivery DLQ, failed Step Functions executions and model failures require operator review; no fabricated recovery is emitted. Operations SNS has no verified recipient until explicitly configured.
+## Severity
 
-## Security review boundaries
+Ordinary doorbell, motion, package, vehicle/person and normal contact-open signals are informational. Water leaks, severe weather, freeze risk, power outage and tamper signals are warnings. CO, gas leak, medical SOS, security alarm, forced entry and glass break are immediately urgent.
 
-Public metadata contains identifiers only. JWT signature, issuer, registered client, access-token type, resource-bound audience and scope checks protect MCP. Old unbound sessions must sign in again. Household partition checks remain separate. Proxy SSM access is limited to this account's runtime parameter. The reasoner cannot access storage or execute devices. The private tool Lambda has no public API route. Application roles are project-scoped; shared-table tenancy is enforced in code, not per-household IAM credentials.
+Smoke/heat starts at warning. Distinct active fire/gas sensors corroborating in the same trusted room produce urgent/red state. Repeats from one sensor do not count as independent corroboration. A current validated assessment may raise cited-device urgency but cannot lower the deterministic floor. Signals are reported evidence, not a diagnosis or proof of safety.
 
-The simulation worker has a 240-second lease around a 170-second invocation, a persistent fairness cursor and explicit pause state on delivery failure. Check the run message, published/reserved counts and worker error metrics. Stop leaves accepted evidence intact; never equate stop/exhaustion with clear. No application limit is a monetary AWS spending cap. See [scheduling and migration](state-driven-coordination.md).
+## Storage, deletion and reset
 
-The deployment role remains intentionally broader than application roles: it can manage project-prefixed roles and resources. GitHub environment protection and exact OIDC trust are critical. A full external IAM audit, dependency vulnerability review, token/session threat review and adversarial hosted tests are still release gates. Do not describe this prototype as production-hardened.
+Evidence objects are versioned. Deleting a recipe or sensor does not erase historical incident evidence. Incident deletion first blocks further work, waits a fifteen-minute drain, then scheduled cleanup removes application records, related runs and evidence object versions/delete markers. Minimal replay guards prevent delayed retries from recreating deleted incidents.
 
-Use `docs/release-checklist.md` for the remaining operator gates. No passwords, access tokens, real health/location details or actual camera footage belong in public logs, evidence or the repository.
+Check the deletion's final status. PITR backups, service logs, workflow execution history and exported copies follow their own retention; the application purge does not erase those.
+
+`scripts/reset_demo.py` is an administrator utility for an explicitly requested application-data reset. It is dry-run by default and requires the account confirmation and project ownership checks. It pauses writers/schedules, drains in-flight work, preserves login/infrastructure/state and restores service configuration. Review its inventory before adding `--execute`; it never runs from deployment. Its filename is a utility identifier, not a separate application mode.
+
+Never delete the CLI-owned state bucket while any Terraform layer references it. App cleanup is not infrastructure destruction.
+
+## Privacy and access boundaries
+
+One Cognito subject owns one dataset. A shared guest identity shares its records; use fictional data there. Secrets, tokens, real camera footage and personal health/location information do not belong in source or diagnostic logs.
+
+MCP validates signed access tokens, issuer, resource audience, expiry, registered client and tool scopes. The verified subject owns the partition. Observation text and model input cannot grant permissions. The reasoner has no direct database or device authority. Household isolation on the shared table is enforced by application code, not separate per-user IAM roles.
+
+Browser speech may use the browser vendor's service. Conversation history is browser-local, bounded to twenty replies per incident and seven days. Sign-out/Clear removes it. Cloud notes and historical reports, where present, remain unverified context.
+
+Protect GitHub's exact OIDC trust and `dev` environment. The deployment role can manage project resources and is broader than workload roles. Dependency scanning, operational load testing and security review are continuing engineering responsibilities. Report vulnerabilities using [the security policy](../SECURITY.md).

@@ -20,8 +20,7 @@
           "Name": "Aenea",
           "Environment": "dev",
           "ManagedBy": "Terraform",
-          "Repository": "tanvir4hmed/aenea",
-          "Lifecycle": "Hackathon2026"
+          "Repository": "tanvir4hmed/aenea"
         }
       }
     }

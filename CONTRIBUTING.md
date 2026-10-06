@@ -33,4 +33,4 @@ Keep UI, transport, domain rules and storage separated. All Python follows Ruff 
 
 For isolated browser layout checks, run `node scripts/preview_ui.mjs` after installing web dependencies. It serves production components with visibly labeled synthetic fixtures at `http://127.0.0.1:4179`. It cannot exercise AWS, authentication, or live agents; never use its output as hosted/model evidence. Stop it after inspection. The fixture is not included in the production web entry point.
 
-Use committed npm lockfiles with `npm ci`. Python check tools are pinned directly; runtime/transitive dependency ranges are not yet fully locked. Record that limitation rather than claiming byte-for-byte reproducibility. See the [engineering baseline](docs/engineering-baseline.md) for coverage and remaining work.
+Use committed npm lockfiles with `npm ci`. Python check tools are pinned directly; runtime/transitive dependency ranges are not yet fully locked. Record that limitation rather than claiming byte-for-byte reproducibility. See [deployment](docs/deployment.md) and [architecture](docs/architecture.md) for configuration and component boundaries.

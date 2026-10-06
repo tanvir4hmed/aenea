@@ -1,65 +1,66 @@
 # Aenea
 
-Shared household context, accountable incident coordination.
+Household signals, one shared incident picture.
 
-Aenea explores Alexa+-centered coordination of disconnected household alerts. Scheduled simulated device states enter a shared cloud incident pipeline; a Strands/Bedrock agent assesses evidence. The Alexa+ browser experience reads the same incidents through MCP and application APIs, with persisted briefings and incident questions. Device-response controls are retired in the current experience; no automatic device actuation is enabled.
+Aenea turns simulated household device reports into named incidents, evidence-based assessments and concise spoken or written briefings. Its Alexa+ browser experience connects to a self-hosted MCP server and the same incident data used by Command Center.
 
-> Hackathon prototype, not a certified alarm, medical device or monitoring service. Follow official alarms and emergency guidance. Device signals are simulated; Aenea does not control devices, dispatch responders or provide a verified native Alexa/Ring integration.
+[Open application](https://aenea.qleam.com) · [Read the user guide](https://aenea.qleam.com/guide)
 
-## Explore the experience
+## How it works
 
-Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-guide.md). Final hosted acceptance is still pending.
+1. Check the supplied Maple House sensors or manage them in Settings.
+2. Save a single alert or multi-device scenario in Simulation Studio.
+3. Trigger saved definitions from Command Center.
+4. Read or hear the assessment in Live assistance; ask questions about its evidence.
+5. Review, rename, resolve or delete the incident.
 
-- **Maple House:** a fixed two-bedroom home with 10 rooms in five compact categories and 24 simulated safety/security devices; add or edit devices using the shared room dropdown.
-- **Settings:** searchable device inventory, room filters, add/edit/duplicate/delete and data cleanup. House and room creation are not part of the app.
-- **Simulation Studio:** choose a room and its available devices, save single alerts or multi-device scenarios with a compact repeat interval; edit/delete reusable definitions.
-- **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.
-- **Incident review:** inspect evidence revisions, citations, uncertainty and human reviews.
-- **Alexa+ coordination:** automatically refreshed briefings, clickable active devices and a compact Ask Alexa+ panel with optional browser speech.
-- **Cloud simulation runs:** continue without an open tab; show scheduled/published counts, pause/resume/stop and per-incident generation allowance.
-- **Data controls:** request guarded incident cleanup and track its status.
+Cloud simulation runs continue after the browser closes. Related alerts can join an open incident, while location/hazard rules separate unrelated reports. New evidence causes reassessment; repeated unchanged reports can reuse a valid assessment.
 
-New evidence makes an older assessment stale until reassessment. Human review is not verification of physical safety. Camera motion does not establish occupancy or safety. Historical action records remain read-only; device-response execution is disabled.
+## System
 
-## Architecture
+![Aenea system architecture](docs/diagrams/system-architecture.png)
 
-![Selected Aenea architecture baseline](docs/architecture/01_aenea_architecture_overview_final.png)
+React and Vite provide the interface. AWS Lambda, EventBridge, Step Functions, DynamoDB and S3 process and retain evidence. A Bedrock AgentCore runtime hosts Strands agents using Amazon Bedrock; a separate AgentCore runtime hosts the authenticated MCP server. Terraform defines infrastructure and GitHub Actions deploys changed components.
 
-This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are simulated categories, not connected products. [Architecture notes](docs/architecture.md) describe current implementation and limits.
-
-| Source | Responsibility |
-| --- | --- |
-| `apps/web` | React workspace and Alexa+ browser simulator |
-| `functions`, `shared` | Ingestion, evidence revisions, assessments, review, tools and cleanup |
-| `agent/reasoner` | AgentCore-hosted Strands/Bedrock assessment |
-| `services/mcp` | Authenticated MCP 2025-11-25 Streamable HTTP server |
-| `infra`, `workflows` | Terraform infrastructure and event orchestration |
-| `tests` | Offline regression coverage |
-
-[IncidentBridge](https://github.com/tanvir4hmed/incidentbridge) is a separately licensed event toolkit consumed by the ingress path.
-
-## Build and release status
-
-The current [state-driven coordination release](docs/state-driven-coordination.md) describes implemented behavior, capacities and migration. [Source verification](docs/source-verification.md) distinguishes offline checks and local browser fixtures from outstanding hosted acceptance. Earlier dated workspace phases are historical, not current setup instructions. See [check instructions](CONTRIBUTING.md).
-
-The [Maple House handover](docs/maple-house-handover.md) is the current product/setup reference. Earlier multi-location, response-permission and separate Ask-tab designs are historical.
-
-Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bootstrap](docs/cloudshell-bootstrap.md) describe operator configuration. Each qualifying main-branch push starts one automatic deployment that selects the affected frontend, Lambda, infrastructure or agent components. Documentation-only changes do not deploy.
+[IncidentBridge](https://github.com/tanvir4hmed/incidentbridge) supplies the canonical event schema and normalization library.
 
 ## Documentation
 
-- [Step-by-step user guide](docs/user-guide.md) · [User/judge walkthrough](docs/judge-guide.md) · [in-app guide](https://aenea.qleam.com/guide)
-- [Engineering baseline](docs/engineering-baseline.md) · [earlier workspace phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
-- [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
-- [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)
-- [Event/state contract and sign-in migration](docs/event-contract.md)
-- [Signal priority and red-alert policy](docs/signal-priority.md)
-- [Automatic incidents, resolution and long-event processing](docs/automatic-incidents.md)
-- [Release gates](docs/release-checklist.md) · [submission draft](docs/submission-draft.md)
-- [Demo runbook](docs/demo-runbook.md) · [product feedback](docs/product-feedback.md) · [friction log](docs/friction-log.md)
-- [Operations](docs/operations.md) · [safety](docs/safety.md) · [security](SECURITY.md)
-- [Contributing](CONTRIBUTING.md) · [third-party notices](THIRD_PARTY_NOTICES.md)
+| Guide | Covers |
+| --- | --- |
+| [User guide](docs/user-guide.md) | Setup, every main control, prerequisites and troubleshooting |
+| [Architecture](docs/architecture.md) | System design, incident workflow, MCP integration and AWS AI processing |
+| [API](docs/api.md) | Event contract, endpoints, tools, authentication and compatibility |
+| [Deployment](docs/deployment.md) | Prerequisites, bootstrap, accounts, domain, selective releases and local checks |
+| [Operations](docs/operations.md) | Recovery, limits, storage, deletion, privacy and observability |
 
-## License
+## Development
 
-[Apache License 2.0](LICENSE).
+Python 3.12, Node.js 22 and Terraform 1.10+ are the supported toolchain. From the repository root:
+
+```sh
+python -m venv .venv
+# Activate the environment for your shell.
+python -m pip install -r requirements-dev.txt
+npm --prefix apps/web ci
+npm --prefix apps/web run build
+```
+
+The frontend requires a deployed API, Cognito client and runtime configuration for authenticated use. Full setup and development-server instructions are in [Deployment](docs/deployment.md); verification and contribution conventions are in [CONTRIBUTING](CONTRIBUTING.md).
+
+| Directory | Responsibility |
+| --- | --- |
+| `apps/web` | Household workspace, live assistance and browser speech |
+| `functions`, `shared` | Validated ingestion, incidents, assessments, APIs and cleanup |
+| `agent/reasoner` | AgentCore entry point, Strands agents and Bedrock calls |
+| `services/mcp` | MCP 2025-11-25 Streamable HTTP server |
+| `infra`, `workflows` | Terraform layers and event orchestration |
+| `scripts`, `tests` | Deployment utilities and regression checks |
+
+## Scope
+
+The supplied house, devices and input signals are simulated. Assessments invoke the cloud model when needed; the UI does not manufacture model results. Speech uses browser services, with spoken updates requiring an open page. Native Alexa/Echo/Ring connectivity, physical device control, member management and emergency calling are not implemented. Follow official alarms and emergency guidance during real incidents.
+
+## License and security
+
+[Apache License 2.0](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security policy](SECURITY.md)
