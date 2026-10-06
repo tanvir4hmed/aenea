@@ -44,3 +44,29 @@ class SimulationWiringTests(unittest.TestCase):
             for value in statement["Resource"]
         ]
         self.assertIn("arn:aws:events:${region}:${account_id}:rule/aenea-simulation", resources)
+
+    def test_role_cleanup_and_tagged_scheduler_have_deployment_permissions(self):
+        policy = json.loads(
+            (ROOT / "infra/bootstrap/deployment-workflow-policy.json.tftpl").read_text()
+        )
+        role_grants = [
+            statement
+            for statement in policy["Statement"]
+            if "iam:DeleteRole" in statement.get("Action", [])
+        ]
+        self.assertEqual(len(role_grants), 1)
+        self.assertIn("iam:ListInstanceProfilesForRole", role_grants[0]["Action"])
+        self.assertEqual(role_grants[0]["Resource"], "arn:aws:iam::${account_id}:role/aenea-*")
+        rule_grants = [
+            statement
+            for statement in policy["Statement"]
+            if "events:PutRule" in statement.get("Action", [])
+        ]
+        self.assertTrue(
+            any(
+                "events:TagResource" in statement["Action"]
+                and "arn:aws:events:${region}:${account_id}:rule/aenea-simulation"
+                in statement["Resource"]
+                for statement in rule_grants
+            )
+        )
