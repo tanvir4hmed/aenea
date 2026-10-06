@@ -9,7 +9,6 @@ FUNCTIONS = frozenset(
         "correlate",
         "incident_api",
         "invoke_reasoner",
-        "policy",
         "action_executor",
         "mcp_tools",
         "mcp_proxy",

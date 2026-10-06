@@ -12,6 +12,13 @@ sys.path.insert(0, str(ROOT / "functions"))
 
 
 class HouseholdRetryTests(unittest.TestCase):
+    def test_removed_action_tools_cannot_access_or_mutate_storage(self):
+        for name in ("request_safe_action", "confirm_action", "get_action_status"):
+            with self.subTest(tool=name), self.assertRaises(PermissionError):
+                self.module.dispatch("owner", {"aenea/read", "aenea/write"}, name, {})
+        self.client.transact_write_items.assert_not_called()
+        self.storage.table.get_item.assert_not_called()
+
     def setUp(self):
         self.storage = SimpleNamespace(
             audit=Mock(),

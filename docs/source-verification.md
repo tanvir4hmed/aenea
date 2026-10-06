@@ -1,5 +1,13 @@
 # Source verification — 30 September 2026
 
+## User guide and retired-code removal — 6 October 2026
+
+The in-app guide now provides eight expandable setup/use steps, a visual first-test sequence, prerequisite/outcome table and troubleshooting. [The standalone user guide](user-guide.md) covers the same workflow, including device configuration, saving versus triggering, repeat runs, Alexa+ controls, review/resolution and deletion dependencies.
+
+Removed the disabled action executor logic, response permission endpoints, action MCP tools, unused policy Lambda/source/IAM wiring, feature flag, actuator evidence helper and unreferenced response/old scenario UI. The existing `action_executor` Lambda resource name is retained because it also serves working catalog, simulation and lifecycle APIs; its workflow entry now publishes briefings only. Historical record reads, catalog compatibility and the empty `actions` wire field remain intentional compatibility boundaries. New assessments reject nonempty device commands. No application data was deleted.
+
+Offline checks: the full 170-test Python suite passed, followed by two new Settings/catalog and briefing handler regressions; 54 JavaScript tests, web lint/production build, Python correctness/unused-import checks, repository formatting, five-module strict typing, Terraform formatting and diff checks passed. The actual MCP HTTP app verifies five advertised tools and the absence of action tools. The SDK emits an existing Starlette test-client deprecation warning. These are source/offline checks; no hosted UI, native Alexa integration or cloud deployment acceptance was performed. Main-path selective deployment wiring remains enabled.
+
 ## Device-first Alexa+ follow-up — 2 October 2026
 
 Current scope is documented in [device-first experience](device-first-experience.md). Device list/add tabs, inline location creation, compact location management, unified Ask panel, signal-to-selected-map navigation and readable fallback names replace the previous response-control UI. Device execution and new proposals are disabled at the server boundary as well as removed from the UI. Historical records remain readable.

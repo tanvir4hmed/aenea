@@ -62,9 +62,9 @@ class TokenTests(unittest.TestCase):
 
     def test_read_only_token_cannot_write(self):
         with self.assertRaisesRegex(ValueError, "scope"):
-            self.verify("confirm_action")
+            self.verify("acknowledge_incident")
         self.claims["scope"] = "aenea/read aenea/write"
-        self.assertEqual(self.verify("confirm_action")["sub"], "owner")
+        self.assertEqual(self.verify("acknowledge_incident")["sub"], "owner")
 
     def test_bad_signature_is_rejected(self):
         other = rsa.generate_private_key(public_exponent=65537, key_size=2048)

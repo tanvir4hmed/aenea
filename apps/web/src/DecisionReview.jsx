@@ -8,13 +8,13 @@ function HumanReview({ api, incident, assessment, enabled, onRefresh }) {
     setPending(payload); setBusy(true); setMessage('');
     try {
       await api(`/incidents/${incident}/assessments/${assessment.assessment_id}/review`, { method: 'POST', body: JSON.stringify(payload) });
-      setPending(null); setMessage('Review recorded. This is not device-action approval.'); await onRefresh();
+      setPending(null); setMessage('Review recorded.'); await onRefresh();
     } catch (error) { setMessage(error.message); }
     finally { setBusy(false); }
   }
   return <div><label>Review note<input value={note} maxLength={500} disabled={busy || !!pending || !enabled} onChange={event => setNote(event.target.value)} placeholder="What matches or conflicts with the evidence?"/></label>
     <div className="actions">{pending ? <><button disabled={busy || !enabled} onClick={() => save(pending.verdict)}>Retry same review</button><button disabled={busy} onClick={() => { setPending(null); setMessage('Review draft released. Refresh the saved review before submitting another.'); }}>Release review draft</button></> : <><button disabled={busy || !enabled} onClick={() => save('accepted')}>Agree with assessment</button><button disabled={busy || !enabled} onClick={() => save('rejected')}>Reject assessment</button></>}</div>
-    <p>Rejection blocks future execution from this assessment. It cannot undo actions already completed. Agreement does not prove the incident or bypass policy.</p>
+    <p>Agreement records your review. Rejection marks the assessment for reconsideration; neither closes the incident.</p>
     {message && <p role="status">{message}</p>}
   </div>;
 }
@@ -42,7 +42,7 @@ export default function DecisionReview({ api, incident, timeline, state, onRefre
     {refreshError && <p role="alert" className="error">{refreshError}</p>}
     {!incident ? <p>Select an incident to review its decisions.</p> : <>
       <p>Evidence revision <strong>{state?.incident?.event_count ?? '…'}</strong> · Assessed revision <strong>{current?.evidence_revision ?? 'Not available'}</strong></p>
-      {state && !state.assessment_current && <p className="notice" role="status">New evidence is awaiting assessment, or only a legacy assessment is available. Previous proposals cannot execute.</p>}
+      {state && !state.assessment_current && <p className="notice" role="status">New evidence is awaiting assessment, or only a legacy assessment is available.</p>}
       <label>Assessment history<select value={chosen} onChange={event => setChosen(event.target.value)}><option value="">Current published assessment</option>{history.map(item => <option key={item.assessment_id} value={item.assessment_id}>Revision {item.evidence_revision ?? 'legacy'} · {item.assessment_id.slice(0, 8)} · {item.status.replaceAll('_', ' ')}</option>)}</select></label>
       {assessment && <>
         <p><span className="badge">{fresh ? 'CURRENT REVISION' : 'HISTORICAL / SUPERSEDED'}</span> · {new Date(assessment.created_at * 1000).toLocaleString()}</p>
@@ -53,11 +53,9 @@ export default function DecisionReview({ api, incident, timeline, state, onRefre
           <h3>Evidence used in this revision</h3><ul className="evidence-review">{snapshot.map(event => <li key={event.event_id}><strong>{event.kind.replaceAll('_', ' ')}</strong> · {cited.has(event.event_id) ? 'Cited in summary' : 'Included in input'}<p>{event.observation}</p><small>{event.source.source_id} · {new Date(event.occurred_at).toLocaleString()}</small></li>)}</ul>
           {!snapshot.length && <p>No saved evidence snapshot for this legacy assessment.</p>}
           <h3>Uncertainties</h3>{assessment.assessment.uncertainties.length ? <ul>{assessment.assessment.uncertainties.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>No uncertainties were listed by the model.</p>}
-          <h3>Proposed actions and rationale</h3>{assessment.assessment.actions.map(action => <article key={action.device_id}><strong>{action.action.replaceAll('_', ' ')}</strong><p>{action.rationale}</p><small>Cites: {action.evidence_ids.join(', ')}</small></article>)}
-          {!assessment.assessment.actions.length && <p>No device actions proposed.</p>}
           <h3>Human review: {fresh ? state.incident.decision_review || 'unreviewed' : 'Historical revision'}</h3>
           <HumanReview key={assessment.assessment_id} api={api} incident={incident} assessment={assessment} enabled={!!fresh} onRefresh={onRefresh}/>
-        </> : <p role="alert">{assessment.message || 'Assessment unavailable. No actions authorized.'}</p>}
+        </> : <p role="alert">{assessment.message || 'Assessment unavailable.'}</p>}
       </>}
       <details><summary>Saved review history</summary>{timeline.filter(item => item.kind === 'decision_review').map(item => <p key={item.sk}>{item.data.verdict} · {item.data.assessment_id.slice(0, 8)} · {item.recorded_at}<br/>{item.data.note}</p>)}<p>History contains loaded timeline pages. Load additional events for older reviews.</p></details>
     </>}

@@ -1,16 +1,16 @@
 # AWS Builder integration
 
-Aenea's implemented runtime paths use AWS SDK calls. Household observations and device effects remain explicitly simulated. This service map also supplies the AWS usage portion of [product feedback](product-feedback.md); observed onboarding/reliability feedback still needs completion.
+Aenea's implemented runtime paths use AWS SDK calls. Household observations are explicitly simulated; device actuation is not supported. This service map also supplies the AWS usage portion of [product feedback](product-feedback.md); observed onboarding/reliability feedback still needs completion.
 
 | Service / SDK | Runtime responsibility |
 |---|---|
 | Amazon Bedrock AgentCore Runtime | IAM-authenticated reasoner and separate JWT-authenticated MCP runtime |
 | Strands Agents SDK | Request-local agent and structured assessment generation |
 | Amazon Bedrock | Amazon Nova inference, selected by BEDROCK_MODEL_ID |
-| Step Functions | Evidence → assessment → policy → execution ordering |
+| Step Functions | Evidence → assessment → briefing ordering |
 | EventBridge | Normalized incident delivery and the scheduled cleanup trigger |
-| Lambda | Trusted ingestion, AgentCore invocation, deterministic authorization and virtual execution |
-| DynamoDB | Household profiles, evidence index, assessments, action state and atomic audit/device updates |
+| Lambda | Trusted ingestion, AgentCore invocation, simulation scheduling and incident APIs |
+| DynamoDB | Device catalog, evidence index, assessments, simulation runs and atomic incident/audit updates |
 | S3 | Source evidence, versioned-by-hash runtime ZIP artifacts and frontend |
 | Cognito / API Gateway | PKCE account access, scoped HTTP APIs and MCP proxy entry |
 | CloudFront / ACM | HTTPS static application and custom-domain delivery |
@@ -18,9 +18,9 @@ Aenea's implemented runtime paths use AWS SDK calls. Household observations and 
 | IAM / GitHub OIDC | Federated deployment and scoped workload permissions |
 | CloudWatch / SNS / SQS | Operational logs, alarm topic and failed-delivery queue |
 
-The reasoner runtime has no household storage or execution authority. The separate MCP runtime may invoke only the private tools Lambda, which reuses the deterministic executor. The policy/executor uses saved household permissions and rechecks evidence independently of the model's proposed severity or confidence. All effects remain virtual.
+The reasoner runtime has no household storage or execution authority. The separate MCP runtime may invoke only the private tools Lambda to read incident evidence and record acknowledgments. Model responses are schema/citation-checked and published only for the matching evidence revision. The reasoner also supplies constrained naming/routing explanations and bounded question intent classification; deterministic code controls create/join boundaries. Device commands are absent from the current contract.
 
-Source evidence: `agent/reasoner/main.py`, `shared/assessment.py`, `infra/reasoner/main.tf`, `functions/invoke_reasoner/`, `functions/policy/`, `functions/action_executor/`, and `workflows/incident_state_machine/definition.asl.json`.
+Source evidence: `agent/reasoner/main.py`, `shared/assessment.py`, `infra/reasoner/main.tf`, `functions/invoke_reasoner/`, `functions/action_executor/`, and `workflows/incident_state_machine/definition.asl.json`.
 
 Runtime traces and successful inference evidence are pending the deferred verification phase. Do not present source completion as runtime proof.
 

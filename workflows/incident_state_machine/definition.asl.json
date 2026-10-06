@@ -1,5 +1,5 @@
 {
-  "Comment": "Evidence, AgentCore assessment, deterministic policy and virtual actions.",
+  "Comment": "Evidence, AgentCore assessment and incident briefing.",
   "TimeoutSeconds": 600,
   "StartAt": "RecordEvidence",
   "States": {
@@ -24,7 +24,21 @@
     },
     "CheckDeletion": {
       "Type": "Choice",
-      "Choices": [{"And": [{"Variable": "$.deleted", "IsPresent": true}, {"Variable": "$.deleted", "BooleanEquals": true}], "Next": "AssessmentUnavailable"}],
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.deleted",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.deleted",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "AssessmentUnavailable"
+        }
+      ],
       "Default": "Assess"
     },
     "Assess": {
@@ -35,21 +49,49 @@
     },
     "ReasonerAvailable": {
       "Type": "Choice",
-      "Choices": [{"Variable": "$.reasoner_ok", "BooleanEquals": true, "Next": "Authorize"}, {"And": [{"Variable": "$.retry_needed", "IsPresent": true}, {"Variable": "$.retry_needed", "BooleanEquals": true}], "Next": "WaitForEvidence"}],
+      "Choices": [
+        {
+          "Variable": "$.reasoner_ok",
+          "BooleanEquals": true,
+          "Next": "PublishBriefing"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.retry_needed",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.retry_needed",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "WaitForEvidence"
+        }
+      ],
       "Default": "AssessmentUnavailable"
     },
-    "WaitForEvidence": {"Type": "Wait", "Seconds": 3, "Next": "Assess"},
-    "AssessmentUnavailable": {"Type": "Succeed"},
-    "Authorize": {
-      "Type": "Task",
-      "Resource": "${policy_arn}",
-      "Next": "ExecuteVirtualActions",
-      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 2, "MaxAttempts": 2, "BackoffRate": 2}]
+    "WaitForEvidence": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "Assess"
     },
-    "ExecuteVirtualActions": {
+    "AssessmentUnavailable": {
+      "Type": "Succeed"
+    },
+    "PublishBriefing": {
       "Type": "Task",
       "Resource": "${action_executor_arn}",
-      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 2, "MaxAttempts": 2, "BackoffRate": 2}],
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
       "End": true
     }
   }

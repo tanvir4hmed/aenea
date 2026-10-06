@@ -87,9 +87,7 @@ def handler(event, context):
         if not events:
             raise ValueError("No evidence available")
         failure_code = "reasoner_unavailable_or_invalid"
-        from safety import DEVICES
-
-        payload = bounded_payload(events, state["context"], notes, DEVICES)
+        payload = bounded_payload(events, state["context"], notes)
         events = payload["events"]
         state["context"] = payload["state_summary"]
 

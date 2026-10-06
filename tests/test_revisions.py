@@ -25,7 +25,6 @@ def load(name, path):
     return module
 
 
-@patch.dict("os.environ", {"DEVICE_ACTIONS_ENABLED": "true"})
 class RevisionTests(unittest.TestCase):
     def test_current_requires_published_identity_and_exact_evidence_revision(self):
         summary = {"event_count": 2, "latest_assessment": "new"}
@@ -35,71 +34,6 @@ class RevisionTests(unittest.TestCase):
         self.assertFalse(actionable(summary, {**assessment, "assessment_id": "old"}))
         self.assertFalse(actionable({**summary, "decision_review": "rejected"}, assessment))
         self.assertFalse(current_assessment(summary, {"assessment_id": "new"}))
-
-    def setUp(self):
-        self.table = Mock()
-        with (
-            patch.dict(os.environ, {"STATE_TABLE": "offline"}),
-            patch("boto3.resource") as resource,
-        ):
-            resource.return_value.Table.return_value = self.table
-            self.module = load("isolated_coordination", "functions/coordination.py")
-        self.action = {
-            "status": "allowed",
-            "assessment_id": "assessment-a",
-            "evidence_revision": 2,
-            "proposal": {"device_id": "virtual_lights", "action": "lights_on"},
-            "expires_at": 9999999999,
-        }
-        self.assessment = {
-            "status": "assessed",
-            "assessment_id": "assessment-a",
-            "evidence_revision": 2,
-        }
-        self.summary = {"event_count": 2, "latest_assessment": "assessment-a"}
-        self.module.get = Mock(side_effect=[self.action, self.assessment])
-        self.module.profile = Mock(return_value={"revision": "profile-v1", "devices": {}})
-        self.module.evidence = Mock(return_value=[])
-        self.module.decision = Mock(return_value=("allowed", "passed"))
-
-    def test_new_signal_blocks_old_action_before_device_write(self):
-        self.table.get_item.return_value = {"Item": {**self.summary, "event_count": 3}}
-        result = self.module.execute("owner", "incident", "action")
-        self.assertEqual(result["status"], "superseded")
-        self.assertFalse(result["execution_performed"])
-        self.module.evidence.assert_not_called()
-
-    def test_confirmation_cannot_move_to_a_replacement_assessment(self):
-        result = self.module.execute(
-            "owner", "incident", "action", confirmed=True, expected_assessment="older-assessment"
-        )
-        self.assertFalse(result["execution_performed"])
-        self.assertEqual(result["status"], "superseded")
-        self.module.profile.assert_not_called()
-
-    def test_rejected_review_blocks_execution(self):
-        self.table.get_item.return_value = {"Item": {**self.summary, "decision_review": "rejected"}}
-        self.assertEqual(self.module.execute("owner", "incident", "action")["status"], "superseded")
-
-    def test_resolution_blocks_previously_allowed_action(self):
-        self.table.get_item.return_value = {"Item": {**self.summary, "resolved_at": 1}}
-        self.assertEqual(self.module.execute("owner", "incident", "action")["status"], "superseded")
-        self.module.evidence.assert_not_called()
-
-    def test_transaction_guards_against_signal_or_rejection_arriving_after_read(self):
-        self.table.get_item.return_value = {"Item": self.summary}
-        client = Mock()
-        with (
-            patch.dict(os.environ, {"STATE_TABLE": "offline"}),
-            patch("boto3.client", return_value=client),
-        ):
-            result = self.module.execute("owner", "incident", "action")
-        self.assertEqual(result["status"], "succeeded")
-        check = client.transact_write_items.call_args.kwargs["TransactItems"][0]["ConditionCheck"]
-        self.assertIn("latest_assessment = :assessment", check["ConditionExpression"])
-        self.assertIn("decision_review <> :rejected", check["ConditionExpression"])
-        self.assertIn("event_count = :revision", check["ConditionExpression"])
-        self.assertIn("attribute_not_exists(resolved_at)", check["ConditionExpression"])
 
 
 class PublicationTests(unittest.TestCase):
@@ -233,77 +167,3 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(self.module.reused_assessment(previous, events).evidence_ids, ["new"])
         with self.assertRaises(ValueError):
             self.module.reused_assessment(previous, [{**events[0], "kind": "water_leak"}])
-
-
-@patch.dict("os.environ", {"DEVICE_ACTIONS_ENABLED": "true"})
-class RecoveryPolicyTests(unittest.TestCase):
-    def test_same_revision_fresh_assessment_replaces_expired_pending_proposal(self):
-        proposal = {
-            "action": "notify",
-            "device_id": "virtual_notification",
-            "rationale": "Reported smoke",
-            "evidence_ids": ["e"],
-        }
-        assessment = {
-            "incident_type": "smoke",
-            "severity": "warning",
-            "confidence": 0.5,
-            "summary": "Reported smoke",
-            "evidence_ids": ["e"],
-            "uncertainties": [],
-            "actions": [proposal],
-        }
-        saved = {
-            "assessment_id": "new",
-            "evidence_revision": 1,
-            "status": "assessed",
-            "assessment": assessment,
-            "expires_at": 9999999999,
-        }
-        previous = {
-            "assessment_id": "old",
-            "evidence_revision": 1,
-            "status": "pending_confirmation",
-        }
-        storage = SimpleNamespace(
-            action_id=lambda *args: "action",
-            attrs=lambda value: value,
-            audit=Mock(),
-            evidence=Mock(return_value=[]),
-            get=Mock(side_effect=[saved, previous]),
-            native=lambda value: value,
-            partition=lambda *args: "partition",
-            profile=Mock(
-                return_value={
-                    "revision": "p",
-                    "devices": {
-                        "output": {
-                            "capability": "virtual_notification",
-                            "location_id": "home",
-                            "name": "Notification",
-                        }
-                    },
-                }
-            ),
-            table=Mock(),
-        )
-        storage.table.get_item.return_value = {
-            "Item": {"latest_assessment": "new", "event_count": 1, "location_id": "home"}
-        }
-        storage.table.put_item.side_effect = [
-            ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"),
-            {},
-        ]
-        with patch.dict(sys.modules, {"coordination": storage}):
-            module = load("recovery_policy", "functions/policy/handler.py")
-        module.deleted = Mock(return_value=False)
-        module.decision = Mock(return_value=("pending_confirmation", "Approval required"))
-        with patch.object(module.boto3, "client") as client:
-            module.handler(
-                {"household_id": "owner", "incident_id": "incident", "assessment_id": "new"}, None
-            )
-        operations = client.return_value.transact_write_items.call_args.kwargs["TransactItems"]
-        self.assertIn(
-            "latest_assessment = :id", operations[0]["ConditionCheck"]["ConditionExpression"]
-        )
-        self.assertEqual(operations[1]["Put"]["Item"]["assessment_id"], "new")

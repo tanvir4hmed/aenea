@@ -15,7 +15,7 @@ mcp = FastMCP(
     port=8000,
     stateless_http=True,
     json_response=True,
-    instructions="Coordinate simulated household incidents. Never infer occupancy from motion. Confirm valve actions only after an explicit user approval of that exact action. Never claim emergency dispatch.",
+    instructions="Coordinate simulated household incidents. Never infer occupancy from motion. Never claim emergency dispatch.",
 )
 issuer = os.environ["COGNITO_ISSUER"]
 jwks = jwt.PyJWKClient(issuer + "/.well-known/jwks.json")
@@ -74,35 +74,6 @@ def get_household_status(incident_id: str, ctx: Context, cursor: str | None = No
 def acknowledge_incident(incident_id: str, ctx: Context) -> dict:
     """Acknowledge receipt, without resolving the incident or marking anyone safe."""
     return call(ctx, "acknowledge_incident", {"incident_id": incident_id})
-
-
-@mcp.tool()
-def request_safe_action(incident_id: str, action_id: str, ctx: Context) -> dict:
-    """Request an existing assessed action. Deterministic policy is rechecked."""
-    return call(ctx, "request_safe_action", {"incident_id": incident_id, "action_id": action_id})
-
-
-@mcp.tool()
-def confirm_action(
-    incident_id: str, action_id: str, assessment_id: str, confirm: bool, ctx: Context
-) -> dict:
-    """Only after explicit user approval of this action, confirm a pending virtual valve proposal."""
-    return call(
-        ctx,
-        "confirm_action",
-        {
-            "incident_id": incident_id,
-            "action_id": action_id,
-            "assessment_id": assessment_id,
-            "confirm": confirm,
-        },
-    )
-
-
-@mcp.tool()
-def get_action_status(incident_id: str, action_id: str, ctx: Context) -> dict:
-    """Read the recorded outcome, including failure, expiration or pending confirmation."""
-    return call(ctx, "get_action_status", {"incident_id": incident_id, "action_id": action_id})
 
 
 @mcp.tool()

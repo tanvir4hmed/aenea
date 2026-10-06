@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from common import response, table_name
-from coordination import attrs, audit_item, get, table
+from coordination import attrs, audit_item, get
 
 
 def review(owner, incident, identifier, body):

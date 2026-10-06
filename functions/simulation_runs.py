@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 from catalog import DEVICE_KINDS, read_catalog

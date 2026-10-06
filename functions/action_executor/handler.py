@@ -1,17 +1,17 @@
-"""Execute virtual actions only; authenticated settings and confirmation endpoints."""
+"""Authenticated workspace management and incident lifecycle endpoints.
+
+The Lambda resource name is retained to preserve existing API integrations.
+"""
 
 import base64
 import json
-import re
 import uuid
 import os
 import boto3
-from botocore.exceptions import ClientError
 
 from common import household, response
-from coordination import audit, execute, get, profile, table
-from safety import DEVICES
-from catalog import read_catalog, save_catalog, ACTUATORS
+from coordination import table
+from catalog import read_catalog, save_catalog
 from decision_review import review
 from lifecycle import require_active, request_deletion
 from incident_names import rename_incident
@@ -28,14 +28,8 @@ from cursors import decode_cursor
 
 def handler(event, context):
     if "routeKey" not in event:
-        results = [
-            execute(event["household_id"], event["incident_id"], key) for key in event["action_ids"]
-        ]
         record_briefing(table, event["household_id"], event["incident_id"])
-        return {
-            **event,
-            "results": [{"action_id": r["action_id"], "status": r["status"]} for r in results],
-        }
+        return event
     try:
         owner = household(event)
         route = event["routeKey"]
@@ -70,8 +64,6 @@ def handler(event, context):
             return response(200, read_library(table, owner))
         if route == "GET /household/catalog":
             return response(200, read_catalog(table, owner))
-        if route == "GET /household/devices":
-            return response(200, profile(owner))
         raw = event.get("body") or "{}"
         if event.get("isBase64Encoded"):
             raw = base64.b64decode(raw, validate=True).decode()
@@ -79,7 +71,7 @@ def handler(event, context):
             2500000
             if route == "PUT /household/simulations"
             else 120000
-            if route in {"PUT /household/catalog", "PUT /household/devices"}
+            if route == "PUT /household/catalog"
             else 16000
         ):
             raise ValueError("Oversized request")
@@ -92,53 +84,6 @@ def handler(event, context):
             return save_library(table, owner, body)
         if route == "PUT /household/catalog":
             return save_catalog(table, owner, body)
-        if route == "PUT /household/devices":
-            if (
-                set(body) != {"devices", "revision"}
-                or not isinstance(body["devices"], dict)
-                or not isinstance(body["revision"], str)
-            ):
-                raise ValueError("Expected devices")
-            devices = body["devices"]
-            registered = {
-                device["id"]
-                for device in read_catalog(table, owner)["devices"]
-                if device["type"] in ACTUATORS
-            }
-            if set(devices) - registered:
-                raise ValueError("Register location-specific output devices in Settings first")
-            for device in devices.values():
-                if set(device) != {"enabled", "preauthorized", "fail_next"} or any(
-                    type(v) is not bool for v in device.values()
-                ):
-                    raise ValueError("Expected boolean device settings")
-                device["simulated"] = True
-            item = {
-                "pk": f"H#{owner}",
-                "sk": "PROFILE",
-                "devices": devices,
-                "revision": str(uuid.uuid4()),
-            }
-            options = (
-                {"ConditionExpression": "attribute_not_exists(pk)"}
-                if body["revision"] == "unconfigured"
-                else {
-                    "ConditionExpression": "revision = :revision",
-                    "ExpressionAttributeValues": {":revision": body["revision"]},
-                }
-            )
-            try:
-                table.put_item(Item=item, **options)
-            except ClientError as exc:
-                if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
-                    raise
-                return response(
-                    409,
-                    {
-                        "error": "Permissions changed. Reload before saving; no settings were overwritten."
-                    },
-                )
-            return response(200, item)
         params = event["pathParameters"]
         incident = str(uuid.UUID(params["incident_id"]))
         if route == "POST /incidents/{incident_id}/delete":
@@ -194,35 +139,7 @@ def handler(event, context):
             return rename_incident(table, owner, incident, body)
         if route == "POST /incidents/{incident_id}/assessments/{assessment_id}/review":
             return review(owner, incident, params["assessment_id"], body)
-        identifier = params["action_id"]
-        if (
-            not re.fullmatch(r"[a-f0-9]{32}", identifier)
-            or not isinstance(body, dict)
-            or set(body) != {"confirm", "assessment_id"}
-            or body["confirm"] is not True
-            or not isinstance(body["assessment_id"], str)
-            or not re.fullmatch(r"[a-f0-9]{32}", body["assessment_id"])
-        ):
-            raise ValueError("Explicit confirmation required")
-        item = get(owner, incident, "ACTION#" + identifier)
-        if not item:
-            return response(404, {"error": "Action not found"})
-        if item["status"] != "pending_confirmation":
-            return response(
-                409, {"error": "Action is not awaiting confirmation", "status": item["status"]}
-            )
-        audit(
-            owner,
-            incident,
-            "confirmation",
-            identifier + ":" + body["assessment_id"],
-            {"actor": owner, "action_id": identifier, "assessment_id": body["assessment_id"]},
-        )
-        result = execute(
-            owner, incident, identifier, confirmed=True, expected_assessment=body["assessment_id"]
-        )
-        record_briefing(table, owner, incident)
-        return response(200, result)
+        return response(404, {"error": "Route not found"})
     except PermissionError:
         return response(401, {"error": "Authentication required"})
     except ValueError as exc:
@@ -234,6 +151,6 @@ def handler(event, context):
             "POST /incidents/{incident_id}/simulation-limit",
         }:
             return response(400, {"error": str(exc) or "Invalid catalog settings"})
-        return response(400, {"error": "Invalid action request"})
+        return response(400, {"error": "Invalid workspace request"})
     except (TypeError, KeyError, AttributeError):
-        return response(400, {"error": "Invalid action request"})
+        return response(400, {"error": "Invalid workspace request"})

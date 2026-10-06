@@ -1,5 +1,7 @@
 # Safety and Claims
 
+> Current scope (6 October 2026): device actions, output permissions and incident note entry are retired. Use [the current user guide](user-guide.md) for the supported device → saved simulation → trigger → briefing → review/resolve flow. Action/member walkthroughs below are historical and must not be used as current demo or submission claims.
+
 Aenea coordinates information; it does not certify that an emergency exists or that a person is safe.
 
 - Inputs may be simulated, incomplete, stale, or wrong and are labeled by provenance.

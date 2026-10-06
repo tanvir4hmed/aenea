@@ -6,11 +6,11 @@ Source implemented on 21 September 2026; resource-bound authentication and trans
 
 The `/alexa-sim` browser view is an MCP client, not a separate mock backend:
 
-Browser → API Gateway `POST /mcp` → fixed-upstream proxy → JWT-authenticated AgentCore MCP runtime → private household-tools Lambda → the same DynamoDB records and deterministic action executor as the command center.
+Browser → API Gateway `POST /mcp` → fixed-upstream proxy → JWT-authenticated AgentCore MCP runtime → private household-tools Lambda → the same DynamoDB incident records as the command center.
 
 The MCP server uses Python SDK 1.30.0, Streamable HTTP, protocol negotiation for `2025-11-25`, stateless HTTP and JSON responses. AgentCore session IDs are passed back to the browser and reused for runtime affinity; household state never depends on that session. `GET /mcp` returns 405 because no standalone SSE subscription is offered. Requests/responses are limited to 64 KB/200 KB, with a 20-second upstream timeout. Timed-out writes are not automatically retried: read their saved status first.
 
-The browser now displays persisted live briefings, active devices and actual action outcomes, polling every ten seconds. Three explicit command buttons use MCP. Other short English commands pass through a bounded AgentCore intent classifier for status, timeline or acknowledgment; unsupported requests never become device approvals. Optional speech recognition fills editable text before submission; optional browser speech announces material briefings. Neither is native Alexa speech. Browser microphone processing may use its vendor service; use synthetic information only. Optional notes use an authenticated application API and are unverified context, not people records. See [behavior and rollout](state-driven-coordination.md).
+The browser displays persisted briefings and active signals. Open incidents poll every ten seconds; resolved incidents every sixty seconds; hidden tabs skip polling. Three explicit command buttons use MCP. Other incident questions use the application API and a bounded AgentCore intent classifier for supported status topics, timeline or acknowledgment. Microphone questions send automatically when speech finishes and are read-only. Optional browser speech announces changed briefings while the page is open. Neither speech path is native Alexa. Device-action tools and execution have been removed; no device command is available.
 
 ## Tools
 
@@ -20,16 +20,13 @@ All tools require `aenea/read`. Mutations additionally require `aenea/write`. Th
 |---|---|
 | get_incident_status | Incident and latest saved assessment |
 | get_incident_timeline | Paginated evidence, action and audit records |
-| get_household_status | Legacy read-only historical reports and current virtual permissions; supports cursor |
+| get_household_status | Legacy read-only historical reports; supports cursor |
 | acknowledge_incident | Record acknowledgment, not resolution |
-| request_safe_action | Request an existing assessed action through deterministic policy |
-| confirm_action | Explicit approval bound to assessment_id; executor rechecks proposal identity, evidence, expiry and permissions |
-| get_action_status | Read the saved outcome rather than infer success |
 | get_responder_summary | Bounded synthetic handoff with an explicit partial flag; sends nothing |
 
-Every tool requires `incident_id`. Action tools also require `action_id`; confirmation requires `assessment_id` and literal `confirm: true`. Incident/cursor ownership is checked. `report_person_status` is no longer advertised and direct legacy calls are rejected. Historical reports carry timestamps but never establish current location/safety. One Cognito identity owns one workspace; no family membership system is implemented.
+Every tool requires `incident_id`. Incident/cursor ownership is checked. `report_person_status` is no longer advertised and direct legacy calls are rejected. Historical reports carry timestamps but never establish current location/safety. One Cognito identity owns one workspace; no family membership system is implemented.
 
-Actions use the shared location-scoped executor with fresh-evidence/notes and catalog/settings guards. Read saved state after uncertain writes. The compatibility responder-summary read can be partial at its 50-record page boundaries; use timeline/report cursors for more. It sends nothing. Dedicated Household/Handoff navigation is retired; historic records are accessible in History and old URLs redirect there.
+The compatibility responder-summary read can be partial at its 50-record page boundaries; use timeline/report cursors for more. It sends nothing. Dedicated Household/Handoff navigation is retired; historic records are accessible in History and old URLs redirect there.
 
 ## OAuth onboarding
 
@@ -52,4 +49,4 @@ Selective deployment: web-only edits build only web; `services/mcp/**` or `infra
 
 GitHub authenticates with OIDC; no browser or long-lived AWS key is required. AgentCore MCP lifecycle and SSM parameter permissions remain defined in the bootstrap templates. Treat the workflow result—not the source push alone—as deployment evidence.
 
-Deferred hosted acceptance: PKCE sign-in/refresh, initialize/tools/list, persisted tool results, wrong-client/scoped-token denial, legacy report reads, expiry and cross-incident same-location valve veto, duplicate/concurrent actions, failures/timeouts, pagination, cold starts and optional microphone support. Capture actual results later; source tests are not hosted evidence.
+Deferred hosted acceptance: PKCE sign-in/refresh, initialize/tools/list, persisted tool results, wrong-client/scoped-token denial, legacy report reads, failures/timeouts, pagination, cold starts and microphone support. Capture actual results later; source tests are not hosted evidence.

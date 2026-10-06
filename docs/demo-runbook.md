@@ -1,5 +1,7 @@
 # Demo runbook — target 2:50
 
+> Current scope (6 October 2026): device actions, output permissions and incident note entry are retired. Use [the current user guide](user-guide.md) for the supported device → saved simulation → trigger → briefing → review/resolve flow. Action/member walkthroughs below are historical and must not be used as current demo or submission claims.
+
 Updated 30 September 2026. **Planned, not rehearsed or recorded.** Keep Alexa+ coordination central. Show genuine saved results; never replace a failed request with fabricated responses.
 
 ## Prepare

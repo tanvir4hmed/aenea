@@ -67,21 +67,47 @@
       "correlate",
       "incident_api",
       "invoke_reasoner",
-      "policy",
       "action_executor",
       "mcp_tools",
       "mcp_proxy"
     ],
     "routes": {
-      "POST /incidents/{incident_id}/message": {"function": "action_executor", "scope": "aenea/write"},
-      "POST /incidents/{incident_id}/notes": {"function": "action_executor", "scope": "aenea/write"},
-      "GET /household/runs": {"function": "action_executor", "scope": "aenea/read"},
-      "GET /household/runs/{run_id}": {"function": "action_executor", "scope": "aenea/read"},
-      "POST /household/runs": {"function": "action_executor", "scope": "aenea/write"},
-      "POST /household/runs/{run_id}": {"function": "action_executor", "scope": "aenea/write"},
-      "POST /incidents/{incident_id}/simulation-limit": {"function": "action_executor", "scope": "aenea/write"},
-      "POST /incidents/{incident_id}/resolve": {"function": "action_executor", "scope": "aenea/write"},
-      "POST /incidents/{incident_id}/reassess": {"function": "action_executor", "scope": "aenea/write"},
+      "POST /incidents/{incident_id}/message": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /incidents/{incident_id}/notes": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "GET /household/runs": {
+        "function": "action_executor",
+        "scope": "aenea/read"
+      },
+      "GET /household/runs/{run_id}": {
+        "function": "action_executor",
+        "scope": "aenea/read"
+      },
+      "POST /household/runs": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /household/runs/{run_id}": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /incidents/{incident_id}/simulation-limit": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /incidents/{incident_id}/resolve": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
+      "POST /incidents/{incident_id}/reassess": {
+        "function": "action_executor",
+        "scope": "aenea/write"
+      },
       "GET /household/simulations": {
         "function": "action_executor",
         "scope": "aenea/read"
@@ -111,18 +137,6 @@
         "scope": "aenea/read"
       },
       "PUT /household/catalog": {
-        "function": "action_executor",
-        "scope": "aenea/write"
-      },
-      "GET /household/devices": {
-        "function": "action_executor",
-        "scope": "aenea/read"
-      },
-      "PUT /household/devices": {
-        "function": "action_executor",
-        "scope": "aenea/write"
-      },
-      "POST /incidents/{incident_id}/actions/{action_id}/confirm": {
         "function": "action_executor",
         "scope": "aenea/write"
       },
@@ -207,7 +221,7 @@
       },
       "workflow": {
         "role": "${aws_iam_role.workflow.id}",
-        "policy": "${jsonencode({Version = \"2012-10-17\", Statement = [{Effect = \"Allow\", Action = \"lambda:InvokeFunction\", Resource = [for name in [\"correlate\", \"invoke_reasoner\", \"policy\", \"action_executor\"] : aws_lambda_function.function[name].arn]}, {Effect = \"Allow\", Action = [\"logs:CreateLogDelivery\",\"logs:GetLogDelivery\",\"logs:UpdateLogDelivery\",\"logs:DeleteLogDelivery\",\"logs:ListLogDeliveries\",\"logs:PutResourcePolicy\",\"logs:DescribeResourcePolicies\",\"logs:DescribeLogGroups\"], Resource = \"*\"}]})}"
+        "policy": "${jsonencode({Version = \"2012-10-17\", Statement = [{Effect = \"Allow\", Action = \"lambda:InvokeFunction\", Resource = [for name in [\"correlate\", \"invoke_reasoner\", \"action_executor\"] : aws_lambda_function.function[name].arn]}, {Effect = \"Allow\", Action = [\"logs:CreateLogDelivery\",\"logs:GetLogDelivery\",\"logs:UpdateLogDelivery\",\"logs:DeleteLogDelivery\",\"logs:ListLogDeliveries\",\"logs:PutResourcePolicy\",\"logs:DescribeResourcePolicies\",\"logs:DescribeLogGroups\"], Resource = \"*\"}]})}"
       },
       "events": {
         "role": "${aws_iam_role.eventbridge.id}",
@@ -224,13 +238,12 @@
         "filename": "${path.module}/../../.artifacts/${each.key}.zip",
         "source_code_hash": "${filebase64sha256(\"${path.module}/../../.artifacts/${each.key}.zip\")}",
         "timeout": "${contains([\"invoke_reasoner\", \"cleanup\", \"simulation_worker\"], each.key) ? 170 : 25}",
-          "reserved_concurrent_executions": -1,
+        "reserved_concurrent_executions": -1,
         "memory_size": 256,
         "environment": {
           "variables": {
-              "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
-              "INGESTION_ENABLED": "${tostring(var.ingestion_enabled)}",
-            "DEVICE_ACTIONS_ENABLED": "false",
+            "STATE_TABLE": "${data.terraform_remote_state.data.outputs.table_name}",
+            "INGESTION_ENABLED": "${tostring(var.ingestion_enabled)}",
             "EVIDENCE_BUCKET": "${data.terraform_remote_state.data.outputs.evidence_bucket}",
             "INGEST_FUNCTION": "aenea-ingest",
             "EVENT_BUS": "${data.terraform_remote_state.platform.outputs.event_bus}",
@@ -258,7 +271,7 @@
         "name": "aenea-incident",
         "role_arn": "${aws_iam_role.workflow.arn}",
         "type": "STANDARD",
-        "definition": "${templatefile(\"${path.module}/../../workflows/incident_state_machine/definition.asl.json\", { correlate_arn = aws_lambda_function.function[\"correlate\"].arn, invoke_reasoner_arn = aws_lambda_function.function[\"invoke_reasoner\"].arn, policy_arn = aws_lambda_function.function[\"policy\"].arn, action_executor_arn = aws_lambda_function.function[\"action_executor\"].arn })}",
+        "definition": "${templatefile(\"${path.module}/../../workflows/incident_state_machine/definition.asl.json\", { correlate_arn = aws_lambda_function.function[\"correlate\"].arn, invoke_reasoner_arn = aws_lambda_function.function[\"invoke_reasoner\"].arn, action_executor_arn = aws_lambda_function.function[\"action_executor\"].arn })}",
         "logging_configuration": {
           "log_destination": "${aws_cloudwatch_log_group.workflow.arn}:*",
           "include_execution_data": false,

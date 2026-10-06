@@ -1,7 +1,6 @@
 """Offline DynamoDB transaction and paginated state regressions (no AWS account)."""
 
 import importlib.util
-import json
 import os
 import sys
 import unittest

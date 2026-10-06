@@ -4,7 +4,7 @@ Shared household context, accountable incident coordination.
 
 Aenea explores Alexa+-centered coordination of disconnected household alerts. Scheduled simulated device states enter a shared cloud incident pipeline; a Strands/Bedrock agent assesses evidence. The Alexa+ browser experience reads the same incidents through MCP and application APIs, with persisted briefings and incident questions. Device-response controls are retired in the current experience; no automatic device actuation is enabled.
 
-> Hackathon prototype, not a certified alarm, medical device or monitoring service. Follow official alarms and emergency guidance. Devices and actions are simulated; Aenea does not dispatch responders or provide a verified native Alexa/Ring integration.
+> Hackathon prototype, not a certified alarm, medical device or monitoring service. Follow official alarms and emergency guidance. Device signals are simulated; Aenea does not control devices, dispatch responders or provide a verified native Alexa/Ring integration.
 
 ## Explore the experience
 
@@ -14,7 +14,7 @@ Open [Aenea](https://aenea.qleam.com) and follow the [judge guide](docs/judge-gu
 - **Settings:** searchable device inventory, room filters, add/edit/duplicate/delete and data cleanup. House and room creation are not part of the app.
 - **Simulation Studio:** choose a room and its available devices, save single alerts or multi-device scenarios with a compact repeat interval; edit/delete reusable definitions.
 - **Command Center:** trigger saved simulations with automatic location/hazard incident assignment, inspect current device states and explicitly resolve reviewed incidents.
-- **Incident review:** inspect evidence revisions, citations, uncertainty, policy outcomes and human reviews.
+- **Incident review:** inspect evidence revisions, citations, uncertainty and human reviews.
 - **Alexa+ coordination:** automatically refreshed briefings, clickable active devices and a compact Ask Alexa+ panel with optional browser speech.
 - **Cloud simulation runs:** continue without an open tab; show scheduled/published counts, pause/resume/stop and per-incident generation allowance.
 - **Data controls:** request guarded incident cleanup and track its status.
@@ -30,7 +30,7 @@ This unchanged owner-selected v1 diagram is a design baseline. Vendor labels are
 | Source | Responsibility |
 | --- | --- |
 | `apps/web` | React workspace and Alexa+ browser simulator |
-| `functions`, `shared` | Ingestion, evidence revisions, policy, review, tools and cleanup |
+| `functions`, `shared` | Ingestion, evidence revisions, assessments, review, tools and cleanup |
 | `agent/reasoner` | AgentCore-hosted Strands/Bedrock assessment |
 | `services/mcp` | Authenticated MCP 2025-11-25 Streamable HTTP server |
 | `infra`, `workflows` | Terraform infrastructure and event orchestration |
@@ -48,7 +48,7 @@ Deployment is owned by GitHub Actions. [Cloud setup](docs/deployment.md) and [bo
 
 ## Documentation
 
-- [User/judge walkthrough](docs/judge-guide.md) · [in-app guide](https://aenea.qleam.com/guide)
+- [Step-by-step user guide](docs/user-guide.md) · [User/judge walkthrough](docs/judge-guide.md) · [in-app guide](https://aenea.qleam.com/guide)
 - [Engineering baseline](docs/engineering-baseline.md) · [earlier workspace phases](docs/workspace-refresh.md) · [project history](docs/project-timeline.md)
 - [Incident-first remediation and Command Center roadmap](docs/incident-first-roadmap.md)
 - [MCP and authentication](docs/alexa-mcp.md) · [AWS integration](docs/aws-builder.md)

@@ -1,5 +1,7 @@
 # Aenea — submission draft, not submitted
 
+> Current scope (6 October 2026): device actions, output permissions and incident note entry are retired. Use [the current user guide](user-guide.md) for the supported device → saved simulation → trigger → briefing → review/resolve flow. Action/member walkthroughs below are historical and must not be used as current demo or submission claims.
+
 Updated 30 September 2026. Release acceptance is [still open](release-checklist.md). Review these source claims against the actual deployment and recording before submitting.
 
 **Tagline:** Shared household context, accountable incident coordination.

@@ -224,7 +224,7 @@ def main():
         run("terraform", "-chdir=infra/mcp", "apply", "-input=false", "-auto-approve")
     if workflow_changed and "app" not in layers:
         definition = (ROOT / "workflows/incident_state_machine/definition.asl.json").read_text()
-        for name in ("correlate", "invoke_reasoner", "policy", "action_executor"):
+        for name in ("correlate", "invoke_reasoner", "action_executor"):
             arn = capture(
                 "aws",
                 "lambda",

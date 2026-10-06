@@ -5,7 +5,6 @@ import json
 import uuid
 from datetime import datetime, timezone
 import boto3
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from incident_engine import attrs
 from incident_state import snapshot, assessed_severity
@@ -33,34 +32,13 @@ def record(table, owner, incident):
     )
     state = snapshot(table, owner, incident)
     severity, devices = assessed_severity(state, latest.get("assessment") if current else None)
-    actions = []
-    query = {
-        "KeyConditionExpression": Key("pk").eq(partition) & Key("sk").begins_with("ACTION#"),
-        "ConsistentRead": True,
-    }
-    while True:
-        page = table.query(**query)
-        actions.extend(
-            {
-                "device": item["proposal"].get("device_name", item["proposal"]["device_id"]),
-                "action": item["proposal"]["action"],
-                "status": item["status"]
-                if item["status"] in {"succeeded", "failed"}
-                or (current and item["assessment_id"] == latest.get("assessment_id"))
-                else "superseded",
-            }
-            for item in page["Items"]
-        )
-        if not page.get("LastEvaluatedKey"):
-            break
-        query["ExclusiveStartKey"] = page["LastEvaluatedKey"]
     resolved = bool(summary.get("resolved_at"))
     text = (
         "Resolved by human confirmation; this does not certify safety."
         if resolved
         else latest["assessment"]["summary"]
         if current
-        else "New context is awaiting a verified assessment. No new action is authorized by this update."
+        else "New context is awaiting an updated assessment."
     )
     if not resolved:
         rooms = sorted({d.get("room") or "Unassigned area" for d in devices})
@@ -73,12 +51,6 @@ def record(table, owner, incident):
             )
             + "."
         )
-        pending = sum(row["status"] == "pending_confirmation" for row in actions)
-        failed = sum(row["status"] == "failed" for row in actions)
-        if pending:
-            text += f" {pending} action(s) need explicit confirmation."
-        if failed:
-            text += f" {failed} simulated action(s) failed; no physical effect is claimed."
     material = {
         "name": summary.get("name", "Incident"),
         "resolved": resolved,
@@ -89,7 +61,6 @@ def record(table, owner, incident):
         )
         if not resolved
         else [],
-        "actions": sorted(actions, key=lambda row: (row["device"], row["action"])),
     }
     fingerprint = hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
     key = {"pk": partition, "sk": "BRIEFING"}

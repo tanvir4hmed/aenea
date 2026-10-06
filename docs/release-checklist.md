@@ -1,5 +1,7 @@
 # Release gates
 
+> Current scope (6 October 2026): device actions, output permissions and incident note entry are retired. Use [the current user guide](user-guide.md) for the supported device → saved simulation → trigger → briefing → review/resolve flow. Action/member walkthroughs below are historical and must not be used as current demo or submission claims.
+
 Updated 30 September 2026. Source phases are distinct from hosted acceptance and submission. See [source evidence](source-verification.md) and [migration](state-driven-coordination.md).
 
 ## Source prepared

@@ -10,7 +10,7 @@ Settings opens the paginated Device list. Add device is a separate tab; choose a
 
 The briefing and active signals share one view with Ask Alexa+ on the right (stacked on small screens). Signal buttons open Command Center at the corresponding registered device and location without selecting a new simulation to trigger. Removed devices retain historical evidence but cannot be highlighted as present. Conversation remains incident/household scoped and browser-local. Questions still use bounded supported intents and saved facts, not unrestricted question answering or physical-device access.
 
-Response permissions, output creation and action approval controls are removed. The deployed Lambda environment explicitly disables `DEVICE_ACTIONS_ENABLED`; unset also means disabled. Policy returns no action IDs, execution rejects older proposals, and the reasoner strips proposed actions from new assessments. Retained legacy policy tests explicitly opt in to exercise rollback safety boundaries. Historical APIs/records remain compatible, but enabling an old permission record cannot turn execution on. There is no new calling, member reporting or device-control integration.
+Response permissions, output creation, action approval controls and backend action execution are removed. There is no runtime enable/disable flag. The workflow records evidence, assesses it and publishes a briefing. Historical action records remain readable, while removed action tools and permission endpoints are no longer exposed. The management Lambda resource name remains for compatibility with working APIs. No new calling, member reporting or device-control integration exists.
 
 ## Names and empty state
 

@@ -20,7 +20,6 @@ WRITERS = (
     "ingest",
     "correlate",
     "invoke_reasoner",
-    "policy",
     "action_executor",
     "mcp_tools",
     "simulation_worker",

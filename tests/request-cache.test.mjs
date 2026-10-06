@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { requestJson } from '../apps/web/src/api.js';
 import { createIncidentCache } from '../apps/web/src/incidentCache.js';
-import { canExecute } from '../apps/web/src/alexaConversation.js';
 import { createRequestGate, mergeEvidence } from '../apps/web/src/incidentReads.js';
 
 const config = { apiUrl: 'https://api.example', clientId: 'client', cognitoDomain: 'https://login.example' };
@@ -41,7 +40,6 @@ test('incident previews are bounded and cannot authorize cached actions', () => 
   const fresh = { assessment_current: true, incident: { latest_assessment: 'a', event_count: 1 }, notes: {} };
   cache.remember('one', fresh);
   assert.equal(cache.preview('one').refreshing, true);
-  assert.equal(canExecute({ assessment_id: 'a', evidence_revision: 1, expires_at: Date.now() / 1000 + 60 }, cache.preview('one')), false);
   assert.equal(fresh.assessment_current, true);
   cache.remember('two', fresh); cache.remember('three', fresh);
   assert.equal(cache.preview('one'), null);
@@ -83,11 +81,4 @@ test('evidence pagination deduplicates records independently of current incident
     [{ sk: 'EVENT#one', value: 2 }, { sk: 'EVENT#two' }]);
   assert.deepEqual(mergeEvidence(first, []), []);
   assert.equal(first[0].value, 1);
-});
-
-test('delayed live updates disable confirmation even before the proposal expires', () => {
-  const context = { receivedAt: 1000, assessment_current: true, incident: { latest_assessment: 'a', event_count: 1 } };
-  const action = { assessment_id: 'a', evidence_revision: 1, expires_at: 500 };
-  assert.equal(canExecute(action, context, 2000), true);
-  assert.equal(canExecute(action, context, 32000), false);
 });

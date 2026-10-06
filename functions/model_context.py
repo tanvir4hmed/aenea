@@ -1,14 +1,13 @@
-"""Keep model transport bounded without limiting evidence storage or safety policy."""
+"""Keep model transport bounded without limiting stored evidence."""
 
 import json
 
 
-def bounded_payload(events, summary, notes, devices, maximum=60000):
+def bounded_payload(events, summary, notes, maximum=60000):
     body = {
         "events": list(events),
         "state_summary": dict(summary),
         "unverified_notes": {**notes, "items": list(notes["items"])},
-        "virtual_devices": devices,
     }
     while len(json.dumps(body, default=float).encode()) > maximum:
         if body["unverified_notes"]["items"]:

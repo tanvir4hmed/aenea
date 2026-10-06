@@ -1,8 +1,8 @@
-import { actionExplanation, actionStatusLabel, readableText } from './liveAssistance.js';
+import { readableText } from './liveAssistance.js';
 
 export const commands = [
   { phrase: 'What is happening?', label: 'Current status', tool: 'get_incident_status', aliases: ['status', 'incident status'] },
-  { phrase: 'Show the timeline', label: 'Evidence timeline', tool: 'get_incident_timeline', aliases: ['show actions', 'what actions are available'] },
+  { phrase: 'Show the timeline', label: 'Evidence timeline', tool: 'get_incident_timeline', aliases: ['timeline'] },
   { phrase: 'Acknowledge incident', label: 'I have seen this', tool: 'acknowledge_incident', aliases: ['acknowledge'] },
 ];
 const normalize = text => text.toLowerCase().replace(/[?.!]/g, '').trim().replace(/\s+/g, ' ');
@@ -10,25 +10,17 @@ export function commandFor(text) { return commands.find(command => [command.phra
 export function describe(tool, data) {
   if (tool === 'get_responder_summary') return `Handoff prepared. ${data.partial ? 'This snapshot is partial; more records exist. ' : ''}${data.assessment_current ? '' : 'The assessment is outdated or unavailable. '}${readableText(data.notice || '')} Nothing has been dispatched.`;
   if (tool === 'get_incident_status') {
-    if (data.incident?.resolved_at) return 'This incident was resolved by human confirmation. Previous actions cannot execute. Resolution does not verify safety.';
+    if (data.incident?.resolved_at) return 'This incident was resolved by human confirmation. Resolution does not verify safety.';
     const assessment = data.assessment?.assessment;
     const severity = readableText(data.severity || assessment?.severity || 'not yet assessed');
     const summary = assessment?.summary ? readableText(assessment.summary) : 'Evidence is being collected; an assessment is not available yet.';
-    return `${severity.charAt(0).toUpperCase() + severity.slice(1)}. ${summary}${assessment && !data.assessment_current ? ' This assessment is awaiting an update.' : ''}${data.incident?.decision_review === 'rejected' ? ' A reviewer rejected this assessment; its actions cannot execute.' : ''}`;
+    return `${severity.charAt(0).toUpperCase() + severity.slice(1)}. ${summary}${assessment && !data.assessment_current ? ' This assessment is awaiting an update.' : ''}${data.incident?.decision_review === 'rejected' ? ' A reviewer rejected this assessment; review the evidence before relying on it.' : ''}`;
   }
   if (tool === 'get_household_status') return (data.items?.length ? data.items.map(person => `${person.person}: ${readableText(person.status)}`).join('. ') : 'No check-ins are recorded for this incident.') + ' These are self-reports; current occupancy and safety are unverified.';
   if (tool === 'report_person_status') return `${data.person}: ${readableText(data.status)} recorded as a self-report.`;
   if (tool === 'acknowledge_incident') return 'Incident acknowledged. It remains open; nobody has been marked safe.';
   if (tool === 'get_incident_timeline') return `${data.items?.length || 0} records loaded.${data.next_cursor ? ' More records are available.' : ''} Open Incident history for the sequence of signals and decisions.`;
-  return `${actionStatusLabel(data)}. ${actionExplanation(data)}`;
-}
-
-export function canExecute(action, context, now = Date.now()) {
-  return Boolean(context?.incident && !context.refreshing && context.assessment_current && !context.incident.resolved_at && context.incident.decision_review !== 'rejected'
-    && (context.receivedAt === undefined || now - context.receivedAt <= 30000)
-    && context.incident.latest_assessment === action.assessment_id
-    && (context.incident.note_revision || 0) === (action.note_revision || 0)
-    && context.incident.event_count === action.evidence_revision && now < action.expires_at * 1000);
+  return 'No supported incident response was returned.';
 }
 
 export const conversationPrefix = 'aenea:conversation:';

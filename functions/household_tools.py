@@ -2,14 +2,13 @@
 
 import base64
 import json
-import re
 import uuid
 import boto3
 from datetime import datetime, timezone
 
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from coordination import audit, audit_item, attrs, execute, get, profile, table
+from coordination import audit_item, attrs, get, table
 from cursors import decode_cursor
 from revisions import current_assessment
 from lifecycle import require_active
@@ -20,14 +19,11 @@ from catalog import read_catalog
 WRITE_TOOLS = {
     "report_person_status",
     "acknowledge_incident",
-    "request_safe_action",
-    "confirm_action",
 }
 TOOLS = WRITE_TOOLS | {
     "get_incident_status",
     "get_incident_timeline",
     "get_household_status",
-    "get_action_status",
     "get_responder_summary",
 }
 
@@ -91,9 +87,6 @@ def dispatch(owner, scopes, name, args):
         "get_household_status": {"incident_id", "cursor"},
         "report_person_status": {"incident_id", "person", "status", "request_id"},
         "acknowledge_incident": {"incident_id"},
-        "request_safe_action": {"incident_id", "action_id"},
-        "confirm_action": {"incident_id", "action_id", "assessment_id", "confirm"},
-        "get_action_status": {"incident_id", "action_id"},
         "get_responder_summary": {"incident_id"},
     }
     if not isinstance(args, dict) or set(args) - allowed[name]:
@@ -109,7 +102,7 @@ def dispatch(owner, scopes, name, args):
         result = page(f"H#{owner}#I#{incident}", "PERSON#", args.get("cursor"))
         return {
             **result,
-            "devices": profile(owner).get("devices", {}),
+            "devices": {},
             "incident_id": incident,
             "notice": "Incident-scoped self-reports, not current location or verified safety. Absence means unknown.",
         }
@@ -203,53 +196,4 @@ def dispatch(owner, scopes, name, args):
             "consistency": "Multi-read snapshot; incident updates can arrive during preparation. Refresh before sharing.",
             "notice": "Synthetic coordination handoff only. Not sent to emergency services.",
         }
-    identifier = args["action_id"]
-    if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{32}", identifier):
-        raise ValueError("Invalid action ID")
-    action = get(owner, incident, "ACTION#" + identifier)
-    if not action:
-        raise ValueError("Action not found")
-    if name == "get_action_status":
-        if action["status"] not in {"succeeded", "failed", "blocked", "expired"} and (
-            action.get("evidence_revision") != summary.get("event_count")
-            or action.get("note_revision", 0) != summary.get("note_revision", 0)
-            or summary.get("resolved_at")
-            or action["assessment_id"] != summary.get("latest_assessment")
-            or summary.get("decision_review") == "rejected"
-        ):
-            return {
-                **action,
-                "status": "superseded",
-                "result": "New evidence or rejected review prevents execution",
-                "execution_performed": False,
-            }
-        return action
-    if name == "confirm_action":
-        if (
-            args.get("confirm") is not True
-            or not isinstance(args.get("assessment_id"), str)
-            or not re.fullmatch(r"[a-f0-9]{32}", args["assessment_id"])
-        ):
-            raise ValueError("Explicit confirmation is required")
-        if action["status"] != "pending_confirmation":
-            return action
-        audit(
-            owner,
-            incident,
-            "confirmation",
-            identifier + ":" + args["assessment_id"],
-            {"actor": owner, "assessment_id": args["assessment_id"]},
-        )
-        result = execute(
-            owner, incident, identifier, confirmed=True, expected_assessment=args["assessment_id"]
-        )
-        from briefings import record
-
-        record(table, owner, incident)
-        return result
-    # Only an existing assessed/policy-checked action can be requested.
-    result = execute(owner, incident, identifier)
-    from briefings import record
-
-    record(table, owner, incident)
-    return result
+    raise ValueError("Unsupported tool")

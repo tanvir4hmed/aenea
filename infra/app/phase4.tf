@@ -8,7 +8,7 @@ data "terraform_remote_state" "reasoner" {
 }
 
 resource "aws_iam_role_policy" "coordination" {
-  for_each = toset(["invoke_reasoner", "policy", "action_executor"])
+  for_each = toset(["invoke_reasoner", "action_executor"])
   role     = aws_iam_role.lambda[each.key].id
   policy = jsonencode({
     Version = "2012-10-17"

@@ -1,5 +1,7 @@
 # Aenea judge guide
 
+> Current scope (6 October 2026): device actions, output permissions and incident note entry are retired. Use [the current user guide](user-guide.md) for the supported device → saved simulation → trigger → briefing → review/resolve flow. Action/member walkthroughs below are historical and must not be used as current demo or submission claims.
+
 Open [Aenea](https://aenea.qleam.com). The public [guide](https://aenea.qleam.com/guide) does not require sign-in. The welcome screen provides shared guest credentials with reveal/copy controls. **Open guest sign in** opens Cognito; paste the credentials there. The owner must verify access against the final deployed commit before submission.
 
 Guest data is shared. Use synthetic names/addresses/observations and do not delete another visitor's records.
