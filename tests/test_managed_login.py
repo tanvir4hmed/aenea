@@ -47,6 +47,8 @@ class ManagedLoginConfigurationTests(unittest.TestCase):
         self.assertEqual(
             branding["Resource"], "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
         )
-        self.assertEqual(len(branding["Action"]), 4)
+        self.assertIn("cognito-idp:ListUserPoolClients", branding["Action"])
+        self.assertIn("cognito-idp:DescribeManagedLoginBrandingByClient", branding["Action"])
+        self.assertEqual(len(branding["Action"]), 6)
         mcp = (ROOT / "infra/mcp/main.tf").read_text()
         self.assertIn("allowed_audience = [local.resource_url]", mcp)
