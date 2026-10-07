@@ -98,7 +98,9 @@ def handler(event, context):
                 .get("scope", "")
                 .split()
             )
-            return conversation_message(owner, incident, body, scopes)
+            from oauth_scopes import permission_scopes
+
+            return conversation_message(owner, incident, body, permission_scopes(scopes))
         if route == "POST /incidents/{incident_id}/notes":
             return save_note(table, owner, incident, body)
         if route == "POST /incidents/{incident_id}/simulation-limit":

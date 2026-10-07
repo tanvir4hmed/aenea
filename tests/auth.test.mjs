@@ -19,6 +19,7 @@ test('PKCE login binds resource and callback stores that binding', async () => {
   setup(); await login(config);
   const url = new URL(redirected), saved = JSON.parse(values.get('aenea-oauth'));
   assert.equal(url.searchParams.get('resource'), config.apiUrl + '/mcp');
+  assert.equal(url.searchParams.get('scope'), `openid email ${config.apiUrl}/mcp/read ${config.apiUrl}/mcp/write`);
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   location.pathname = '/auth/callback'; location.search = '?state=' + saved.state + '&code=code';
   globalThis.fetch = async (_url, options) => {
@@ -102,4 +103,14 @@ test('callback rejects an unbound grant and accepts a matching audience array', 
   assert.equal(values.has('aenea-session'), false);
   setup({ accessToken: token('array', { aud: [config.apiUrl + '/mcp'] }), expires: Date.now() + 3600000 });
   assert.equal(await accessToken(config), token('array', { aud: [config.apiUrl + '/mcp'] }));
+});
+
+test('authorization-server errors are recoverable without treating them as a successful sign-in', async () => {
+  setup(); await login(config);
+  const saved = JSON.parse(values.get('aenea-oauth'));
+  location.pathname = '/auth/callback'; location.search = '?state=' + saved.state + '&error=invalid_request';
+  globalThis.fetch = () => { throw new Error('Rejected grants must not be exchanged'); };
+  await assert.rejects(callback(config), /service rejected/);
+  assert.equal(values.has('aenea-oauth'), false);
+  assert.equal(values.get('aenea-session') && JSON.parse(values.get('aenea-session')).accessToken, token('old'));
 });

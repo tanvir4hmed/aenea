@@ -31,7 +31,9 @@ def handler(event, context):
             {
                 "resource": os.environ["MCP_RESOURCE_URL"],
                 "authorization_servers": [os.environ["COGNITO_ISSUER"]],
-                "scopes_supported": ["aenea/read", "aenea/write"],
+                "scopes_supported": [
+                    os.environ["MCP_RESOURCE_URL"] + suffix for suffix in ("/read", "/write")
+                ],
                 "bearer_methods_supported": ["header"],
             },
         )

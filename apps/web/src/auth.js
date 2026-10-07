@@ -111,7 +111,7 @@ export async function login(config) {
   sessionStorage.setItem(oauthKey, JSON.stringify({ verifier, state, resource: resourceFor(config) }));
   const challenge = b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
   const query = new URLSearchParams({ client_id: config.clientId, response_type: 'code',
-    redirect_uri: location.origin + '/auth/callback', scope: 'openid email aenea/read aenea/write',
+    redirect_uri: location.origin + '/auth/callback', scope: `openid email ${resourceFor(config)}/read ${resourceFor(config)}/write`,
     state, code_challenge: challenge, code_challenge_method: 'S256', resource: resourceFor(config) });
   location.assign(config.cognitoDomain + '/oauth2/authorize?' + query);
 }
@@ -121,7 +121,9 @@ export async function callback(config) {
   const saved = JSON.parse(sessionStorage.getItem(oauthKey) || 'null');
   history.replaceState(null, '', '/alexa-sim');
   sessionStorage.removeItem(oauthKey);
-  if (!saved || saved.resource !== resourceFor(config) || query.get('state') !== saved.state || !query.get('code')) throw new Error('Sign-in could not be verified. Please sign in again.');
+  if (!saved || saved.resource !== resourceFor(config) || query.get('state') !== saved.state) throw new Error('Sign-in could not be verified. Please sign in again.');
+  if (query.get('error')) throw new Error('Sign-in service rejected the request. Please retry from this page.');
+  if (!query.get('code')) throw new Error('Sign-in could not be verified. Please sign in again.');
   const result = await fetch(config.cognitoDomain + '/oauth2/token', { method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', client_id: config.clientId,

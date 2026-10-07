@@ -161,7 +161,9 @@ function App() {
       const result = await fetch('/config.json', { cache: 'no-store' });
       if (!result.ok) throw new Error('Deployment configuration is not available yet.');
       const value = await result.json();
-      await callback(value); setConfig(value); setAuthenticated(hasSession());
+      if (location.pathname === '/auth/callback') setAuthenticated(false);
+      setConfig(value);
+      await callback(value); setAuthenticated(hasSession());
       setPage(currentPage());
     })().catch(e => setError(e.message)).finally(() => { setPage(currentPage()); setBooting(false); });
     const onPop = () => { setPage(currentPage()); setSettingsTab(currentSettingsTab()); };

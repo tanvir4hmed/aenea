@@ -28,6 +28,8 @@ def verify_token(
     if claims["client_id"] != client_id or claims["token_use"] != "access":
         raise ValueError("Invalid access token")
     scopes = set(claims.get("scope", "").split())
-    if "aenea/read" not in scopes or (tool not in READ_TOOLS and "aenea/write" not in scopes):
+    if resource + "/read" not in scopes or (
+        tool not in READ_TOOLS and resource + "/write" not in scopes
+    ):
         raise ValueError("Required tool scope is missing")
     return claims

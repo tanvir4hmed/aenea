@@ -48,7 +48,7 @@ class McpServerTests(unittest.TestCase):
             "token_use": "access",
             "exp": int(time.time()) + 600,
             "iat": int(time.time()),
-            "scope": "aenea/read",
+            "scope": "https://api.example/mcp/read",
         }
         self.headers = {
             "Accept": "application/json, text/event-stream",

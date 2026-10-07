@@ -4,7 +4,7 @@ Application routes use API Gateway HTTP API. The deployed public `/config.json` 
 
 ## Authentication
 
-Sign-in uses Cognito authorization code flow with PKCE S256, verified OAuth state and an exact `/auth/callback` redirect. The scopes are `openid email aenea/read aenea/write`. There is no browser client secret. Self-registration is disabled.
+Sign-in uses Cognito authorization code flow with PKCE S256, verified OAuth state and an exact `/auth/callback` redirect. Scopes are `openid`, `email`, `<public API URL>/mcp/read` and `<public API URL>/mcp/write`; custom scopes belong to the same URL resource as the access token audience. There is no browser client secret. Self-registration is disabled.
 
 Cognito uses the Essentials tier, Managed Login v2 and an app-client branding style. Classic hosted UI v1 does not support the resource-binding path required here. Authorization requests bind access tokens to the public `/mcp` resource; refresh retains that audience. After upgrading a Classic-login deployment, sign out and sign in once to obtain a newly bound session. Refreshing the old grant does not upgrade its original audience. AgentCore and tool-side signature/issuer/audience/client/scope checks remain enabled.
 

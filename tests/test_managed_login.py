@@ -20,6 +20,18 @@ class ManagedLoginConfigurationTests(unittest.TestCase):
         branding = resources["aws_cognito_managed_login_branding"]["web"]
         self.assertEqual(branding["client_id"], "${aws_cognito_user_pool_client.web.id}")
         self.assertTrue(branding["use_cognito_provided_values"])
+        server = resources["aws_cognito_resource_server"]["api"]
+        self.assertEqual(server["identifier"], "${aws_apigatewayv2_api.http.api_endpoint}/mcp")
+        self.assertTrue(server["lifecycle"]["create_before_destroy"])
+        self.assertTrue(
+            all(
+                scope.startswith("${aws_cognito_resource_server.api.identifier}/")
+                for scope in resources["aws_cognito_user_pool_client"]["web"][
+                    "allowed_oauth_scopes"
+                ]
+                if scope not in {"openid", "email"}
+            )
+        )
         self.assertIn("aws_cognito_managed_login_branding.web", domain["depends_on"])
 
     def test_branding_permissions_are_scoped_and_do_not_remove_resource_audience_checks(self):

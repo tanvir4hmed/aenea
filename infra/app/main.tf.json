@@ -328,7 +328,7 @@
         "target": "integrations/${aws_apigatewayv2_integration.lambda[each.value.function].id}",
         "authorization_type": "${each.value.scope == \"\" ? \"NONE\" : \"JWT\"}",
         "authorizer_id": "${each.value.scope == \"\" ? null : data.terraform_remote_state.platform.outputs.authorizer_id}",
-        "authorization_scopes": "${each.value.scope == \"\" ? [] : [each.value.scope]}"
+        "authorization_scopes": "${each.value.scope == \"\" ? [] : [format(\"%s/mcp/%s\", data.terraform_remote_state.platform.outputs.web_config.apiUrl, trimprefix(each.value.scope, \"aenea/\"))]}"
       }
     },
     "aws_lambda_permission": {

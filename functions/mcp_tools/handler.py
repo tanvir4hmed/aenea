@@ -2,6 +2,7 @@
 
 from household_tools import dispatch
 from common import response
+from oauth_scopes import permission_scopes
 
 
 def handler(event, context):
@@ -10,7 +11,12 @@ def handler(event, context):
         owner = principal["sub"]
         if not isinstance(owner, str) or not owner or len(owner) > 128:
             raise ValueError("Invalid principal")
-        result = dispatch(owner, set(principal["scope"].split()), event["tool"], event["arguments"])
+        result = dispatch(
+            owner,
+            permission_scopes(set(principal["scope"].split())),
+            event["tool"],
+            event["arguments"],
+        )
         return response(200, result)
     except PermissionError:
         return response(403, {"error": "Required tool scope is missing"})

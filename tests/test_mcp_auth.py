@@ -26,7 +26,7 @@ class TokenTests(unittest.TestCase):
             "aud": "https://api.example/mcp",
             "exp": int(time.time()) + 600,
             "iat": int(time.time()),
-            "scope": "aenea/read",
+            "scope": "https://api.example/mcp/read",
         }
 
     def verify(self, tool="get_incident_status"):
@@ -63,7 +63,7 @@ class TokenTests(unittest.TestCase):
     def test_read_only_token_cannot_write(self):
         with self.assertRaisesRegex(ValueError, "scope"):
             self.verify("acknowledge_incident")
-        self.claims["scope"] = "aenea/read aenea/write"
+        self.claims["scope"] = "https://api.example/mcp/read https://api.example/mcp/write"
         self.assertEqual(self.verify("acknowledge_incident")["sub"], "owner")
 
     def test_bad_signature_is_rejected(self):
@@ -77,3 +77,9 @@ class TokenTests(unittest.TestCase):
                 self.claims["aud"],
                 "get_incident_status",
             )
+
+    def test_custom_scopes_must_belong_to_the_bound_resource(self):
+        for scopes in ("aenea/read aenea/write", "https://other.example/mcp/read"):
+            self.claims["scope"] = scopes
+            with self.assertRaisesRegex(ValueError, "scope"):
+                self.verify()

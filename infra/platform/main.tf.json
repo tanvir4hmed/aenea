@@ -172,9 +172,10 @@
     },
     "aws_cognito_resource_server": {
       "api": {
-        "identifier": "aenea",
+        "identifier": "${aws_apigatewayv2_api.http.api_endpoint}/mcp",
         "name": "Aenea API",
         "user_pool_id": "${aws_cognito_user_pool.household.id}",
+        "lifecycle": { "create_before_destroy": true },
         "scope": [
           {
             "scope_name": "read",
@@ -199,8 +200,8 @@
         "allowed_oauth_scopes": [
           "openid",
           "email",
-          "aenea/read",
-          "aenea/write"
+          "${aws_cognito_resource_server.api.identifier}/read",
+          "${aws_cognito_resource_server.api.identifier}/write"
         ],
         "supported_identity_providers": [
           "COGNITO"

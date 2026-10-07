@@ -93,7 +93,7 @@ resource "aws_bedrockagentcore_agent_runtime" "mcp" {
       discovery_url    = "${local.issuer}/.well-known/openid-configuration"
       allowed_clients  = [data.terraform_remote_state.platform.outputs.web_config.clientId]
       allowed_audience = [local.resource_url]
-      allowed_scopes   = ["aenea/read"]
+      allowed_scopes   = ["${local.resource_url}/read"]
     }
   }
   request_header_configuration { request_header_allowlist = ["Authorization"] }
