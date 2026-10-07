@@ -8,6 +8,22 @@ let refreshPromise;
 let sessionGeneration = 0;
 const resourceFor = config => config.apiUrl.replace(/\/$/, '') + '/mcp';
 
+function checkResourceBinding(token, config) {
+  // This only checks token shape/binding for UX. Servers still verify its signature.
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error('Malformed access token');
+    const encoded = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+    const claims = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')));
+    const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (!audiences.includes(resourceFor(config)) || claims.client_id !== config.clientId || claims.token_use !== 'access') throw new Error('Wrong resource binding');
+  } catch {
+    const error = new Error('Sign in again to obtain a resource-bound access token. Your saved incidents are unchanged.');
+    error.sessionEnded = true;
+    throw error;
+  }
+}
+
 function savedSession() {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -46,6 +62,7 @@ async function refresh(config, value) {
   }
   const tokens = await result.json();
   if (!tokens.access_token || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new Error('Invalid sign-in response. Please retry.');
+  checkResourceBinding(tokens.access_token, config);
   const next = { accessToken: tokens.access_token, refreshToken: tokens.refresh_token || value.refreshToken,
     expires: Date.now() + tokens.expires_in * 1000, resource: value.resource, sessionExpires: value.sessionExpires };
   if (next.sessionExpires <= Date.now() || localStorage.getItem(key) !== JSON.stringify(value)) throw new Error('Sign-in changed while refreshing. Please retry.');
@@ -74,7 +91,11 @@ export async function accessToken(config) {
     throw new Error('Sign in once again to enable resource-protected access. Your saved incidents are unchanged.');
   }
   const active = session();
-  if (active) return active.accessToken;
+  if (active) {
+    try { checkResourceBinding(active.accessToken, config); }
+    catch (error) { expireSession(); throw error; }
+    return active.accessToken;
+  }
   return (await refreshCurrent(config)).accessToken;
 }
 
@@ -108,6 +129,8 @@ export async function callback(config) {
   if (!result.ok) throw new Error('Sign-in failed. Please retry.');
   const tokens = await result.json();
   if (!tokens.access_token || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) throw new Error('Invalid sign-in response. Please sign in again.');
+  try { checkResourceBinding(tokens.access_token, config); }
+  catch (error) { expireSession(); throw error; }
   sessionStorage.removeItem(key);
   localStorage.setItem(key, JSON.stringify({ accessToken: tokens.access_token, sessionExpires: Date.now() + sessionDuration,
     refreshToken: tokens.refresh_token, expires: Date.now() + tokens.expires_in * 1000, resource: saved.resource }));

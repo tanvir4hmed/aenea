@@ -6,6 +6,8 @@ Application routes use API Gateway HTTP API. The deployed public `/config.json` 
 
 Sign-in uses Cognito authorization code flow with PKCE S256, verified OAuth state and an exact `/auth/callback` redirect. The scopes are `openid email aenea/read aenea/write`. There is no browser client secret. Self-registration is disabled.
 
+Cognito uses the Essentials tier, Managed Login v2 and an app-client branding style. Classic hosted UI v1 does not support the resource-binding path required here. Authorization requests bind access tokens to the public `/mcp` resource; refresh retains that audience. After upgrading a Classic-login deployment, sign out and sign in once to obtain a newly bound session. Refreshing the old grant does not upgrade its original audience. AgentCore and tool-side signature/issuer/audience/client/scope checks remain enabled.
+
 Application calls carry `Authorization: Bearer <access-token>`. MCP additionally verifies the resource audience `<apiUrl>/mcp`, issuer, signature, expiry, client ID, access-token type and scopes. Read permission is required for every tool; acknowledgment also requires write permission.
 
 Access tokens last fifteen minutes; refresh tokens last one day. The browser enforces a one-day session deadline and refreshes tokens automatically. Temporary refresh failures preserve the session, while revocation/expiry requires sign-in. Sign-out cannot be undone by an in-flight refresh.

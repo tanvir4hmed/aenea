@@ -150,6 +150,7 @@
     "aws_cognito_user_pool": {
       "household": {
         "name": "aenea",
+        "user_pool_tier": "ESSENTIALS",
         "username_attributes": [
           "email"
         ],
@@ -230,7 +231,16 @@
     "aws_cognito_user_pool_domain": {
       "web": {
         "domain": "aenea-${data.aws_caller_identity.current.account_id}",
-        "user_pool_id": "${aws_cognito_user_pool.household.id}"
+        "user_pool_id": "${aws_cognito_user_pool.household.id}",
+        "managed_login_version": 2,
+        "depends_on": ["aws_cognito_managed_login_branding.web"]
+      }
+    },
+    "aws_cognito_managed_login_branding": {
+      "web": {
+        "user_pool_id": "${aws_cognito_user_pool.household.id}",
+        "client_id": "${aws_cognito_user_pool_client.web.id}",
+        "use_cognito_provided_values": true
       }
     },
     "aws_apigatewayv2_api": {

@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { accessToken, login, callback, logout, hasSession } from '../apps/web/src/auth.js';
 
 const config = { apiUrl: 'https://api.example', cognitoDomain: 'https://login.example', clientId: 'client' };
+const token = (signature = 'test', claims = {}) => 'header.' + Buffer.from(JSON.stringify({ aud: config.apiUrl + '/mcp', client_id: config.clientId, token_use: 'access', ...claims })).toString('base64url') + '.' + signature;
 let values, redirected;
 function setup(session = {}) {
-  values = new Map([['aenea-session', JSON.stringify({ accessToken: 'old', refreshToken: 'refresh', expires: 1,
+  values = new Map([['aenea-session', JSON.stringify({ accessToken: token('old'), refreshToken: 'refresh', expires: 1,
     resource: config.apiUrl + '/mcp', sessionExpires: Date.now() + 86400000, ...session })]]);
   globalThis.localStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.sessionStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
@@ -22,11 +23,11 @@ test('PKCE login binds resource and callback stores that binding', async () => {
   location.pathname = '/auth/callback'; location.search = '?state=' + saved.state + '&code=code';
   globalThis.fetch = async (_url, options) => {
     assert.equal(options.body.get('code_verifier'), saved.verifier);
-    return Response.json({ access_token: 'new', refresh_token: 'refresh', expires_in: 3600 });
+    return Response.json({ access_token: token('new'), refresh_token: 'refresh', expires_in: 3600 });
   };
   await callback(config);
   assert.equal(JSON.parse(values.get('aenea-session')).resource, config.apiUrl + '/mcp');
-  assert.equal(await accessToken(config), 'new');
+  assert.equal(await accessToken(config), token('new'));
 });
 test('legacy sessions require one new login rather than bypassing audience validation', async () => {
   setup({ resource: undefined, expires: Date.now() + 3600000 });
@@ -35,8 +36,8 @@ test('legacy sessions require one new login rather than bypassing audience valid
 });
 test('parallel requests share refresh and preserve refresh token and resource', async () => {
   setup(); let calls = 0;
-  globalThis.fetch = async () => { calls++; return Response.json({ access_token: 'new', expires_in: 3600 }); };
-  assert.deepEqual(await Promise.all([accessToken(config), accessToken(config)]), ['new', 'new']);
+  globalThis.fetch = async () => { calls++; return Response.json({ access_token: token('new'), expires_in: 3600 }); };
+  assert.deepEqual(await Promise.all([accessToken(config), accessToken(config)]), [token('new'), token('new')]);
   assert.equal(calls, 1);
   const saved = JSON.parse(values.get('aenea-session'));
   assert.equal(saved.refreshToken, 'refresh'); assert.equal(saved.resource, config.apiUrl + '/mcp');
@@ -56,7 +57,7 @@ test('logout during refresh cannot restore the old session', async () => {
   globalThis.fetch = () => new Promise(resolve => { finish = resolve; });
   const pending = accessToken(config);
   logout(config);
-  finish(Response.json({ access_token: 'old-user-new-token', expires_in: 3600 }));
+  finish(Response.json({ access_token: token('old-user-new-token'), expires_in: 3600 }));
   await assert.rejects(pending, /Sign-in changed/);
   assert.equal(values.has('aenea-session'), false);
 });
@@ -65,8 +66,8 @@ test('a new tab retains the browser session and refresh does not extend its one-
   setup({ sessionExpires: deadline });
   globalThis.sessionStorage = { getItem: () => null, removeItem: () => {}, setItem: () => {} };
   assert.equal(hasSession(), true);
-  globalThis.fetch = async () => Response.json({ access_token: 'new', expires_in: 900 });
-  assert.equal(await accessToken(config), 'new');
+  globalThis.fetch = async () => Response.json({ access_token: token('new'), expires_in: 900 });
+  assert.equal(await accessToken(config), token('new'));
   assert.equal(JSON.parse(values.get('aenea-session')).sessionExpires, deadline);
 });
 test('the one-day deadline requires sign-in even if an access token remains valid', async () => {
@@ -75,4 +76,30 @@ test('the one-day deadline requires sign-in even if an access token remains vali
   globalThis.fetch = () => { throw Error('Expired sessions must not refresh'); };
   await assert.rejects(accessToken(config), /session has ended/);
   assert.equal(values.has('aenea-session'), false);
+});
+
+test('Classic-login or wrong-audience cached tokens require a new bound sign-in', async () => {
+  for (const claims of [{ aud: undefined }, { aud: 'https://other.example/mcp' }, { token_use: 'id' }, { client_id: 'other' }]) {
+    setup({ accessToken: token('invalid', claims), expires: Date.now() + 3600000 });
+    await assert.rejects(accessToken(config), /resource-bound/);
+    assert.equal(values.has('aenea-session'), false);
+  }
+});
+
+test('refresh must preserve the actual token audience, not just cached resource metadata', async () => {
+  setup();
+  globalThis.fetch = async () => Response.json({ access_token: token('unbound', { aud: undefined }), expires_in: 900 });
+  await assert.rejects(accessToken(config), /resource-bound/);
+  assert.equal(values.has('aenea-session'), false);
+});
+
+test('callback rejects an unbound grant and accepts a matching audience array', async () => {
+  setup(); await login(config);
+  const saved = JSON.parse(values.get('aenea-oauth'));
+  location.pathname = '/auth/callback'; location.search = '?state=' + saved.state + '&code=code';
+  globalThis.fetch = async () => Response.json({ access_token: token('unbound', { aud: undefined }), expires_in: 900 });
+  await assert.rejects(callback(config), /resource-bound/);
+  assert.equal(values.has('aenea-session'), false);
+  setup({ accessToken: token('array', { aud: [config.apiUrl + '/mcp'] }), expires: Date.now() + 3600000 });
+  assert.equal(await accessToken(config), token('array', { aud: [config.apiUrl + '/mcp'] }));
 });

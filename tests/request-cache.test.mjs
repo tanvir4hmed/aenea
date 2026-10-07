@@ -5,8 +5,9 @@ import { createIncidentCache } from '../apps/web/src/incidentCache.js';
 import { createRequestGate, mergeEvidence } from '../apps/web/src/incidentReads.js';
 
 const config = { apiUrl: 'https://api.example', clientId: 'client', cognitoDomain: 'https://login.example' };
+const token = signature => 'header.' + Buffer.from(JSON.stringify({ aud: config.apiUrl + '/mcp', client_id: config.clientId, token_use: 'access' })).toString('base64url') + '.' + signature;
 function signIn() {
-  const values = new Map([['aenea-session', JSON.stringify({ accessToken: 'old', refreshToken: 'refresh',
+  const values = new Map([['aenea-session', JSON.stringify({ accessToken: token('old'), refreshToken: 'refresh',
     resource: config.apiUrl + '/mcp', expires: Date.now() + 900000, sessionExpires: Date.now() + 86400000 })]]);
   globalThis.localStorage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
 }
@@ -23,9 +24,9 @@ test('concurrent GETs share transport, subsequent refresh still requests new dat
 test('401 refreshes once; failed writes other than authorization are never replayed', async () => {
   signIn(); let requests = 0, refreshes = 0;
   globalThis.fetch = async (url, options) => {
-    if (url.includes('/oauth2/token')) { refreshes++; return Response.json({ access_token: 'new', expires_in: 900 }); }
+    if (url.includes('/oauth2/token')) { refreshes++; return Response.json({ access_token: token('new'), expires_in: 900 }); }
     requests++;
-    return options.headers.Authorization === 'Bearer old' ? new Response('', { status: 401 }) : Response.json({ ok: true });
+    return options.headers.Authorization === 'Bearer ' + token('old') ? new Response('', { status: 401 }) : Response.json({ ok: true });
   };
   assert.deepEqual(await requestJson(config, '/notes', { method: 'POST', body: '{}' }), { ok: true });
   assert.equal(requests, 2); assert.equal(refreshes, 1);

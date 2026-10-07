@@ -55,6 +55,17 @@
       }
     },
     {
+      "Sid": "ManagedLoginBranding",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateManagedLoginBranding",
+        "cognito-idp:DescribeManagedLoginBranding",
+        "cognito-idp:UpdateManagedLoginBranding",
+        "cognito-idp:DeleteManagedLoginBranding"
+      ],
+      "Resource": "arn:aws:cognito-idp:${region}:${account_id}:userpool/*"
+    },
+    {
       "Effect": "Allow",
       "Action": [
         "apigateway:GET",
