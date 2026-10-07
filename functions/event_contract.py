@@ -21,8 +21,18 @@ def event_state(payload: dict[str, Any]) -> dict[str, str]:
             raise ValueError("State requires contract_version 1.1")
         return {"alarm": "unknown", "connectivity": "unknown"}
     state = payload.get("state")
-    if not isinstance(state, dict) or set(state) != {"alarm", "connectivity"}:
+    if (
+        not isinstance(state, dict)
+        or not {"alarm", "connectivity"} <= set(state)
+        or set(state) - {"alarm", "connectivity", "simulated_severity"}
+    ):
         raise ValueError("State requires alarm and connectivity")
+    if "simulated_severity" in state and state["simulated_severity"] not in {
+        "informational",
+        "warning",
+        "urgent",
+    }:
+        raise ValueError("Unsupported simulated severity")
     if state["alarm"] not in {"active", "clear", "unknown"} or state["connectivity"] not in {
         "online",
         "offline",
@@ -49,6 +59,8 @@ def enrich_event(
         raise ValueError("Register an enabled simulation device in Settings before sending alerts")
     if event.kind not in DEVICE_KINDS.get(device["type"], []):
         raise ValueError("Signal is not supported by this device")
+    if "simulated_severity" in state and not event.source.simulated:
+        raise ValueError("Simulated severity cannot describe a real device")
     if event.source.category != CATEGORIES.get(device["type"], "sensor"):
         raise ValueError("Source category does not match the registered device")
     location = next(

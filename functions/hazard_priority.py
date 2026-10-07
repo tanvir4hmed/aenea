@@ -41,13 +41,29 @@ def tier(kind: str) -> str:
     return "informational"
 
 
+def simulated_severity(row: dict) -> str | None:
+    """Exercise input only, not a measurement or a real-device severity override."""
+    if (
+        row["event"]["source"].get("simulated") is not True
+        or row["context"].get("provenance") != "authenticated_simulator"
+    ):
+        return None
+    value = row["context"].get("state", {}).get("simulated_severity")
+    return value if value in {"informational", "warning", "urgent"} else None
+
+
 def severity(rows: list[dict]) -> str:
     """Return the deterministic severity floor from current active device states."""
-    if any(row["event"]["kind"] in IMMEDIATE_URGENT for row in rows):
+    ordinary = [row for row in rows if simulated_severity(row) is None]
+    if any(simulated_severity(row) == "urgent" for row in rows) or any(
+        row["event"]["kind"] in IMMEDIATE_URGENT for row in ordinary
+    ):
         return "urgent"
-    if _corroborated_fire_gas(rows):
+    if _corroborated_fire_gas(ordinary):
         return "urgent"
-    if any(row["event"]["kind"] in CRITICAL | WARNING for row in rows):
+    if any(simulated_severity(row) == "warning" for row in rows) or any(
+        row["event"]["kind"] in CRITICAL | WARNING for row in ordinary
+    ):
         return "warning"
     return "informational"
 
@@ -57,9 +73,12 @@ def red_device_ids(rows: list[dict]) -> set[str]:
     red = {
         row["event"]["source"]["source_id"]
         for row in rows
-        if row["event"]["kind"] in IMMEDIATE_URGENT
+        if simulated_severity(row) == "urgent"
+        or (simulated_severity(row) is None and row["event"]["kind"] in IMMEDIATE_URGENT)
     }
-    for sources in _corroborated_fire_gas(rows).values():
+    for sources in _corroborated_fire_gas(
+        [row for row in rows if simulated_severity(row) is None]
+    ).values():
         red.update(sources)
     return red
 

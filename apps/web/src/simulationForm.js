@@ -12,7 +12,9 @@ export function roomInventory(catalog, room, signals) {
   return { registered, enabled, available: enabled.filter(device => !added.has(device.id)), added: registered.filter(device => added.has(device.id)).length };
 }
 
-export function appendRoomSignals(draft, catalog, room, ids, kinds, observation = '') {
+export const simulationSeverities = { auto: 'Automatic', informational: 'Low · notification', warning: 'Medium · orange', urgent: 'High · red' };
+
+export function appendRoomSignals(draft, catalog, room, ids, kinds, observation = '', severities = {}) {
   if (!ids.length) throw new Error('Choose an available device in this room.');
   const available = roomInventory(catalog, room, draft.signals).available;
   if (new Set(ids).size !== ids.length) throw new Error('Each device can appear once.');
@@ -22,7 +24,9 @@ export function appendRoomSignals(draft, catalog, room, ids, kinds, observation 
     if (!device) throw new Error('Device already added, unavailable, or outside the selected room.');
     const kind = kinds[id] || supportedKinds(device)[0];
     if (!supportedKinds(device).includes(kind)) throw new Error('Choose a supported alert for this device.');
-    return { deviceId: id, kind, observation: observation.trim() };
+    const severity = severities[id] || 'auto';
+    if (!Object.hasOwn(simulationSeverities, severity)) throw new Error('Choose a supported simulation severity.');
+    return { deviceId: id, kind, observation: observation.trim(), ...(severity !== 'auto' ? { severity } : {}) };
   });
   return { ...draft, signals: [...draft.signals, ...additions] };
 }

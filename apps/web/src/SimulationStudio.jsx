@@ -4,7 +4,7 @@ import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
 import SimulationRuns from './SimulationRuns';
 import { houseRooms, isMapleHouse } from './house';
-import { alertLevels, defaultProfile, supportedKinds, kindsAtLevel, roomInventory, appendRoomSignals } from './simulationForm';
+import { alertLevels, defaultProfile, supportedKinds, kindsAtLevel, roomInventory, appendRoomSignals, simulationSeverities } from './simulationForm';
 import './compact-workspace.css';
 
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
@@ -14,6 +14,7 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   const [library, setLibrary] = useState({ revision: null, items: [] }), [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState(blank), [pickedIds, setPickedIds] = useState([]), [kindByDevice, setKindByDevice] = useState({}), [observation, setObservation] = useState('');
   const [roomFilter, setRoomFilter] = useState('');
+  const [severityByDevice, setSeverityByDevice] = useState({});
   const [savedQuery, setSavedQuery] = useState(''), [savedLocation, setSavedLocation] = useState('');
   const [savedRoom, setSavedRoom] = useState(''), [savedDevice, setSavedDevice] = useState(''), [savedType, setSavedType] = useState('');
   const [savedPage, setSavedPage] = useState(1);
@@ -55,9 +56,9 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
   function addSignal() {
     setError(''); setNotice('');
     try {
-      const next = appendRoomSignals(draft, catalog, roomFilter, pickedIds, kindByDevice, observation);
+      const next = appendRoomSignals(draft, catalog, roomFilter, pickedIds, kindByDevice, observation, severityByDevice);
       if (!next.name.trim()) next.name = next.type === 'single' ? catalog.devices.find(item => item.id === pickedIds[0]).name : roomFilter + ' scenario';
-      setDraft(next); setPickedIds([]); setKindByDevice({}); setObservation('');
+      setDraft(next); setPickedIds([]); setKindByDevice({}); setSeverityByDevice({}); setObservation('');
     } catch (failure) { setError(failure.message); }
   }
   function persistRun(value) {
@@ -184,12 +185,14 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
             return <div className="pending-device-alert" key={id}><strong>{source.name}</strong>
               <label>Alert level<select value={level} onChange={e => setKindByDevice(old => ({ ...old, [id]: kindsAtLevel(source, e.target.value)[0] }))}>{alertLevels.map(value => <option key={value} value={value} disabled={!kindsAtLevel(source, value).length}>{value === 'Notification only' ? 'Notification' : value}</option>)}</select></label>
               {kinds.length > 1 ? <label>Signal<select value={signal} onChange={e => setKindByDevice(old => ({ ...old, [id]: e.target.value }))}>{kinds.map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label> : <span className="signal-kind">{humanize(signal)}</span>}
+              <label>Simulation severity<select value={severityByDevice[id] || 'auto'} onChange={e => setSeverityByDevice(old => ({ ...old, [id]: e.target.value }))}>{Object.entries(simulationSeverities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             </div>;
           })}</div>
           <details className="simulation-note"><summary>Optional device details</summary><input aria-label="Additional device details" maxLength={600} value={observation} onChange={e => setObservation(e.target.value)} placeholder="Additional observation"/></details>
           <button type="button" disabled={!pickedIds.length || (draft.type === 'single' && draft.signals.length >= 1)} onClick={addSignal}>Add {pickedIds.length || ''} device {pickedIds.length === 1 ? 'alert' : 'alerts'}</button>
           <div className="definition-count">{draft.signals.length} device {draft.signals.length === 1 ? 'alert' : 'alerts'} in definition{draft.type === 'scenario' ? ' · minimum 2' : ' · maximum 1'}</div>
-          <ul className="signal-queue">{draft.signals.map(row => <li key={row.deviceId}><div><strong>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'}</strong><small>{humanize(row.kind)} · {signalPriority(row.kind)}</small></div><button type="button" onClick={() => setDraft(old => ({ ...old, signals: old.signals.filter(item => item.deviceId !== row.deviceId) }))}>Remove</button></li>)}</ul>
+          <p className="form-help">Simulation severity is exercise input, not a real sensor measurement. Automatic uses the signal and related evidence.</p>
+          <ul className="signal-queue">{draft.signals.map(row => <li key={row.deviceId}><div><strong>{catalog.devices.find(item => item.id === row.deviceId)?.name || 'Removed device'}</strong><small>{humanize(row.kind)} · {signalPriority(row.kind)}</small><label>Simulation severity<select value={row.severity || 'auto'} onChange={e => setDraft(old => ({ ...old, signals: old.signals.map(signal => signal.deviceId === row.deviceId ? { ...signal, severity: e.target.value } : signal) }))}>{Object.entries(simulationSeverities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><button type="button" onClick={() => setDraft(old => ({ ...old, signals: old.signals.filter(item => item.deviceId !== row.deviceId) }))}>Remove</button></li>)}</ul>
           <div className="actions"><button className="primary" disabled={!canSave}>Save {draft.type === 'single' ? 'single alert' : 'scenario'}</button>{editing && <button type="button" onClick={() => { setDraft(blank()); setPickedIds([]); setKindByDevice({}); }}>Cancel editing</button>}</div>
           <div className="simulation-feedback">
             {feedback}

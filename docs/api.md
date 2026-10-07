@@ -66,6 +66,8 @@ The example IDs are illustrative: replace the subject and source with the actual
 
 Alarm state is `active`, `clear` or `unknown`; connectivity is `online`, `offline` or `unknown`. Connectivity loss never implies clearance. Both fields are mandatory for 1.1. Legacy 1.0 reports have unknown state.
 
+Simulation definitions may add per-signal `severity`: `auto` (default), `informational`, `warning` or `urgent`. The worker carries an explicit choice as `state.simulated_severity` in the 1.1 envelope; it is persisted in receipt context and included in retry conflict checks. Only authenticated simulated sources can apply this exercise input. It is not a manufacturer measurement, model result or extension to the embedded IncidentBridge contract. Historical definitions without it retain automatic behavior. Clear state takes precedence over the chosen display severity. A validated AI assessment can raise overall incident urgency, but citing a report does not recolor its device.
+
 Only enabled, registered simulation devices with a matching source category and supported signal kind are admitted. Source household must match authentication. Server context stores trusted catalog/location snapshots, receipt time and provenance; observation prose is untrusted.
 
 Same event ID and identical content is a retry. Changing content, assignment or state under that ID returns conflict. A genuinely later repeat or state transition needs a fresh identity. Pending retries retain their first accepted context, even after catalog edits. Publication is at least once; correlation deduplicates evidence/counts.

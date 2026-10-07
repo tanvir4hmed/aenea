@@ -80,8 +80,14 @@ def validate_library(body, catalog):
             raise ValueError("A scenario needs at least two devices")
         seen = set()
         for row in rows:
-            if not isinstance(row, dict) or set(row) != {"deviceId", "kind", "observation"}:
+            if (
+                not isinstance(row, dict)
+                or not {"deviceId", "kind", "observation"} <= set(row)
+                or set(row) - {"deviceId", "kind", "observation", "severity"}
+            ):
                 raise ValueError("Invalid simulation signal")
+            if row.get("severity", "auto") not in {"auto", "informational", "warning", "urgent"}:
+                raise ValueError("Unsupported simulation severity")
             device = devices.get(row["deviceId"])
             if row["deviceId"] in seen:
                 raise ValueError("Use each device only once per simulation")

@@ -242,6 +242,13 @@ class IngestionContractTests(unittest.TestCase):
                 self.payload = payload
         self.table.put_item.assert_not_called()
 
+    def test_simulated_severity_is_saved_and_invalid_values_are_rejected(self):
+        self.payload["state"]["simulated_severity"] = "warning"
+        self.assertEqual(self.send()["statusCode"], 202)
+        self.assertEqual(self.detail()["event_context"]["state"]["simulated_severity"], "warning")
+        self.payload["state"]["simulated_severity"] = "safe"
+        self.assertEqual(self.send()["statusCode"], 400)
+
     def test_historical_read_migration_is_nondestructive(self):
         item = {"event": self.payload["event"]}
         migrated = timeline_context(item)

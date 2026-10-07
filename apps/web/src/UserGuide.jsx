@@ -21,6 +21,7 @@ const steps = [
     'Choose Scenario and give it a name, such as “Kitchen heat and gas”. Choose Kitchen and select its heat and gas detectors.',
     'Choose a supported signal for each device, press Add device alerts, then Save scenario. A scenario needs at least two different devices.',
     'For other rooms, add the first selection to the definition before choosing the next room. Your already-added devices stay in the definition.',
+    'Simulation severity offers Automatic, Low/notification, Medium/orange and High/red for each device. This is exercise input, not a real sensor measurement. You can also change it on an added device before saving.',
     'Once sends one report per device. A repeat interval sends reports for the duration shown below that field.',
     'Saved simulations lists your recipes. Search, filter, change pages, Edit or Delete there. Save edits before leaving the form.',
   ], result: 'You can reuse a saved single or scenario many times. One device may belong to several saved scenarios, but cannot appear twice in one trigger batch.' },

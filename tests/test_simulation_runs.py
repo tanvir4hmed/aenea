@@ -132,6 +132,14 @@ class SimulationRunTests(unittest.TestCase):
             work(self.table, "owner", run, self.deliver, lambda: 170000)
         return get_run(self.table, "owner", run["id"])
 
+    def test_exercise_priority_survives_scheduling_ingestion_and_correlation(self):
+        self.item["signals"][0]["severity"] = "warning"
+        _, run = self.setup_run()
+        result = self.tick(run)
+        self.assertEqual(result["accepted"], 1)
+        detail = json.loads(self.ingest.events.put_events.call_args.kwargs["Entries"][0]["Detail"])
+        self.assertEqual(detail["event_context"]["state"]["simulated_severity"], "warning")
+
     def test_cleanup_finds_run_after_ingress_loses_its_response(self):
         from boto3.dynamodb.conditions import Key
         from lifecycle import request_deletion, marker_key

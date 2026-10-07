@@ -8,7 +8,7 @@ from collections.abc import Iterable, Iterator
 from typing import Any
 
 from boto3.dynamodb.conditions import Key
-from hazard_priority import red_device_ids, severity as priority_severity
+from hazard_priority import red_device_ids, simulated_severity, tier, severity as priority_severity
 
 
 def records(table: Any, owner: str, incident: str) -> Iterator[dict[str, Any]]:
@@ -65,12 +65,13 @@ def device_summary(row: dict[str, Any], severity: str, red: set[str]) -> dict[st
         "location_id": context.get("location", {}).get("id"),
         "location_name": context.get("location", {}).get("name"),
         "provenance": context.get("provenance", "legacy_unverified"),
+        "simulated_severity": simulated_severity(row),
         "level": "normal"
         if row["alarm"] == "clear"
         else "red"
         if identifier in red
         else "amber"
-        if severity != "informational"
+        if (simulated_severity(row) or tier(event["kind"])) != "informational"
         else "normal",
     }
 
@@ -172,6 +173,9 @@ def snapshot(table: Any, owner: str, incident: str) -> dict[str, Any]:
             "total_events": total,
             "active_signal_count": len(active),
             "active_kind_counts": counts,
+            "simulation_priority_counts": dict(
+                Counter(simulated_severity(row) for row in active if simulated_severity(row))
+            ),
             "all_clear": not active,
             "selected_count": len(selected),
             "history_preserved": True,
@@ -189,14 +193,5 @@ def assessed_severity(
     levels = {"informational": 0, "warning": 1, "urgent": 2}
     proposed = assessment.get("severity", "informational")
     severity = max((state["severity"], proposed), key=lambda value: levels.get(value, 0))
-    cited = set(assessment.get("evidence_ids", []))
-    devices = [
-        {
-            **device,
-            "level": "red"
-            if proposed == "urgent" and device["event_id"] in cited
-            else device["level"],
-        }
-        for device in state["active_devices"]
-    ]
-    return severity, devices
+    # Incident urgency is not evidence that every cited sensor is independently urgent.
+    return severity, state["active_devices"]

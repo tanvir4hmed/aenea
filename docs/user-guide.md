@@ -33,6 +33,8 @@ For a scenario, choose **Scenario**, select at least two different devices, add 
 
 **Saved simulations** shows saved recipes with search, type/room/device filters, pagination, Edit and Delete. Unsaved changes must be saved before leaving. A single device/signal cannot have duplicate single definitions; scenarios may reuse sensors.
 
+**Simulation severity** is independent of the supported signal: Automatic (default), Low/notification, Medium/orange or High/red. Set it before adding a device, or change it beside a device already in the definition, then save. This is explicitly selected exercise input, not a measured smoke concentration or an AI conclusion. Mixed orange/red devices are supported within one incident; the model still assesses evidence independently. A room with a red device is red; a room with only medium alerts is orange. The compact Washrooms group follows the highest active device level.
+
 ## 4. Trigger from Command Center
 
 In **Trigger Alert / Scenario**, select your saved recipe. Ctrl-click on Windows or Command-click on Mac selects several entries. Keep **Incident assignment → Automatic** and press the Send button.
@@ -101,4 +103,4 @@ If Send fails, check the run list before retrying. **Retry run request** preserv
 
 Each incident starts with a **2,000-signal practice allowance**. At the limit, generation pauses while the incident stays open. In Command Center allow more test signals, then resume the run, up to 10,000. Repeat delivery is checked about once per minute and can arrive later. Repeats are new reports from the same sensor, not independent corroboration.
 
-Map colours reflect the selected incident: ordinary notifications, warnings and urgent red indications. Red may come from one intrinsically urgent signal, corroborating smoke/heat devices in one room, or a current validated urgent assessment. A normal tile or missing evidence does not prove safety. Follow official alarms and emergency guidance during real incidents.
+Map colours reflect the selected incident: ordinary notifications, orange warning cards and red urgent cards. Automatic red may come from one intrinsically urgent signal or corroborating smoke/heat devices in one room. Explicit simulation severity controls that device's exercise indication. Overall AI urgency does not make every cited device red. Resolved is a human lifecycle status, not a green certificate of safety. A normal tile or missing evidence does not prove safety. Follow official alarms and emergency guidance during real incidents.

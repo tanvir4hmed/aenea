@@ -43,6 +43,14 @@ class SimulationLibraryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exactly one"):
             validate_library(self.body, self.catalog)
 
+    def test_optional_exercise_priority_is_validated(self):
+        signal = self.body["items"][0]["signals"][0]
+        signal["severity"] = "warning"
+        validate_library(self.body, self.catalog)
+        signal["severity"] = "safe"
+        with self.assertRaisesRegex(ValueError, "severity"):
+            validate_library(self.body, self.catalog)
+
     def test_scenario_requires_multiple_devices(self):
         self.body["items"][0]["type"] = "scenario"
         with self.assertRaisesRegex(ValueError, "at least two"):

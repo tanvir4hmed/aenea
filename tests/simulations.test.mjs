@@ -42,10 +42,10 @@ test('map device selection prefers its single alert, then a related scenario', (
   assert.deepEqual(selectionForDevice(entries, 'two'), ['scenario']);
   assert.deepEqual(selectionForDevice(entries, 'gone'), []);
 });
-test('current urgent assessment makes only cited devices red; stale assessment cannot', () => {
+test('urgent assessment never recolors cited devices without device-level evidence', () => {
   const state = { assessment_current: true, incident: {}, latest_assessment: { assessment: { severity: 'urgent', evidence_ids: ['one'] } } };
   const events = [event('one'), event('four')];
-  assert.equal(alertStates(catalog, events, state, now).get('one').level, 'red');
+  assert.equal(alertStates(catalog, events, state, now).get('one').level, 'amber');
   assert.equal(alertStates(catalog, events, state, now).get('four').level, 'amber');
   assert.equal(alertStates(catalog, events, { ...state, assessment_current: false }, now).get('one').level, 'amber');
 });
@@ -57,4 +57,11 @@ test('canonical backend state replaces client heuristics and clears historical a
   const result = alertStates(catalog, history, state, now);
   assert.equal(result.size, 1);
   assert.equal(result.get('two').level, 'red');
+});
+
+test('mixed simulated priorities stay independent even when cited by an urgent assessment', () => {
+  const reports = ['one', 'two'].map((id, index) => ({ ...event(id), event: { ...event(id).event, source: { source_id: id, simulated: true } }, event_context: { provenance: 'authenticated_simulator', state: { alarm: 'active', simulated_severity: index ? 'urgent' : 'warning' } } }));
+  const states = alertStates(catalog, reports, { latest_assessment: { assessment: { severity: 'urgent', evidence_ids: ['one', 'two'] } } }, now);
+  assert.equal(states.get('one').level, 'amber');
+  assert.equal(states.get('two').level, 'red');
 });

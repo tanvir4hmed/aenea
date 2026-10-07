@@ -302,6 +302,8 @@ def work(table, owner, run, deliver, remaining):
         if row["index"] >= expected_count(row["profile"]):
             continue
         offset, state = scheduled_state(row["profile"], int(row["index"]))
+        if row.get("severity", "auto") != "auto":
+            state = {**state, "simulated_severity": row["severity"]}
         scheduled = run["created_at"] + offset
         if scheduled > int(time.time()):
             continue

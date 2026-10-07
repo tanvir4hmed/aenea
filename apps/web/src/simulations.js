@@ -36,15 +36,20 @@ export function alertStates(catalog, timeline, state, now = Date.now()) {
   const events = [...new Map([...timeline.filter(item => item.event).map(item => item.event),
     ...(state?.latest_assessment?.evidence_snapshot || [])].map(event => [event.event_id, event])).values()];
   const result = new Map(), smokeGroups = new Map();
-  const urgent = state?.assessment_current && state?.incident?.decision_review !== 'rejected' && assessment?.severity === 'urgent';
-  const cited = new Set(assessment?.evidence_ids || []);
+  const contexts = new Map(timeline.filter(item => item.event).map(item => [item.event.event_id, item.event_context]));
   for (const event of events) {
     const device = catalog.devices.find(item => item.id === event.source?.source_id);
     if (!device) continue;
     const age = now - new Date(event.occurred_at).valueOf();
     const fresh = age >= -30000 && age <= 300000;
+    const context = contexts.get(event.event_id);
+    const exercise = event.source.simulated === true && context?.provenance === 'authenticated_simulator' ? context.state?.simulated_severity : undefined;
+    if (['informational', 'warning', 'urgent'].includes(exercise)) {
+      const level = context.state.alarm === 'clear' ? 'normal' : exercise === 'urgent' ? 'red' : exercise === 'warning' ? 'amber' : 'normal';
+      result.set(device.id, { level, reason: `Simulation ${exercise} · ${context.state.alarm}` });
+      continue;
+    }
     if (!result.has(device.id)) result.set(device.id, { level: 'amber', reason: 'Evidence recorded' });
-    if (fresh && urgent && cited.has(event.event_id)) result.set(device.id, { level: 'red', reason: 'Urgent assessment · cited device' });
     if (fresh && event.kind === 'smoke' && device.room?.trim()) {
       const key = `${device.location_id}/${device.room.trim().toLowerCase()}`;
       if (!smokeGroups.has(key)) smokeGroups.set(key, new Map());

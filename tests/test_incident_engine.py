@@ -265,7 +265,7 @@ class IncidentEngineTests(unittest.TestCase):
         severity, devices = assessed_severity(
             state, {"severity": "urgent", "evidence_ids": [event.event_id]}
         )
-        self.assertEqual((severity, devices[0]["level"]), ("urgent", "red"))
+        self.assertEqual((severity, devices[0]["level"]), ("urgent", "amber"))
         self.assertEqual(assessed_severity(state, {"severity": "informational"})[0], "warning")
 
     def test_reporting_devices_include_latest_clear_unknown_and_original_metadata(self):

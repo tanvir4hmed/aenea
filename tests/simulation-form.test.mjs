@@ -4,6 +4,12 @@ import { roomInventory, appendRoomSignals, kindsAtLevel, alertLevels } from '../
 const device = (id, room, type = 'smoke_detector') => ({ id, room, type, enabled: true, connection: 'simulation' });
 const catalog = { devices: [device('k1', 'Kitchen'), device('k2', 'Kitchen', 'leak_sensor'), device('b1', 'Master Bedroom')] };
 const scenario = { type: 'scenario', signals: [] };
+
+test('simulation severity is independent of supported signal and survives definition creation', () => {
+  const draft = appendRoomSignals(scenario, catalog, 'Kitchen', ['k1', 'k2'], {}, '', { k1: 'urgent', k2: 'warning' });
+  assert.deepEqual(draft.signals.map(row => row.severity), ['urgent', 'warning']);
+  assert.throws(() => appendRoomSignals(scenario, catalog, 'Kitchen', ['k1'], {}, '', { k1: 'safe' }));
+});
 test('room selection exposes only installed devices in that room', () => {
   assert.deepEqual(roomInventory(catalog, 'Kitchen', []).available.map(d => d.id), ['k1', 'k2']);
   assert.equal(roomInventory(catalog, '', []).available.length, 0);

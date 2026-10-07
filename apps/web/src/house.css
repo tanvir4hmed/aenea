@@ -24,4 +24,10 @@
 .washroom-group .room-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr)); }
 .washroom-group .map-room, .washroom-group .map-devices { display: contents; }
 .washroom-group .room-title { display: none; }
+.house-level.warning-group { border-color: #a75a12; background: #fff2df; }
+.house-level.urgent-group { border-color: #be4242; background: #fff2f0; }
+.house-level .map-room.reporting { border-color: #a75a12; background: #fff2df; }
+.map-device.amber-alert { border: 2px solid #a75a12; background: #fff2df; }
+.amber-alert .device-symbol { background: #ffdeb2; color: #6e410e; }
+.amber-alert small { color: #6e410e; font-weight: 700; }
 @container (max-width: 480px) { .house-level { grid-column: span 12; } }
