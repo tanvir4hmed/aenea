@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { incidentLabel } from './incidentNames';
+import { unfinishedCleanupRequests } from './cleanupStatus';
 
 export default function DataControls({ api, incidents, onDeleted, onClearDrafts, disabled }) {
   const [target, setTarget] = useState(''), [confirmation, setConfirmation] = useState('');
   const [records, setRecords] = useState([]), [cursor, setCursor] = useState(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const unfinished = unfinishedCleanupRequests(records);
   async function copyId() {
     try { await navigator.clipboard.writeText(target); setNotice('Full incident ID copied. Paste it into the confirmation field.'); }
     catch { setNotice('Copy is unavailable. Select the full ID below and copy it manually.'); }
@@ -35,8 +37,8 @@ export default function DataControls({ api, incidents, onDeleted, onClearDrafts,
     </fieldset></form>
     <p className="guest-warning">Cleanup removes all S3 evidence versions and active database records. A minimal deletion marker remains to block replays. Backups, workflow history and service logs expire under their separate retention settings. Deleting here does not purge those retained copies.</p>
     <div className="row"><h3>Cleanup status</h3><button disabled={busy || disabled} onClick={() => perform(() => load())}>Refresh cleanup status</button></div>
-    {!records.length && <p>No deletion requests loaded.</p>}
-    {records.map(item => <article className="catalog-item" key={item.incident_id}><strong>{item.incident_id.slice(0, 8)} · {item.cleanup_status}</strong><p>Requested {new Date(item.requested_at * 1000).toLocaleString()}{item.completed_at ? ` · Completed ${new Date(item.completed_at * 1000).toLocaleString()}` : ` · Eligible after ${new Date(item.eligible_at * 1000).toLocaleString()}`}</p>{item.cleanup_status === 'retrying' && <p>Cleanup is incomplete. The scheduled worker will retry; do not treat this as fully deleted.</p>}</article>)}
+    {!unfinished.length && <p>{cursor ? 'No unfinished requests in the loaded results. Load more to check earlier requests.' : 'No pending cleanup requests.'}</p>}
+    {unfinished.map(item => <article className="catalog-item" key={item.incident_id}><strong>{item.incident_id.slice(0, 8)} · {item.cleanup_status}</strong><p>Requested {new Date(item.requested_at * 1000).toLocaleString()} · Eligible after {new Date(item.eligible_at * 1000).toLocaleString()}</p>{item.cleanup_status === 'retrying' && <p>Cleanup is incomplete. The scheduled worker will retry; do not treat this as fully deleted.</p>}</article>)}
     {cursor && <button disabled={busy || disabled} onClick={() => perform(() => load(cursor))}>Load more cleanup requests</button>}
     <details><summary>Clear local drafts & conversation history</summary><p>Removes this tab’s simulation queue and this household’s saved Alexa+ replies in this browser, without deleting server evidence. An uncertain signal may already have been accepted.</p><button disabled={busy || disabled} onClick={() => { if (window.confirm('Clear this tab’s simulation queue, including uncertain requests, and this household’s saved conversation history? Saved incidents remain.')) { onClearDrafts(); setNotice('Local simulation queue and conversation history cleared.'); } }}>Clear local drafts & replies</button></details>
     {error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
