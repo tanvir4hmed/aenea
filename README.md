@@ -32,7 +32,7 @@ React and Vite provide the interface. AWS Lambda, EventBridge, Step Functions, D
 | [Architecture](docs/architecture.md) | System design, incident workflow, MCP integration and AWS AI processing |
 | [API](docs/api.md) | Event contract, endpoints, tools, authentication and compatibility |
 | [Deployment](docs/deployment.md) | Prerequisites, bootstrap, accounts, domain, selective releases and local checks |
-| [Operations](docs/operations.md) | Recovery, limits, storage, deletion, privacy and observability |
+| [Operations](docs/operations.md) | Cost estimate, recovery, limits, storage, deletion, privacy and observability |
 
 ## Development
 
