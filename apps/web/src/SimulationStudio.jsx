@@ -4,7 +4,7 @@ import { incidentLabel } from './incidentNames';
 import { selectedSignals, selectionForDevice } from './simulations';
 import SimulationRuns from './SimulationRuns';
 import { houseRooms, isMapleHouse } from './house';
-import { alertLevels, defaultProfile, supportedKinds, kindsAtLevel, roomInventory, appendRoomSignals, simulationSeverities } from './simulationForm';
+import { defaultProfile, supportedKinds, roomInventory, appendRoomSignals, simulationSeverities } from './simulationForm';
 import './compact-workspace.css';
 
 const blank = () => ({ id: crypto.randomUUID(), name: '', type: 'single', signals: [], profile: { ...defaultProfile } });
@@ -180,11 +180,9 @@ export default function SimulationStudio({ api, household, catalog, ready, selec
             const source = eligibleDevices.find(item => item.id === id);
             if (!source) return null;
             const signal = kindByDevice[id] || supportedKinds(source)[0];
-            const level = signalPriority(signal);
-            const kinds = kindsAtLevel(source, level);
+            const kinds = supportedKinds(source);
             return <div className="pending-device-alert" key={id}><strong>{source.name}</strong>
-              <label>Alert level<select value={level} onChange={e => setKindByDevice(old => ({ ...old, [id]: kindsAtLevel(source, e.target.value)[0] }))}>{alertLevels.map(value => <option key={value} value={value} disabled={!kindsAtLevel(source, value).length}>{value === 'Notification only' ? 'Notification' : value}</option>)}</select></label>
-              {kinds.length > 1 ? <label>Signal<select value={signal} onChange={e => setKindByDevice(old => ({ ...old, [id]: e.target.value }))}>{kinds.map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label> : <span className="signal-kind">{humanize(signal)}</span>}
+              {kinds.length > 1 ? <label>Signal<select value={signal} onChange={e => setKindByDevice(old => ({ ...old, [id]: e.target.value }))}>{kinds.map(value => <option key={value} value={value}>{humanize(value)}</option>)}</select></label> : <span className="signal-kind">Signal: {humanize(signal)}</span>}
               <label>Simulation severity<select value={severityByDevice[id] || 'auto'} onChange={e => setSeverityByDevice(old => ({ ...old, [id]: e.target.value }))}>{Object.entries(simulationSeverities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             </div>;
           })}</div>

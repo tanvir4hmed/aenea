@@ -1,9 +1,7 @@
-import { deviceTypes, signalPriority } from './devices.js';
+import { deviceTypes } from './devices.js';
 
-export const alertLevels = ['Notification only', 'Warning', 'Critical'];
 export const defaultProfile = { mode: 'on_change', interval_seconds: 60, duration_seconds: 300, alarm: 'active', connectivity: 'online', clear_at_end: false };
 export const supportedKinds = device => deviceTypes[device?.type]?.kinds || [];
-export const kindsAtLevel = (device, level) => supportedKinds(device).filter(kind => signalPriority(kind) === level);
 
 export function roomInventory(catalog, room, signals) {
   const registered = catalog.devices.filter(device => room && device.room === room);

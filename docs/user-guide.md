@@ -23,13 +23,13 @@ Open **Simulation Studio → Create simulation**:
 1. Choose **Master Bedroom**.
 2. Enter **Bedroom smoke test** as the name.
 3. Choose **Single alert** and **Once**.
-4. Select its smoke detector and keep its supported Critical signal level.
+4. Select its smoke detector. Its Smoke signal is fixed; devices supporting several signals offer a Signal dropdown.
 5. Choose **Add 1 device alert**. Check the detector now appears in the definition.
 6. Choose **Save single alert**.
 
 **Optional device details** adds descriptive observation text; leave it empty for this test. Saving stores a reusable recipe. It does not send a signal or create an incident.
 
-For a scenario, choose **Scenario**, select at least two different devices, add them and save. Example: Kitchen heat and gas detectors. To span rooms, add one room's selection before choosing another room. Alert levels only offer signals supported by that device. Studio's Critical signal category does not force the map red: a single smoke/heat report starts at warning, and the backend assesses combined evidence.
+For a scenario, choose **Scenario**, select at least two different devices, add them and save. Example: Kitchen heat and gas detectors. To span rooms, add one room's selection before choosing another room. Signal choices only include signals supported by that device; there is no separate alert-level selector. Simulation severity is independent exercise input. With Automatic severity, a single smoke/heat report starts at warning, and the backend assesses combined evidence.
 
 **Saved simulations** shows saved recipes with search, type/room/device filters, pagination, Edit and Delete. Unsaved changes must be saved before leaving. A single device/signal cannot have duplicate single definitions; scenarios may reuse sensors.
 

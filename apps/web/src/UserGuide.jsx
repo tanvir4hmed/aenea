@@ -13,7 +13,7 @@ const steps = [
   ], result: 'Only enabled, compatible simulated devices can be chosen for a new alert. Adding a device alone never sends a signal.' },
   { title: 'Create your first single alert', page: 'simulation-lab', link: 'Open Simulation Studio', instructions: [
     'In Create simulation choose Master Bedroom, enter “Bedroom smoke test” and choose Single alert.',
-    'Choose its Smoke detector. Keep its supported Critical signal level and Repeat interval set to Once.',
+    'Choose its Smoke detector. Its Smoke signal is fixed; devices supporting several signals offer a Signal dropdown. Keep Repeat interval set to Once.',
     'Press Add 1 device alert. Check that the detector appears in the definition, then press Save single alert.',
     'Optional device details is extra text describing the simulated observation. You can leave it empty.',
   ], result: 'You have saved a reusable recipe. It is not an incident yet, and nothing has triggered.' },

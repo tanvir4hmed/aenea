@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { roomInventory, appendRoomSignals, kindsAtLevel, alertLevels } from '../apps/web/src/simulationForm.js';
+import { roomInventory, appendRoomSignals, supportedKinds } from '../apps/web/src/simulationForm.js';
+import { deviceTypes } from '../apps/web/src/devices.js';
 const device = (id, room, type = 'smoke_detector') => ({ id, room, type, enabled: true, connection: 'simulation' });
 const catalog = { devices: [device('k1', 'Kitchen'), device('k2', 'Kitchen', 'leak_sensor'), device('b1', 'Master Bedroom')] };
 const scenario = { type: 'scenario', signals: [] };
@@ -26,9 +27,29 @@ test('cross-room picks, duplicate IDs and multiple single-alert devices are reje
   assert.throws(() => appendRoomSignals(scenario, catalog, 'Kitchen', ['k1', 'k1'], {}));
   assert.throws(() => appendRoomSignals({ type: 'single', signals: [] }, catalog, 'Kitchen', ['k1', 'k2'], {}));
 });
-test('three levels preserve real device capabilities', () => {
-  assert.equal(alertLevels.length, 3);
-  assert.deepEqual(kindsAtLevel(catalog.devices[0], 'Critical'), ['smoke']);
-  assert.deepEqual(kindsAtLevel(catalog.devices[1], 'Critical'), []);
+test('signal choices preserve device capabilities without an alert-level filter', () => {
+  assert.deepEqual(supportedKinds(catalog.devices[0]), ['smoke']);
+  assert.deepEqual(supportedKinds(catalog.devices[1]), ['water_leak']);
   assert.throws(() => appendRoomSignals(scenario, catalog, 'Kitchen', ['k2'], { k2: 'smoke' }));
+});
+
+test('every supported signal on every sensor accepts each exercise severity', () => {
+  for (const [type, definition] of Object.entries(deviceTypes)) {
+    const source = device(type, 'Kitchen', type);
+    const inventory = { devices: [source] };
+    assert.deepEqual(supportedKinds(source), definition.kinds);
+    if (!definition.kinds.length) {
+      assert.equal(roomInventory(inventory, 'Kitchen', []).available.length, 0);
+      continue;
+    }
+    const first = appendRoomSignals(scenario, inventory, 'Kitchen', [type], {});
+    assert.equal(first.signals[0].kind, definition.kinds[0]);
+    for (const kind of definition.kinds) {
+      for (const severity of ['auto', 'informational', 'warning', 'urgent']) {
+        const result = appendRoomSignals(scenario, inventory, 'Kitchen', [type], { [type]: kind }, '', { [type]: severity });
+        assert.equal(result.signals[0].kind, kind);
+        assert.equal(result.signals[0].severity || 'auto', severity);
+      }
+    }
+  }
 });
